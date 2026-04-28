@@ -16,7 +16,7 @@ export async function AdminPanel() {
   const metadata = user.user_metadata || {};
   const role = metadata.rol || user.role || "user";
 
-  if (!["super", "admin", "rrhh"].includes(role)) {
+  if (!["super", "admin"].includes(role)) {
     redirect("/siget");
   }
 

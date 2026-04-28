@@ -29,12 +29,12 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SIGET",
-  description: "Sistema Integral de Gestión Trifinio",
+  title: "SIGET - Plan Trifinio",
+  description: "Sistema Integral de Gestión - Plan Trifinio",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "SIGET",
+    title: "SIGET - Plan Trifinio",
   },
   icons: {
     icon: "/apple-touch-icon.png",

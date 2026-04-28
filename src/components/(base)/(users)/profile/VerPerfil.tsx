@@ -38,7 +38,7 @@ export default function VerPerfil({ isOpen, onClose, userId }: VerPerfilProps) {
   const isSuper = sessionRole === "super";
 
   const canEdit =
-    ["admin", "super", "rrhh"].includes(sessionRole) ||
+    ["admin", "super"].includes(sessionRole) ||
     sessionUser?.id === targetId;
 
   const { profile, loading } = useProfile(targetId, isOpen);
@@ -56,18 +56,16 @@ export default function VerPerfil({ isOpen, onClose, userId }: VerPerfilProps) {
 
   const roleLabels: Record<string, string> = {
     user: "Usuario (Estándar)",
-    ventas: "Ventas",
-    contabilidad: "Contabilidad",
+    observatorio: "Observatorio",
     admin: "Administrador",
-    rrhh: "Recursos Humanos",
     super: "Super Admin",
   };
 
   let roleOptions: string[] = [];
   if (sessionRole === "super") {
-    roleOptions = ["super", "admin", "contabilidad", "ventas", "rrhh", "user"];
+    roleOptions = ["super", "admin", "observatorio", "user"];
   } else if (sessionRole === "admin") {
-    roleOptions = ["admin", "contabilidad", "ventas", "rrhh", "user"];
+    roleOptions = ["admin", "observatorio", "user"];
   }
 
   const targetIsSuper = profile?.rol === "super";

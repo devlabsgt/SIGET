@@ -19,6 +19,7 @@ const MODULES = [
     desc: "Visualización de datos y estadísticas regionales del SIGET.",
     icon: "qqvpjphn",
     href: "/siget/observatorio",
+    allowedRoles: ["super", "admin", "observatorio"],
   },
   {
     id: "perfil",
@@ -83,7 +84,8 @@ export function Dashboard() {
   const isSuperOrAdmin = ["super", "admin"].includes(effectiveRole);
 
   const visibleModules = MODULES.filter((mod) => {
-    if (mod.requiresAdmin) return isSuperOrAdmin;
+    if (mod.requiresAdmin && !isSuperOrAdmin) return false;
+    if (mod.allowedRoles && !mod.allowedRoles.includes(effectiveRole)) return false;
     return true;
   });
 

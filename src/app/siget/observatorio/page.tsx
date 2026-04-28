@@ -1,10 +1,10 @@
 import { Suspense } from "react";
-import Dashboard from "@/components/(SIGET)/dashboard";
+import ObservatorioWeb from "@/components/(SIGET)/observatorio/ObservatorioWeb";
 
-export default function SIGETMainPage() {
+export default function ObservatorioWebPage() {
   return (
     <Suspense>
-      <Dashboard />
+      <ObservatorioWeb />
     </Suspense>
   );
 }

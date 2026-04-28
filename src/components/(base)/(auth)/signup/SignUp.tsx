@@ -296,7 +296,7 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="rol">Rol de acceso</Label>
+                      <Label htmlFor="rol">Rol</Label>
                       <Select
                         id="rol"
                         name="rol"
@@ -304,10 +304,8 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                         onChange={(e) => logic.setRol(e.target.value)}
                       >
                         <option value="user">Usuario (Estándar)</option>
-                        <option value="contabilidad">Contabilidad</option>
-                        <option value="ventas">Ventas</option>
+                        <option value="observatorio">Observatorio</option>
                         <option value="admin">Administrador</option>
-                        <option value="rrhh">Recursos Humanos</option>
                         {currentUserRole === "super" && (
                           <option value="super">Super Admin</option>
                         )}

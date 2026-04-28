@@ -33,7 +33,7 @@ if (user) {
       const metadata = user.user_metadata || {};
       const realRole = (metadata.rol || user.role || "user") as string;
 
-      if (["super", "admin", "rrhh"].includes(realRole)) {
+      if (["super", "admin"].includes(realRole)) {
         const url = request.nextUrl.clone();
         url.pathname = "/siget";
         return NextResponse.redirect(url);
@@ -67,7 +67,7 @@ if (user) {
 
       if (
         pathname.startsWith("/siget/admin") &&
-        !["super", "admin", "rrhh"].includes(realRole)
+        !["super", "admin"].includes(realRole)
       ) {
         const url = request.nextUrl.clone();
         url.pathname = "/sin-acceso";

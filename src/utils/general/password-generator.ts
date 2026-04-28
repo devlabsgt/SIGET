@@ -6,10 +6,13 @@ export const generateStrongPassword = (length: number = 8): string => {
   password += "ABCDEFGHIJKLMNOPQRSTUVWXYZ".charAt(
     Math.floor(Math.random() * 26),
   );
+  password += "abcdefghijklmnopqrstuvwxyz".charAt(
+    Math.floor(Math.random() * 26),
+  );
   password += "0123456789".charAt(Math.floor(Math.random() * 10));
   password += "!@#$%&*".charAt(Math.floor(Math.random() * 7));
 
-  for (let i = 0; i < length - 3; i++) {
+  for (let i = 0; i < length - 4; i++) {
     password += charset.charAt(Math.floor(Math.random() * charset.length));
   }
 

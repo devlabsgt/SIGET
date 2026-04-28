@@ -102,8 +102,8 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
                     className="bg-transparent text-xs font-bold text-yellow-700 outline-none cursor-pointer w-full"
                   >
                     <option value="">Rol Real: {realRole.toUpperCase()}</option>
-                    <option value="super">Simular: SUPER</option>
                     <option value="admin">Simular: ADMIN</option>
+                    <option value="observatorio">Simular: OBSERVATORIO</option>
                     <option value="user">Simular: USER</option>
                   </select>
                 </div>

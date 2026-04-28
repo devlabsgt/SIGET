@@ -20,7 +20,7 @@ export default function Header() {
 
   const metadata = user?.user_metadata || {};
   const role = metadata.rol || user?.role || "user";
-  const canManage = ["super", "admin", "rrhh"].includes(role);
+  const canManage = ["super", "admin"].includes(role);
 
   useEffect(() => {
     if (!canManage) return;
