@@ -10,11 +10,16 @@ import { Menu as MenuIcon, X, RefreshCw } from "lucide-react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import Menu from "./Menu";
 import { getPendingDevicesCount } from "@/components/(SIGET)/admin/lib/actions";
+import Image from "next/image";
+import { createPortal } from "react-dom";
+import AnimacionLogoTrifinio from "@/components/(SIGET)/logo/AnimacionLogoTrifinio";
 
 export default function Header() {
   const user = useUser();
   const [isOpen, setIsOpen] = useState(false);
   const [pendingDevices, setPendingDevices] = useState(0);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
   const isRoot = pathname === "/siget";
 
@@ -23,9 +28,16 @@ export default function Header() {
   const canManage = ["super", "admin"].includes(role);
 
   useEffect(() => {
+    setMounted(true);
     if (!canManage) return;
     getPendingDevicesCount().then((c) => setPendingDevices(c ?? 0));
   }, [canManage]);
+
+  const handleLogoClick = (e: React.MouseEvent) => {
+    // Prevent default navigation to show the animation instead
+    e.preventDefault();
+    setIsFullScreen(true);
+  };
 
   return (
     <>
@@ -35,7 +47,8 @@ export default function Header() {
             <div className="flex items-center shrink-0">
               <Link
                 href={user ? "/siget" : "/"}
-                className="flex flex-row items-center shrink-0 group gap-2 md:gap-3"
+                onClick={handleLogoClick}
+                className="flex flex-row items-center shrink-0 group gap-1 md:gap-1.5 cursor-pointer"
               >
                 <motion.h1 
                   initial={{ opacity: 0, y: -20 }}
@@ -117,6 +130,11 @@ export default function Header() {
       )}
 
       <Menu isOpen={isOpen} setIsOpen={setIsOpen} user={user} />
+
+      {mounted && createPortal(
+        <AnimacionLogoTrifinio isOpen={isFullScreen} onClose={() => setIsFullScreen(false)} />,
+        document.body
+      )}
     </>
   );
 }

@@ -57,7 +57,7 @@ export default function ObservatorioWeb() {
   return (
     <>
       <div className="fixed inset-0 pointer-events-none z-[-1] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(#1f2937_1px,transparent_1px)] opacity-60" />
-      <div className="flex-1 w-full px-6 lg:px-12 max-w-[1600px] mx-auto pb-20 pt-32 md:pt-40">
+      <div className="flex-1 w-full px-2 md:px-6 lg:px-12 max-w-[1600px] mx-auto pb-20 pt-32 md:pt-20">
         
         <AnimatePresence mode="wait">
           {activeView === "menu" && (

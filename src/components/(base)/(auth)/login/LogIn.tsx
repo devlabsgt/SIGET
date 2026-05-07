@@ -11,6 +11,7 @@ import { DotPattern } from "@/components/ui/dot-pattern";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTheme } from "next-themes";
 import Swal from "sweetalert2";
+import LogoTrifinioLogin from "@/components/(SIGET)/logo/LogoTrifinioLogin";
 
 export default function LogIn() {
   const [mounted, setMounted] = useState(false);
@@ -118,9 +119,14 @@ useEffect(() => {
         <DotPattern className="mask-[radial-gradient(1000px_circle_at_center,white,transparent)] opacity-80" />
       </div>
 
-      <div className="relative w-full max-w-md p-12 z-10">
+      <div className="relative w-full max-w-md px-6 md:px-12 pb-12 z-10">
         <MagicCard className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-2xl overflow-visible!">
           <div className="flex flex-col items-center space-y-6 p-10 border-b border-border/50 text-center">
+            
+            <div className="w-full -mt-2 pb-2">
+              <LogoTrifinioLogin backgroundEffect="none" />
+            </div>
+
             <div className="space-y-1">
               <h3 className="text-2xl font-bold tracking-tight">
                 <AuroraText>Bienvenido de nuevo</AuroraText>

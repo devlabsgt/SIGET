@@ -15,7 +15,7 @@ const MODULES = [
   {
     id: "observatorio",
     title: "Observatorio",
-    subtitle: "Web",
+    subtitle: "Web de movilidad humana",
     desc: "Visualización de datos y estadísticas regionales del SIGET.",
     icon: "qqvpjphn",
     href: "/siget/observatorio",
@@ -33,7 +33,7 @@ const MODULES = [
     id: "dispositivos",
     title: "Gestión de",
     subtitle: "Dispositivos",
-    desc: "Administración de dispositivos autorizados y seguridad Passkeys.",
+    desc: "Administración de dispositivos autorizados y configuración de llaves de acceso.",
     icon: "gzqipvbr",
     href: "/siget/admin/dispositivos",
     requiresAdmin: true,
