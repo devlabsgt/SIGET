@@ -9,6 +9,7 @@ import { createClient } from "@/utils/supabase/server";
 import Providers from "@/components/(base)/providers/QueryProviders";
 import { UserProvider } from "@/components/(base)/providers/UserProvider";
 import { AuroraText } from "@/components/ui/aurora-text";
+import OfflineBanner from "@/components/OfflineBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +57,10 @@ export default async function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body
         suppressHydrationWarning
+        style={{ 
+          paddingTop: 'var(--banner-height, 0px)',
+          transition: 'padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+        }}
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background flex flex-col`}
       >
         <Providers>
@@ -66,6 +71,7 @@ export default async function RootLayout({
             disableTransitionOnChange
           >
             <UserProvider user={user}>
+              <OfflineBanner />
               <Header />
               <main className="flex-1 w-full flex flex-col">
                 {children}

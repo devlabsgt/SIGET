@@ -121,7 +121,7 @@ export function Dashboard() {
             transition={{ duration: 0.4, ease: "easeOut" }}
           >
             {mod.id === "perfil" ? (
-              <div className="group flex flex-col border border-slate-200 dark:border-slate-700 overflow-hidden h-full w-full rounded-2xl bg-white dark:bg-[#111] transition-all duration-500 hover:border-azul-trifinio hover:-translate-y-2">
+              <div className="group flex flex-col border border-border dark:border-white/10 overflow-hidden h-full w-full rounded-2xl bg-card transition-all duration-500 hover:border-azul-trifinio hover:-translate-y-2">
                 <AnimatePresence mode="wait">
                   {expandedPerfil ? (
                     <motion.div
@@ -135,7 +135,7 @@ export function Dashboard() {
                       <div className="absolute top-0 left-0 w-full h-[calc(100%-70px)] bg-gradient-to-t from-azul-trifinio to-celeste-trifinio pointer-events-none z-0 rounded-t-[inherit]" />
                       <button
                         onClick={() => setExpandedPerfil(false)}
-                        className="absolute bottom-0 left-0 w-full h-[70px] flex justify-center items-center z-10 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+                        className="absolute bottom-0 left-0 w-full h-[70px] flex justify-center items-center z-10 cursor-pointer hover:bg-accent/60 transition-colors"
                       >
                         <span className="flex items-center gap-2 text-azul-trifinio font-black uppercase text-xs tracking-[0.25em]">
                           ← Volver
@@ -185,7 +185,7 @@ export function Dashboard() {
                     >
                       <div className="absolute top-0 left-0 w-full h-[calc(100%-70px)] origin-bottom scale-y-0 bg-gradient-to-t from-azul-trifinio to-celeste-trifinio transition-transform duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] group-hover:scale-y-100 pointer-events-none z-0 rounded-t-[inherit]" />
                       <div className="absolute bottom-0 left-0 w-full h-[70px] flex justify-center items-center z-10 transition-all duration-500 opacity-0 group-hover:opacity-100 translate-y-4 group-hover:translate-y-0">
-                        <span className="flex items-center gap-2 text-celeste-trifinio dark:text-white font-black uppercase text-xs tracking-[0.25em]">
+                        <span className="flex items-center gap-2 text-celeste-trifinio dark:text-foreground font-black uppercase text-xs tracking-[0.25em]">
                           Ver opciones
                         </span>
                       </div>
@@ -196,11 +196,11 @@ export function Dashboard() {
                           </div>
                         </div>
                         <div className="relative z-10 w-full flex flex-col items-start text-left space-y-4 transition-transform duration-700 group-hover:-translate-y-2">
-                          <h3 className="text-[1.6rem] lg:text-[1.85rem] font-black tracking-tighter text-slate-900 dark:text-white group-hover:text-white uppercase leading-none w-full break-words transition-colors duration-500">
+                          <h3 className="text-[1.6rem] lg:text-[1.85rem] font-black tracking-tighter text-foreground group-hover:text-white uppercase leading-none w-full break-words transition-colors duration-500">
                             {mod.title}<br />
                             <span className="text-celeste-trifinio group-hover:text-white/90 transition-colors duration-500">{mod.subtitle}</span>
                           </h3>
-                          <p className="text-[14px] lg:text-[15px] text-slate-500 dark:text-slate-400 group-hover:text-white/80 font-bold italic leading-tight pr-2 transition-colors duration-500">
+                          <p className="text-[14px] lg:text-[15px] text-muted-foreground group-hover:text-white/80 font-bold italic leading-tight pr-2 transition-colors duration-500">
                             {mod.desc}
                           </p>
                         </div>
@@ -212,7 +212,7 @@ export function Dashboard() {
             ) : (
               <div
                 onClick={() => handleCardClick(mod.id, mod.href)}
-                className="group flex flex-col border border-slate-200 dark:border-slate-700 overflow-hidden h-full w-full rounded-2xl transition-[border-color] duration-500 cursor-pointer bg-white dark:bg-[#111]"
+                className="group flex flex-col border border-border dark:border-white/10 overflow-hidden h-full w-full rounded-2xl transition-[border-color] duration-500 cursor-pointer bg-card"
                 style={{
                   borderColor: isActive ? "#2c5f9b" : undefined,
                 }}
@@ -227,7 +227,7 @@ export function Dashboard() {
                     transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
                     className="absolute top-0 left-0 w-full h-[calc(100%-70px)] origin-bottom bg-gradient-to-t from-azul-trifinio to-celeste-trifinio pointer-events-none z-0 rounded-t-[inherit]"
                   />
-                  <div className="absolute inset-0 rounded-[inherit] border border-slate-200 dark:border-slate-700 pointer-events-none z-20" />
+                  <div className="absolute inset-0 rounded-[inherit] border border-border dark:border-white/10 pointer-events-none z-20" />
                   <div className="absolute bottom-0 left-0 w-full h-[70px] flex justify-center items-center z-10">
                     <motion.span
                       variants={{
@@ -237,7 +237,7 @@ export function Dashboard() {
                       }}
                       className={[
                         "flex items-center gap-2 font-black uppercase text-xs tracking-[0.25em] transition-colors duration-500",
-                        isActive ? "text-celeste-trifinio" : "text-celeste-trifinio dark:text-white"
+                        isActive ? "text-celeste-trifinio" : "text-celeste-trifinio dark:text-foreground"
                       ].join(" ")}
                     >
                       {isActive ? "Toca de nuevo para entrar" : "Haz click para entrar"}
@@ -273,7 +273,7 @@ export function Dashboard() {
                         }}
                         className="text-[1.6rem] lg:text-[1.85rem] font-black tracking-tighter uppercase leading-none w-full break-words transition-colors duration-500"
                       >
-                        <span className="text-slate-900 dark:text-white group-hover:text-white transition-colors duration-500" style={{ color: isActive ? '#ffffff' : undefined }}>{mod.title}</span><br />
+                        <span className="text-foreground group-hover:text-white transition-colors duration-500" style={{ color: isActive ? '#ffffff' : undefined }}>{mod.title}</span><br />
                         <span className="text-celeste-trifinio group-hover:text-white/90 transition-colors duration-500" style={{ color: isActive ? 'rgba(255,255,255,0.9)' : undefined }}>{mod.subtitle}</span>
                       </motion.h3>
                       <motion.p
@@ -282,7 +282,7 @@ export function Dashboard() {
                           hover: { y: -8 },
                           active: { y: -8 }
                         }}
-                        className="text-[14px] lg:text-[15px] text-slate-500 dark:text-slate-400 group-hover:text-white/80 font-bold italic leading-tight pr-2 transition-colors duration-500"
+                        className="text-[14px] lg:text-[15px] text-muted-foreground group-hover:text-white/80 font-bold italic leading-tight pr-2 transition-colors duration-500"
                         style={{ color: isActive ? 'rgba(255,255,255,0.8)' : undefined }}
                       >
                         {mod.desc}
@@ -305,7 +305,7 @@ export function Dashboard() {
       <VerPerfil isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} userId={null} />
       <PassKeysModal isOpen={isPasskeysOpen} onClose={() => setIsPasskeysOpen(false)} user={user} />
 
-      <div className="flex flex-col md:hidden w-full bg-white dark:bg-[#09090b]">
+      <div className="flex flex-col md:hidden w-full bg-card">
         <div className="w-full pt-16 pb-0 -mb-[6%] relative z-[2]">
           <LogoTrifinioMobile backgroundEffect="blur" />
         </div>
@@ -322,8 +322,11 @@ export function Dashboard() {
           />
         </div>
 
-        <div className="w-full px-4 pt-8 pb-20">
-          <CardsGrid />
+        <div className="relative w-full px-4 pt-8 pb-20">
+          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
+          <div className="relative z-10">
+            <CardsGrid />
+          </div>
         </div>
       </div>
 
@@ -348,8 +351,9 @@ export function Dashboard() {
         </motion.div>
 
         <div className="relative z-10 w-full mt-[65vh]">
-          <div className="w-full min-h-screen bg-[#f8fafc] dark:bg-[#09090b] rounded-t-[3rem] px-8 lg:px-12 pt-10 pb-20">
-            <div className="w-full max-w-[1400px] mx-auto -mt-[140px]">
+          <div className="relative w-full min-h-screen bg-muted dark:bg-background rounded-t-[3rem] px-8 lg:px-12 pt-10 pb-20">
+            <div className="absolute inset-0 pointer-events-none rounded-t-[3rem] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
+            <div className="relative z-20 w-full max-w-[1400px] mx-auto -mt-[140px]">
               <CardsGrid />
             </div>
           </div>

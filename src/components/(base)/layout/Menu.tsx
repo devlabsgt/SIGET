@@ -48,14 +48,14 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
       cancelButtonColor: "#ef4444",
       confirmButtonText: "Sí, salir",
       cancelButtonText: "Cancelar",
-      background: isDark ? "#09090b" : "#ffffff",
-      color: isDark ? "#ffffff" : "#000000",
+      background: isDark ? "#252526" : "#ffffff",
+      color: isDark ? "#cccccc" : "#000000",
     });
 
     if (result.isConfirmed) {
       const supabase = createClient();
       await supabase.auth.signOut();
-      window.location.replace("/login");
+      window.location.replace("/");
     }
   };
 
@@ -70,11 +70,11 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
 
       <aside
         className={cn(
-          `fixed right-0 ${mobileTop} md:top-16 z-50 ${mobileHeight} md:h-[calc(100vh-4rem)] w-full sm:w-100 bg-white dark:bg-[#09090b] border-l border-border/40 transition-transform duration-500 overflow-y-auto shadow-2xl flex flex-col`,
+          `fixed right-0 ${mobileTop} md:top-16 z-50 ${mobileHeight} md:h-[calc(100vh-4rem)] w-full sm:w-100 bg-card border-l border-border/40 transition-transform duration-500 overflow-y-auto shadow-2xl flex flex-col`,
           isOpen ? "translate-x-0" : "translate-x-full",
         )}
       >
-        <div className="flex items-center justify-between p-6">
+        <div className="flex items-center p-6">
           {user ? (
             <div className="flex flex-col text-sm">
               <span className="font-bold leading-tight">{username}</span>
@@ -85,9 +85,6 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
           ) : (
             <div />
           )}
-          <div className="flex items-center gap-2">
-            <PushNotificationToggle />
-          </div>
         </div>
 
         <div className="flex flex-col flex-1 px-6 pb-8">
@@ -109,14 +106,17 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
                 </div>
               )}
 
-              <div className="mb-4">
+              <div className="mb-4 flex w-full items-center justify-between">
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-between rounded-xl bg-primary text-primary-foreground px-5 py-3 text-sm font-bold w-full hover:opacity-90 transition-all cursor-pointer"
+                  className="group flex items-center justify-center gap-2 text-azul-trifinio dark:text-white hover:text-red-500 dark:hover:text-red-400 cursor-pointer transition-colors duration-300 active:scale-95 py-2"
                 >
-                  <span>Cerrar Sesión</span>
-                  <LogOut className="size-4 rotate-180" />
+                  <LogOut className="size-5 md:size-6 shrink-0 rotate-180 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:-translate-x-0.5" />
+                  <span className="text-sm font-bold transition-transform duration-500 ease-out group-hover:-translate-x-0.5">
+                    Cerrar Sesión
+                  </span>
                 </button>
+                <PushNotificationToggle />
               </div>
             </>
           ) : (
@@ -124,10 +124,12 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
               <Link
                 href="/login"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-xl bg-primary text-primary-foreground px-5 py-3 text-sm font-bold w-full hover:opacity-90 transition-all"
+                className="group flex items-center justify-center gap-2 w-full text-azul-trifinio hover:text-celeste-trifinio dark:text-white dark:hover:text-white/80 transition-colors duration-300 active:scale-95 py-2"
               >
-                <span>Iniciar Sesión</span>
-                <LogIn className="size-4" />
+                <LogIn className="size-5 md:size-6 shrink-0 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:translate-x-0.5" />
+                <span className="text-sm font-bold transition-transform duration-500 ease-out group-hover:translate-x-0.5">
+                  Iniciar Sesión
+                </span>
               </Link>
             </div>
           )}

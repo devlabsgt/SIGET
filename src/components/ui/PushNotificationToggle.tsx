@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { cn } from '@/lib/utils'
 import { createClient } from '@/utils/supabase/client'
 import { urlBase64ToUint8Array } from '@/utils/vapid'
 import { Bell, BellOff, Loader2, Check } from 'lucide-react'
 import { useUser } from '@/components/(base)/providers/UserProvider'
 import { useTheme } from 'next-themes'
 
-export function PushNotificationToggle() {
+export function PushNotificationToggle({ className }: { className?: string }) {
   const user = useUser()
   const userId = user?.id
   const [isSubscribed, setIsSubscribed] = useState(false)
@@ -143,7 +144,10 @@ export function PushNotificationToggle() {
     <button
       onClick={handleToggle}
       disabled={loading}
-      className="flex items-center justify-center cursor-pointer transition-all duration-200 hover:opacity-80 active:scale-95 bg-muted/20 hover:bg-muted/30 rounded-xl"
+      className={cn(
+        "group/bell flex shrink-0 items-center justify-center cursor-pointer transition-all duration-300 active:scale-95 rounded-xl",
+        className,
+      )}
       style={{
         width: '42px',
         height: '42px',
@@ -155,7 +159,11 @@ export function PushNotificationToggle() {
         <Loader2 className="animate-spin" style={{ width: '22px', height: '22px', color: '#2563EB' }} />
       ) : isSubscribed ? (
         <div style={{ position: 'relative', display: 'flex' }}>
-          <Bell strokeWidth={2} style={{ width: '26px', height: '26px', color: bellColor, fill: bellColor }} />
+          <Bell
+            strokeWidth={2}
+            className="transition-transform duration-500 ease-out group-hover/bell:scale-110 group-hover/bell:-rotate-12"
+            style={{ width: '26px', height: '26px', color: bellColor, fill: bellColor }}
+          />
           <div style={{
             position: 'absolute',
             top: '-5px',
@@ -173,7 +181,11 @@ export function PushNotificationToggle() {
           </div>
         </div>
       ) : (
-        <BellOff strokeWidth={2} style={{ width: '26px', height: '26px', color: bellColor }} />
+        <BellOff
+          strokeWidth={2}
+          className="transition-transform duration-500 ease-out group-hover/bell:scale-110 group-hover/bell:-rotate-12"
+          style={{ width: '26px', height: '26px', color: bellColor }}
+        />
       )}
     </button>
   )

@@ -4,6 +4,16 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
+  --banner-height: 0px;
+
+  &[data-connection="offline"], 
+  &[data-connection="slow"] {
+    --banner-height: 64px;
+    @media (max-width: 767px) {
+      --banner-height: 56px;
+    }
+  }
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -27,25 +37,26 @@
 }
 
 .dark {
-  --background: oklch(22% 0 0);
-  --foreground: oklch(98.5% 0 0);
-  --card: oklch(25% 0 0);
-  --card-foreground: oklch(98.5% 0 0);
-  --popover: oklch(25% 0 0);
-  --popover-foreground: oklch(98.5% 0 0);
-  --primary: oklch(92.2% 0 0);
-  --primary-foreground: oklch(20.5% 0 0);
-  --secondary: oklch(28% 0 0);
-  --secondary-foreground: oklch(98.5% 0 0);
-  --muted: oklch(28% 0 0);
-  --muted-foreground: oklch(70.8% 0 0);
-  --accent: oklch(28% 0 0);
-  --accent-foreground: oklch(98.5% 0 0);
+  /* Paleta inspirada en VS Code Dark+ — grises suaves, bajo contraste */
+  --background: oklch(23.5% 0 0);
+  --foreground: oklch(84% 0 0);
+  --card: oklch(26% 0 0);
+  --card-foreground: oklch(84% 0 0);
+  --popover: oklch(29% 0 0);
+  --popover-foreground: oklch(84% 0 0);
+  --primary: oklch(84% 0 0);
+  --primary-foreground: oklch(23.5% 0 0);
+  --secondary: oklch(29% 0 0);
+  --secondary-foreground: oklch(84% 0 0);
+  --muted: oklch(29% 0 0);
+  --muted-foreground: oklch(58% 0 0);
+  --accent: oklch(32% 0 0);
+  --accent-foreground: oklch(84% 0 0);
   --destructive: oklch(60% 0.15 25);
   --destructive-foreground: oklch(98% 0 0);
-  --border: oklch(40% 0 0);
-  --input: oklch(45% 0 0);
-  --ring: oklch(55.6% 0 0);
+  --border: oklch(36% 0 0);
+  --input: oklch(32% 0 0);
+  --ring: oklch(50% 0 0);
 }
 
 @theme inline {
@@ -53,6 +64,8 @@
   --color-celeste-trifinio: #1a95d3;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
@@ -94,6 +107,13 @@
   }
   body {
     @apply bg-background text-foreground antialiased;
+    padding-top: var(--banner-height) !important;
+    transition: padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  header.fixed {
+    top: var(--banner-height) !important;
+    transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
   }
   
   /* Evitar zoom automático en dispositivos móviles (iOS Safari / Chromium) */
@@ -127,3 +147,55 @@
   z-index: 2;
 }
 
+/* React Toastify — tema claro/oscuro observatorio */
+.obs-toast-container {
+  width: 95% !important;
+  max-width: 520px !important;
+  margin-top: 0.5rem !important;
+}
+
+.obs-toast {
+  border-radius: 0.75rem !important;
+  font-weight: 700 !important;
+  font-size: 0.8125rem !important;
+  padding: 0.875rem 1rem !important;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1) !important;
+  border: 1px solid rgb(226 232 240) !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+}
+
+.dark .obs-toast {
+  border-color: oklch(36% 0 0) !important;
+  background: oklch(26% 0 0) !important;
+  color: oklch(84% 0 0) !important;
+  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.35) !important;
+}
+
+.obs-toast.Toastify__toast--success {
+  border-color: rgb(167 243 208) !important;
+}
+
+.dark .obs-toast.Toastify__toast--success {
+  border-color: rgb(6 78 59 / 0.6) !important;
+}
+
+.obs-toast.Toastify__toast--error {
+  border-color: rgb(254 202 202) !important;
+}
+
+.dark .obs-toast.Toastify__toast--error {
+  border-color: rgb(127 29 29 / 0.6) !important;
+}
+
+.obs-toast.Toastify__toast--warning {
+  border-color: rgb(253 230 138) !important;
+}
+
+.dark .obs-toast.Toastify__toast--warning {
+  border-color: rgb(120 53 15 / 0.6) !important;
+}
+
+.obs-toast-progress {
+  background: rgb(5 150 105) !important;
+}

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/(base)/providers/UserProvider";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
-import { Menu as MenuIcon, X, RefreshCw } from "lucide-react";
+import { Menu as MenuIcon, X, RefreshCw, LogIn } from "lucide-react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import Menu from "./Menu";
 import { getPendingDevicesCount } from "@/components/(SIGET)/admin/lib/actions";
@@ -21,7 +21,11 @@ export default function Header() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const isRoot = pathname === "/siget";
+  const isPublicHome = pathname === "/";
+  const isLoginPage = pathname === "/login";
+  const showLoginButton = isPublicHome && !user;
+  const showBreadcrumb = Boolean(user) && !isLoginPage;
+  const showHamburger = Boolean(user);
 
   const metadata = user?.user_metadata || {};
   const role = metadata.rol || user?.role || "user";
@@ -41,7 +45,7 @@ export default function Header() {
 
   return (
     <>
-      <header className="w-full fixed top-0 left-0 transition-all bg-white dark:bg-[#09090b] border-b border-border/40 z-[100] shadow-sm">
+      <header className="w-full fixed left-0 transition-all bg-card border-b border-border/40 z-[100] shadow-sm">
         <div className="mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-8 gap-4">
           <div className="flex items-center h-full">
             <div className="flex items-center shrink-0">
@@ -68,7 +72,7 @@ export default function Header() {
                 </motion.div>
               </Link>
             </div>
-            {user && (
+            {showBreadcrumb && (
               <div className="hidden md:flex ml-4 md:ml-6 border-l border-border/30 h-10 items-center pl-4 md:pl-6">
                 <BreadcrumbNav />
               </div>
@@ -84,52 +88,69 @@ export default function Header() {
             >
               <RefreshCw className="size-5 md:size-6" />
             </button>
-            <div className="relative ml-2">
-              <button
-                onClick={() => setIsOpen(!isOpen)}
-                className="flex items-center justify-center text-foreground hover:text-foreground/80 cursor-pointer transition-all active:scale-95"
+            {showLoginButton && (
+              <Link
+                href="/login"
+                className="group flex items-center justify-center gap-2 text-azul-trifinio hover:text-celeste-trifinio dark:text-white dark:hover:text-white/80 cursor-pointer transition-colors duration-300 active:scale-95"
+                title="Iniciar Sesión"
               >
-                <AnimatePresence mode="wait" initial={false}>
-                  {isOpen ? (
-                    <motion.div
-                      key="close"
-                      initial={{ opacity: 0, rotate: -90, scale: 0.8 }}
-                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                      exit={{ opacity: 0, rotate: 90, scale: 0.8 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <X className="size-6 md:size-8" />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="menu"
-                      initial={{ opacity: 0, rotate: 90, scale: 0.8 }}
-                      animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                      exit={{ opacity: 0, rotate: -90, scale: 0.8 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <MenuIcon className="size-6 md:size-8" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </button>
-              {!isOpen && canManage && pendingDevices > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-[10px] font-bold text-white animate-pulse pointer-events-none">
-                  {pendingDevices}
+                <LogIn className="size-5 md:size-6 shrink-0 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:translate-x-0.5" />
+                <span className="hidden sm:inline text-sm font-bold transition-transform duration-500 ease-out group-hover:translate-x-0.5">
+                  Iniciar Sesión
                 </span>
-              )}
-            </div>
+              </Link>
+            )}
+            {showHamburger && (
+            <div className="relative">
+                  <button
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="flex items-center justify-center text-foreground hover:text-foreground/80 cursor-pointer transition-all active:scale-95"
+                  >
+                    <AnimatePresence mode="wait" initial={false}>
+                      {isOpen ? (
+                        <motion.div
+                          key="close"
+                          initial={{ opacity: 0, rotate: -90, scale: 0.8 }}
+                          animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                          exit={{ opacity: 0, rotate: 90, scale: 0.8 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <X className="size-6 md:size-8" />
+                        </motion.div>
+                      ) : (
+                        <motion.div
+                          key="menu"
+                          initial={{ opacity: 0, rotate: 90, scale: 0.8 }}
+                          animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                          exit={{ opacity: 0, rotate: -90, scale: 0.8 }}
+                          transition={{ duration: 0.2 }}
+                        >
+                          <MenuIcon className="size-6 md:size-8" />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </button>
+                  {!isOpen && canManage && pendingDevices > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-amber-500 text-[10px] font-bold text-white animate-pulse pointer-events-none">
+                      {pendingDevices}
+                    </span>
+                  )}
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      {user && !isRoot && (
-        <div className="fixed top-14 left-0 md:hidden w-full px-6 py-3 border-b border-border/40 bg-white dark:bg-[#09090b] z-[99]">
+      {showBreadcrumb && (
+        <div 
+          style={{ top: 'calc(var(--banner-height, 0px) + 56px)' }}
+          className="fixed left-0 md:hidden w-full px-6 py-3 border-b border-border/40 bg-card z-[99]"
+        >
           <BreadcrumbNav />
         </div>
       )}
 
-      <Menu isOpen={isOpen} setIsOpen={setIsOpen} user={user} />
+      {showHamburger && <Menu isOpen={isOpen} setIsOpen={setIsOpen} user={user} />}
 
       {mounted && createPortal(
         <AnimacionLogoTrifinio isOpen={isFullScreen} onClose={() => setIsFullScreen(false)} />,

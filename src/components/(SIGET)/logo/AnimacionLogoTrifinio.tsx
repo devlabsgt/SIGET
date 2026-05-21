@@ -18,13 +18,13 @@ export default function AnimacionLogoTrifinio({ isOpen, onClose }: AnimacionLogo
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={onClose}
-          className="fixed inset-0 z-[1000000] flex items-center justify-center bg-white/70 dark:bg-[#09090b]/80 backdrop-blur-[20px] cursor-pointer p-4 lg:p-12 overflow-hidden"
+          className="fixed inset-0 z-[1000000] flex items-center justify-center bg-white/70 dark:bg-background/80 backdrop-blur-[20px] cursor-pointer p-4 lg:p-12 overflow-hidden"
           style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh' }}
         >
           <motion.button
             initial={{ opacity: 0, rotate: -90 }}
             animate={{ opacity: 1, rotate: 0 }}
-            className="absolute top-8 right-8 p-3 rounded-full bg-black/10 dark:bg-white/10 text-azul-trifinio dark:text-white hover:bg-black/20 dark:hover:bg-white/20 transition-colors z-20"
+            className="absolute cursor-pointer top-8 right-8 p-3 rounded-full bg-black/10 dark:bg-white/10 text-azul-trifinio dark:text-white hover:bg-black/20 dark:hover:bg-white/20 transition-colors z-20"
             onClick={(e) => {
               e.stopPropagation();
               onClose();
@@ -106,7 +106,7 @@ export default function AnimacionLogoTrifinio({ isOpen, onClose }: AnimacionLogo
               </motion.div>
             </div>
           </motion.div>
-          
+
           <div className="absolute bottom-12 left-1/2 -translate-x-1/2 text-azul-trifinio/60 dark:text-white/40 text-[10px] font-black tracking-[0.5em] uppercase pointer-events-none animate-bounce">
             Click en cualquier lugar para cerrar
           </div>

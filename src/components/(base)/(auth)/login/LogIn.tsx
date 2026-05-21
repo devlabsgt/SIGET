@@ -4,7 +4,8 @@ import { useState, useEffect, useActionState } from "react";
 import { login, getPublicAppSettings, type ActionState } from "./actions";import { getPasskeyOptions, verifyPasskey } from "./passkeys/passkeys-actions";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { MagicCard } from "@/components/ui/magic-card";
-import { Eye, EyeOff, Fingerprint, ScanFace, KeyRound, User, ArrowBigUpDash } from "lucide-react";
+import { Eye, EyeOff, Fingerprint, ScanFace, KeyRound, User, ArrowBigUpDash, ChevronLeft } from "lucide-react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AuroraText } from "@/components/ui/aurora-text";
 import { DotPattern } from "@/components/ui/dot-pattern";
@@ -120,6 +121,13 @@ useEffect(() => {
       </div>
 
       <div className="relative w-full max-w-md px-6 md:px-12 pb-12 z-10">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors mb-4 active:scale-[0.98]"
+        >
+          <ChevronLeft className="size-4 shrink-0" />
+          Volver
+        </Link>
         <MagicCard className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-2xl overflow-visible!">
           <div className="flex flex-col items-center space-y-6 p-10 border-b border-border/50 text-center">
             
