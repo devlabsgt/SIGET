@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useActionState } from "react";
-import { login, getPublicAppSettings, type ActionState } from "./actions";import { getPasskeyOptions, verifyPasskey } from "./passkeys/passkeys-actions";
+import { motion } from "framer-motion";
+import { login, getPublicAppSettings, type ActionState } from "./actions";
+import { getPasskeyOptions, verifyPasskey } from "./passkeys/passkeys-actions";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { MagicCard } from "@/components/ui/magic-card";
 import { Eye, EyeOff, Fingerprint, ScanFace, KeyRound, User, ArrowBigUpDash, ChevronLeft } from "lucide-react";
@@ -115,23 +117,27 @@ useEffect(() => {
   if (!mounted) return null;
 
   return (
-    <div className="relative flex-1 flex flex-col items-center justify-center w-full bg-background z-0 overflow-hidden">
+    <div className="relative flex-1 flex flex-col items-center justify-center w-full bg-background z-0 overflow-hidden pt-10 md:pt-14 pb-8">
       <div className="absolute inset-0 z-0 pointer-events-none">
         <DotPattern className="mask-[radial-gradient(1000px_circle_at_center,white,transparent)] opacity-80" />
       </div>
 
-      <div className="relative w-full max-w-md px-6 md:px-12 pb-12 z-10">
+      <motion.div
+        initial={{ opacity: 0, y: 28 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.55, ease: [0.25, 1, 0.5, 1] }}
+        className="relative w-full max-w-lg md:max-w-xl px-6 md:px-12 pb-12 z-10"
+      >
         <Link
           href="/"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors mb-4 active:scale-[0.98]"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-foreground transition-colors mb-3 active:scale-[0.98]"
         >
           <ChevronLeft className="size-4 shrink-0" />
           Volver
         </Link>
         <MagicCard className="rounded-3xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-2xl overflow-visible!">
-          <div className="flex flex-col items-center space-y-6 p-10 border-b border-border/50 text-center">
-            
-            <div className="w-full -mt-2 pb-2">
+          <div className="flex flex-col items-center space-y-5 p-10 border-b border-border/50 text-center">
+            <div className="w-full">
               <LogoTrifinioLogin backgroundEffect="none" />
             </div>
 
@@ -164,7 +170,7 @@ useEffect(() => {
               action={formAction}
             className={cn(
               "transition-all duration-500 flex flex-col",
-              showCredentials ? "gap-6 p-10" : "gap-0 px-10 pb-10 pt-8"
+              showCredentials ? "gap-6 p-10" : "gap-0 px-10 pb-10 pt-8",
             )}
           >
             <div
@@ -186,7 +192,7 @@ useEffect(() => {
                     placeholder="Tu usuario"
                     required={showCredentials}
                     value={username}
-                    className="flex h-10 w-full rounded-lg border border-input bg-background/50 px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
+                    className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_transparent] [&:-webkit-autofill]:[-webkit-text-fill-color:inherit]"
                     onChange={(e) =>
                       setUsername(e.target.value.toLowerCase().trim())
                     }
@@ -223,7 +229,7 @@ useEffect(() => {
                       onKeyDown={handleKeyUpDown}
                       onKeyUp={handleKeyUpDown}
                       className={cn(
-                        "flex h-10 w-full rounded-lg border border-input bg-background/50 py-2 text-sm pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent",
+                        "flex h-10 w-full rounded-lg border border-input bg-transparent py-2 text-sm pr-10 transition-all focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent [&:-webkit-autofill]:shadow-[inset_0_0_0_1000px_transparent] [&:-webkit-autofill]:[-webkit-text-fill-color:inherit]",
                         isCapsLockOn ? "pl-9" : "pl-3"
                       )}
                       placeholder="••••••••"
@@ -308,7 +314,7 @@ useEffect(() => {
           </form>
           )}
         </MagicCard>
-      </div>
+      </motion.div>
     </div>
   );
 }

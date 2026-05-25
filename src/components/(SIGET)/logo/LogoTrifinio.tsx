@@ -5,12 +5,14 @@ import { motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import AnimacionLogoTrifinio from "./AnimacionLogoTrifinio";
+import { cn } from "@/lib/utils";
 
 interface LogoTrifinioProps {
   scale?: number;
   noAnimation?: boolean;
   refreshInterval?: number;
   backgroundEffect?: "blur" | "glow" | "none";
+  forceAzulColors?: boolean;
 }
 
 export default function LogoTrifinio({
@@ -18,6 +20,7 @@ export default function LogoTrifinio({
   noAnimation = false,
   refreshInterval = 0,
   backgroundEffect = "blur",
+  forceAzulColors = false,
 }: LogoTrifinioProps) {
   const [animationKey, setAnimationKey] = useState(0);
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -94,6 +97,12 @@ export default function LogoTrifinio({
     },
   };
 
+  const textClass = cn("text-azul-trifinio", !forceAzulColors && "dark:text-white");
+  const lineClass = cn("bg-azul-trifinio", !forceAzulColors && "dark:bg-white");
+  const blurBgClass = forceAzulColors
+    ? "bg-white/55 backdrop-blur-md border border-white/50"
+    : "bg-white/55 dark:bg-white/10 backdrop-blur-md border border-white/50 dark:border-white/10";
+
   return (
     <>
       <motion.div
@@ -106,7 +115,7 @@ export default function LogoTrifinio({
         animate="visible"
       >
         {backgroundEffect === "blur" && (
-          <div className="absolute inset-x-[-25px] lg:inset-x-[-40px] inset-y-[-15px] lg:inset-y-[-25px] bg-white/55 dark:bg-white/10 backdrop-blur-md border border-white/50 dark:border-white/10 rounded-2xl -z-10 shadow-xl" />
+          <div className={cn("absolute inset-x-[-25px] lg:inset-x-[-40px] inset-y-[-15px] lg:inset-y-[-25px] rounded-2xl -z-10 shadow-xl", blurBgClass)} />
         )}
         
         {backgroundEffect === "glow" && (
@@ -134,7 +143,7 @@ export default function LogoTrifinio({
           >
             <motion.h1
               variants={titleVariants}
-              className="font-black whitespace-nowrap text-azul-trifinio dark:text-white leading-[0.95]"
+              className={cn("font-black whitespace-nowrap leading-[0.95]", textClass)}
               style={{ fontFamily: "'Arial Black', sans-serif", fontSize: "clamp(1.5rem, 3.5vw, 2.8rem)" }}
             >
               Plan Trifinio
@@ -142,7 +151,7 @@ export default function LogoTrifinio({
 
             <motion.p
               variants={sloganVariants}
-              className="font-bold italic mt-1 text-azul-trifinio dark:text-white leading-tight"
+              className={cn("font-bold italic mt-1 leading-tight", textClass)}
               style={{ fontFamily: "Arial, sans-serif", fontSize: "clamp(1rem, 2.2vw, 1.8rem)" }}
             >
               &ldquo;Agua sin fronteras&rdquo;
@@ -150,12 +159,12 @@ export default function LogoTrifinio({
 
             <motion.div
               variants={lineVariants}
-              className="w-full h-[2px] mt-2 bg-azul-trifinio dark:bg-white origin-center"
+              className={cn("w-full h-[2px] mt-2 origin-center", lineClass)}
             />
 
             <motion.p
               variants={countriesVariants}
-              className="font-semibold mt-2 text-azul-trifinio dark:text-white"
+              className={cn("font-semibold mt-2", textClass)}
               style={{ fontFamily: "Arial, sans-serif", fontSize: "clamp(0.5rem, 1.1vw, 0.9rem)", letterSpacing: "0.22em" }}
             >
               El Salvador&ensp;•&ensp;Guatemala&ensp;•&ensp;Honduras

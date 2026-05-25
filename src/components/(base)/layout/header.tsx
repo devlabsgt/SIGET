@@ -52,24 +52,50 @@ export default function Header() {
               <Link
                 href={user ? "/siget" : "/"}
                 onClick={handleLogoClick}
-                className="flex flex-row items-center shrink-0 group gap-1 md:gap-1.5 cursor-pointer"
+                id="observatorio-header-brand"
+                className="flex flex-row items-center shrink-0 group gap-2 md:gap-3 cursor-pointer"
               >
-                <motion.h1 
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="text-2xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
-                >
-                  SIGET
-                </motion.h1>
-                <motion.div 
-                  initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-                  animate={{ opacity: 1, clipPath: "inset(0 0 0 0)" }}
-                  transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 1, 0.5, 1] }}
-                  className="text-xs md:text-sm font-black uppercase tracking-widest leading-[1.15] md:leading-[1.15] text-celeste-trifinio border-l border-border/60 pl-2 md:pl-3 transition-transform duration-300 group-hover:scale-[1.02] origin-left group-hover:text-azul-trifinio dark:group-hover:text-[#FFFDD0]"
-                >
-                  SISTEMA INTEGRAL DE<br />GESTIÓN TRIFINIO
-                </motion.div>
+                {user ? (
+                  <>
+                    <motion.h1
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="text-2xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
+                    >
+                      SIGET
+                    </motion.h1>
+                    <motion.div
+                      initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
+                      animate={{ opacity: 1, clipPath: "inset(0 0 0 0)" }}
+                      transition={{ duration: 0.8, delay: 0.2, ease: [0.25, 1, 0.5, 1] }}
+                      className="text-xs md:text-sm font-black uppercase tracking-widest leading-[1.15] md:leading-[1.15] text-celeste-trifinio border-l border-border/60 pl-2 md:pl-3 transition-transform duration-300 group-hover:scale-[1.02] origin-left group-hover:text-azul-trifinio dark:group-hover:text-[#FFFDD0]"
+                    >
+                      SISTEMA INTEGRAL DE<br />GESTIÓN TRIFINIO
+                    </motion.div>
+                  </>
+                ) : (
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, y: -20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                      className="flex flex-col gap-0 leading-none text-sm md:text-lg lg:text-xl font-extrabold tracking-tight"
+                    >
+                      <span className="text-azul-trifinio dark:text-white">Observatorio</span>
+                      <span className="inline-flex items-baseline gap-1">
+                        <span className="text-azul-trifinio dark:text-white">Web</span>
+                        <span className="font-light text-border/80">|</span>
+                        <span
+                          className="text-xs md:text-base lg:text-lg font-semibold text-celeste-trifinio tracking-normal"
+                          style={{ fontFamily: "Arial, sans-serif" }}
+                        >
+                          Plan Trifinio
+                        </span>
+                      </span>
+                    </motion.div>
+                  </>
+                )}
               </Link>
             </div>
             {showBreadcrumb && (
@@ -91,12 +117,12 @@ export default function Header() {
             {showLoginButton && (
               <Link
                 href="/login"
-                className="group flex items-center justify-center gap-2 text-azul-trifinio hover:text-celeste-trifinio dark:text-white dark:hover:text-white/80 cursor-pointer transition-colors duration-300 active:scale-95"
+                className="group flex items-center gap-1.5 cursor-pointer active:scale-95"
                 title="Iniciar Sesión"
               >
-                <LogIn className="size-5 md:size-6 shrink-0 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:translate-x-0.5" />
-                <span className="hidden sm:inline text-sm font-bold transition-transform duration-500 ease-out group-hover:translate-x-0.5">
-                  Iniciar Sesión
+                <LogIn className="size-5 lg:size-6 shrink-0 text-azul-trifinio group-hover:text-celeste-trifinio dark:text-white dark:group-hover:text-celeste-trifinio transition-colors duration-300" />
+                <span className="hidden md:inline text-[10px] md:text-[11px] lg:text-xs font-extrabold text-celeste-trifinio group-hover:text-azul-trifinio dark:text-celeste-trifinio dark:group-hover:text-white tracking-tight transition-colors duration-300">
+                  SIGET
                 </span>
               </Link>
             )}

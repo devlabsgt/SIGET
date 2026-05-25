@@ -5,13 +5,16 @@ import { motion } from "framer-motion";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import AnimacionLogoTrifinio from "./AnimacionLogoTrifinio";
+import { cn } from "@/lib/utils";
 
 interface LogoTrifinioMobileProps {
   backgroundEffect?: "blur" | "glow" | "none";
+  forceAzulColors?: boolean;
 }
 
 export default function LogoTrifinioMobile({
   backgroundEffect = "blur",
+  forceAzulColors = false,
 }: LogoTrifinioMobileProps) {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -73,6 +76,12 @@ export default function LogoTrifinioMobile({
     },
   };
 
+  const textClass = cn("text-azul-trifinio", !forceAzulColors && "dark:text-white");
+  const lineClass = cn("bg-azul-trifinio", !forceAzulColors && "dark:bg-white");
+  const blurBgClass = forceAzulColors
+    ? "bg-white/55 backdrop-blur-md border border-white/50"
+    : "bg-white/55 dark:bg-white/10 backdrop-blur-md border border-white/50 dark:border-white/10";
+
   return (
     <>
       <motion.div
@@ -83,7 +92,7 @@ export default function LogoTrifinioMobile({
         animate="visible"
       >
         {backgroundEffect === "blur" && (
-          <div className="absolute inset-0 bg-white/55 dark:bg-white/10 backdrop-blur-md border border-white/50 dark:border-white/10 -z-10 shadow-xl rounded-b-2xl" />
+          <div className={cn("absolute inset-0 -z-10 shadow-xl rounded-b-2xl", blurBgClass)} />
         )}
 
         {backgroundEffect === "glow" && (
@@ -110,7 +119,7 @@ export default function LogoTrifinioMobile({
           >
             <motion.h1
               variants={titleVariants}
-              className="font-black whitespace-nowrap text-azul-trifinio dark:text-white leading-[0.95]"
+              className={cn("font-black whitespace-nowrap leading-[0.95]", textClass)}
               style={{ fontFamily: "'Arial Black', sans-serif", fontSize: "clamp(1.8rem, 6vw, 3.5rem)" }}
             >
               Plan Trifinio
@@ -118,7 +127,7 @@ export default function LogoTrifinioMobile({
 
             <motion.p
               variants={sloganVariants}
-              className="font-bold italic mt-1 text-azul-trifinio dark:text-white leading-tight"
+              className={cn("font-bold italic mt-1 leading-tight", textClass)}
               style={{ fontFamily: "Arial, sans-serif", fontSize: "clamp(1rem, 3.5vw, 2.2rem)" }}
             >
               &ldquo;Agua sin fronteras&rdquo;
@@ -126,12 +135,12 @@ export default function LogoTrifinioMobile({
 
             <motion.div
               variants={lineVariants}
-              className="w-full h-[1px] sm:h-[2px] mt-2 bg-azul-trifinio dark:bg-white origin-center"
+              className={cn("w-full h-[1px] sm:h-[2px] mt-2 origin-center", lineClass)}
             />
 
             <motion.p
               variants={countriesVariants}
-              className="font-semibold mt-2 text-azul-trifinio dark:text-white"
+              className={cn("font-semibold mt-2", textClass)}
               style={{ fontFamily: "Arial, sans-serif", fontSize: "clamp(0.6rem, 1.5vw, 1.1rem)", letterSpacing: "0.15em" }}
             >
               El Salvador&ensp;•&ensp;Guatemala&ensp;•&ensp;Honduras

@@ -1,7 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { motion, AnimatePresence, useScroll, useTransform, useSpring } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+} from "framer-motion";
 import { useRouter } from "next/navigation";
 import AnimatedIcon from "@/components/ui/AnimatedIcon";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
@@ -9,7 +15,12 @@ import LogoTrifinio from "@/components/(SIGET)/logo/LogoTrifinio";
 import LogoTrifinioMobile from "@/components/(SIGET)/logo/LogoTrifinio-mobile";
 import VerPerfil from "@/components/(base)/(users)/profile/VerPerfil";
 import PassKeysModal from "@/components/(base)/layout/modals/PassKeysModal";
-import { User as UserIcon, Fingerprint, ScanFace, KeyRound } from "lucide-react";
+import {
+  User as UserIcon,
+  Fingerprint,
+  ScanFace,
+  KeyRound,
+} from "lucide-react";
 
 const MODULES = [
   {
@@ -72,7 +83,11 @@ export function Dashboard() {
   const logoOpacity = useTransform(scrollY, [0, 400], [1, 0]);
   // Zoom sutil y suavizado
   const bgScaleRaw = useTransform(scrollY, [0, 800], [1, 1.05]);
-  const bgScale = useSpring(bgScaleRaw, { stiffness: 100, damping: 30, restDelta: 0.001 });
+  const bgScale = useSpring(bgScaleRaw, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
+  });
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -85,7 +100,8 @@ export function Dashboard() {
 
   const visibleModules = MODULES.filter((mod) => {
     if (mod.requiresAdmin && !isSuperOrAdmin) return false;
-    if (mod.allowedRoles && !mod.allowedRoles.includes(effectiveRole)) return false;
+    if (mod.allowedRoles && !mod.allowedRoles.includes(effectiveRole))
+      return false;
     return true;
   });
 
@@ -112,8 +128,10 @@ export function Dashboard() {
             key={mod.id}
             className={[
               "cursor-pointer w-full h-auto min-h-[400px] lg:h-[380px] relative",
-              isFirstMobile ? "-mt-[20%]" : "" 
-            ].join(" ").trim()}
+              isFirstMobile ? "-mt-[20%]" : "",
+            ]
+              .join(" ")
+              .trim()}
             id={`${mod.id}-card`}
             initial="idle"
             whileHover="hover"
@@ -144,7 +162,11 @@ export function Dashboard() {
                       <motion.div
                         initial={{ opacity: 0, y: 15 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: 0.15, ease: "easeOut" }}
+                        transition={{
+                          duration: 0.4,
+                          delay: 0.15,
+                          ease: "easeOut",
+                        }}
                         className="relative z-10 w-full flex flex-col gap-3 pb-[40px]"
                       >
                         <button
@@ -153,8 +175,12 @@ export function Dashboard() {
                         >
                           <UserIcon className="size-5 shrink-0 text-white" />
                           <div>
-                            <p className="text-sm font-bold text-white">Mi Perfil</p>
-                            <p className="text-[10px] text-white/70">Ver y editar perfil</p>
+                            <p className="text-sm font-bold text-white">
+                              Mi Perfil
+                            </p>
+                            <p className="text-[10px] text-white/70">
+                              Ver y editar perfil
+                            </p>
                           </div>
                         </button>
                         <button
@@ -167,8 +193,12 @@ export function Dashboard() {
                             <KeyRound className="size-4 text-white/80" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-white">Ingreso Seguro</p>
-                            <p className="text-[10px] text-white/70">Administrar dispositivos</p>
+                            <p className="text-sm font-bold text-white">
+                              Ingreso Seguro
+                            </p>
+                            <p className="text-[10px] text-white/70">
+                              Administrar dispositivos
+                            </p>
                           </div>
                         </button>
                       </motion.div>
@@ -192,13 +222,21 @@ export function Dashboard() {
                       <div className="w-full h-full flex flex-col justify-center items-center relative z-10 pb-[40px]">
                         <div className="relative z-10 w-full flex justify-center mb-4">
                           <div className="size-[90px] flex items-center justify-center transition-transform duration-700 ease-out group-hover:-translate-y-4">
-                            <AnimatedIcon iconKey={mod.icon} target={`#${mod.id}-card`} size={90} speed={1.5} />
+                            <AnimatedIcon
+                              iconKey={mod.icon}
+                              target={`#${mod.id}-card`}
+                              size={90}
+                              speed={1.5}
+                            />
                           </div>
                         </div>
                         <div className="relative z-10 w-full flex flex-col items-start text-left space-y-4 transition-transform duration-700 group-hover:-translate-y-2">
                           <h3 className="text-[1.6rem] lg:text-[1.85rem] font-black tracking-tighter text-foreground group-hover:text-white uppercase leading-none w-full break-words transition-colors duration-500">
-                            {mod.title}<br />
-                            <span className="text-celeste-trifinio group-hover:text-white/90 transition-colors duration-500">{mod.subtitle}</span>
+                            {mod.title}
+                            <br />
+                            <span className="text-celeste-trifinio group-hover:text-white/90 transition-colors duration-500">
+                              {mod.subtitle}
+                            </span>
                           </h3>
                           <p className="text-[14px] lg:text-[15px] text-muted-foreground group-hover:text-white/80 font-bold italic leading-tight pr-2 transition-colors duration-500">
                             {mod.desc}
@@ -218,11 +256,11 @@ export function Dashboard() {
                 }}
               >
                 <div className="w-full h-full min-h-[300px] flex flex-col justify-center items-center p-6 outline-none relative z-10 rounded-[inherit] overflow-hidden">
-                  <motion.div 
+                  <motion.div
                     variants={{
                       idle: { scaleY: 0 },
                       hover: { scaleY: 1 },
-                      active: { scaleY: 1 }
+                      active: { scaleY: 1 },
                     }}
                     transition={{ duration: 0.5, ease: [0.33, 1, 0.68, 1] }}
                     className="absolute top-0 left-0 w-full h-[calc(100%-70px)] origin-bottom bg-gradient-to-t from-azul-trifinio to-celeste-trifinio pointer-events-none z-0 rounded-t-[inherit]"
@@ -233,14 +271,18 @@ export function Dashboard() {
                       variants={{
                         idle: { opacity: 0, y: 16 },
                         hover: { opacity: 1, y: 0 },
-                        active: { opacity: 1, y: 0 }
+                        active: { opacity: 1, y: 0 },
                       }}
                       className={[
                         "flex items-center gap-2 font-black uppercase text-xs tracking-[0.25em] transition-colors duration-500",
-                        isActive ? "text-celeste-trifinio" : "text-celeste-trifinio dark:text-foreground"
+                        isActive
+                          ? "text-celeste-trifinio"
+                          : "text-celeste-trifinio dark:text-foreground",
                       ].join(" ")}
                     >
-                      {isActive ? "Toca de nuevo para entrar" : "Haz click para entrar"}
+                      {isActive
+                        ? "Toca de nuevo para entrar"
+                        : "Haz click para entrar"}
                     </motion.span>
                   </div>
                   <motion.div
@@ -248,20 +290,29 @@ export function Dashboard() {
                     variants={{
                       idle: { opacity: 1 },
                       hover: { opacity: 1 },
-                      active: { opacity: [1, 0.4, 1] }
+                      active: { opacity: [1, 0.4, 1] },
                     }}
-                    transition={{ duration: 1.4, repeat: isActive ? Infinity : 0, ease: "easeInOut" }}
+                    transition={{
+                      duration: 1.4,
+                      repeat: isActive ? Infinity : 0,
+                      ease: "easeInOut",
+                    }}
                   >
                     <div className="relative z-10 w-full flex justify-center mb-4">
-                      <motion.div 
+                      <motion.div
                         variants={{
                           idle: { y: 0 },
                           hover: { y: -16 },
-                          active: { y: -16 }
+                          active: { y: -16 },
                         }}
                         className="size-[90px] flex items-center justify-center transition-transform duration-700"
                       >
-                        <AnimatedIcon iconKey={mod.icon} target={`#${mod.id}-card`} size={90} speed={1.5} />
+                        <AnimatedIcon
+                          iconKey={mod.icon}
+                          target={`#${mod.id}-card`}
+                          size={90}
+                          speed={1.5}
+                        />
                       </motion.div>
                     </div>
                     <div className="relative z-10 w-full flex flex-col items-start text-left space-y-4">
@@ -269,21 +320,38 @@ export function Dashboard() {
                         variants={{
                           idle: { y: 0 },
                           hover: { y: -8 },
-                          active: { y: -8 }
+                          active: { y: -8 },
                         }}
                         className="text-[1.6rem] lg:text-[1.85rem] font-black tracking-tighter uppercase leading-none w-full break-words transition-colors duration-500"
                       >
-                        <span className="text-foreground group-hover:text-white transition-colors duration-500" style={{ color: isActive ? '#ffffff' : undefined }}>{mod.title}</span><br />
-                        <span className="text-celeste-trifinio group-hover:text-white/90 transition-colors duration-500" style={{ color: isActive ? 'rgba(255,255,255,0.9)' : undefined }}>{mod.subtitle}</span>
+                        <span
+                          className="text-foreground group-hover:text-white transition-colors duration-500"
+                          style={{ color: isActive ? "#ffffff" : undefined }}
+                        >
+                          {mod.title}
+                        </span>
+                        <br />
+                        <span
+                          className="text-celeste-trifinio group-hover:text-white/90 transition-colors duration-500"
+                          style={{
+                            color: isActive
+                              ? "rgba(255,255,255,0.9)"
+                              : undefined,
+                          }}
+                        >
+                          {mod.subtitle}
+                        </span>
                       </motion.h3>
                       <motion.p
                         variants={{
                           idle: { y: 0 },
                           hover: { y: -8 },
-                          active: { y: -8 }
+                          active: { y: -8 },
                         }}
                         className="text-[14px] lg:text-[15px] text-muted-foreground group-hover:text-white/80 font-bold italic leading-tight pr-2 transition-colors duration-500"
-                        style={{ color: isActive ? 'rgba(255,255,255,0.8)' : undefined }}
+                        style={{
+                          color: isActive ? "rgba(255,255,255,0.8)" : undefined,
+                        }}
                       >
                         {mod.desc}
                       </motion.p>
@@ -300,13 +368,20 @@ export function Dashboard() {
 
   return (
     <div className="relative w-full min-h-screen">
-
       {/* MODALES */}
-      <VerPerfil isOpen={isProfileOpen} onClose={() => setIsProfileOpen(false)} userId={null} />
-      <PassKeysModal isOpen={isPasskeysOpen} onClose={() => setIsPasskeysOpen(false)} user={user} />
+      <VerPerfil
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        userId={null}
+      />
+      <PassKeysModal
+        isOpen={isPasskeysOpen}
+        onClose={() => setIsPasskeysOpen(false)}
+        user={user}
+      />
 
       <div className="flex flex-col md:hidden w-full bg-card">
-        <div className="w-full pt-16 pb-0 -mb-[6%] relative z-[2]">
+        <div className="w-full pt-[6.5rem] pb-0 -mb-[6%] relative z-[2] mt-4">
           <LogoTrifinioMobile backgroundEffect="blur" />
         </div>
 
@@ -314,9 +389,9 @@ export function Dashboard() {
           <motion.img
             src="/trifinio/hero-background2.jpg"
             alt="Plan Trifinio"
-            style={{ 
-              y: useTransform(scrollY, [0, 800], [0, 150]), 
-              scale: bgScale 
+            style={{
+              y: useTransform(scrollY, [0, 800], [0, 150]),
+              scale: bgScale,
             }}
             className="w-full h-auto object-contain block origin-center"
           />
@@ -334,14 +409,14 @@ export function Dashboard() {
         <div className="fixed top-0 left-0 w-full h-[75vh] z-0 bg-[#0a1628] overflow-hidden">
           <motion.div
             className="absolute inset-0 bg-cover bg-center origin-center"
-            style={{ 
+            style={{
               backgroundImage: "url('/trifinio/hero-background2.jpg')",
-              scale: bgScale
+              scale: bgScale,
             }}
           />
         </div>
 
-        <motion.div 
+        <motion.div
           className="fixed top-0 left-0 w-full h-[65vh] flex justify-center items-center z-[5] pt-16 pb-[140px]"
           style={{ y: logoY, opacity: logoOpacity }}
         >
@@ -358,7 +433,6 @@ export function Dashboard() {
             </div>
           </div>
         </div>
-
       </div>
     </div>
   );

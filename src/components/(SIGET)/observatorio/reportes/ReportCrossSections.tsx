@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useState, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { ReportExcelButton } from "./ReportExcelButton";
+import {
+  buildCampoDimensionCrossRows,
+  downloadCampoIndicadorExcel,
+  downloadIndicadorDetailExcel,
+  downloadSingleSheet,
+  safeFilename,
+} from "./lib/reportes-excel";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users,
@@ -9,7 +18,15 @@ import {
   Table2,
   Check,
   ChevronDown,
+  Search,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   PieChart,
   Pie,
@@ -192,6 +209,7 @@ function DonutChartCard({
   chartKey,
   legendAccordion = false,
   compact = false,
+  size = "default",
 }: {
   title: string;
   icon: typeof PieChartIcon;
@@ -200,9 +218,11 @@ function DonutChartCard({
   chartKey: string;
   legendAccordion?: boolean;
   compact?: boolean;
+  size?: "default" | "lg";
 }) {
   const [expandedLegendIndex, setExpandedLegendIndex] = useState<number | null>(null);
   const total = data.reduce((s, d) => s + d.value, 0);
+  const isLg = size === "lg";
 
   useEffect(() => {
     setExpandedLegendIndex(null);
@@ -216,12 +236,23 @@ function DonutChartCard({
     );
   }
 
+  const chartBoxClass = compact
+    ? "w-[88px] h-[88px]"
+    : isLg
+      ? "w-[168px] h-[168px] sm:w-[188px] sm:h-[188px]"
+      : "w-[120px] h-[120px]";
+  const innerRadius = compact ? 28 : isLg ? 54 : 38;
+  const outerRadius = compact ? 42 : isLg ? 88 : 56;
+  const chartRowMinH = compact ? "min-h-[150px]" : isLg ? "min-h-[240px]" : "min-h-[140px]";
+
   return (
     <div
       className={
         compact
           ? "rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 p-3 space-y-2 h-full flex flex-col"
-          : "bg-white dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3"
+          : isLg
+            ? "bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-4 h-full flex flex-col"
+            : "bg-white dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3"
       }
     >
       <div className="flex items-center gap-2">
@@ -235,8 +266,12 @@ function DonutChartCard({
         )}
         <span className="text-xs font-black text-blue-600 dark:text-blue-400 ml-auto font-mono">{formatChartNumber(total)}</span>
       </div>
-      <div className={`flex gap-2 items-center flex-1 min-h-0 ${compact ? "min-h-[150px]" : "min-h-[140px]"}`}>
-        <div className={`shrink-0 ${compact ? "w-[88px] h-[88px]" : "w-[120px] h-[120px]"}`}>
+      <div
+        className={`flex gap-3 sm:gap-4 items-center flex-1 min-h-0 ${chartRowMinH} ${
+          isLg ? "justify-center" : ""
+        }`}
+      >
+        <div className={`shrink-0 ${chartBoxClass}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={chartKey}
@@ -252,8 +287,8 @@ function DonutChartCard({
                     data={data}
                     cx="50%"
                     cy="50%"
-                    innerRadius={compact ? 28 : 38}
-                    outerRadius={compact ? 42 : 56}
+                    innerRadius={innerRadius}
+                    outerRadius={outerRadius}
                     paddingAngle={data.length > 1 ? 3 : 0}
                     dataKey="value"
                     stroke="none"
@@ -268,7 +303,7 @@ function DonutChartCard({
             </motion.div>
           </AnimatePresence>
         </div>
-        <div className="flex-1 min-w-0 space-y-1.5 max-h-[200px] overflow-y-auto pr-0.5">
+        <div className={`flex-1 min-w-0 space-y-1.5 pr-0.5 ${isLg ? "max-w-56" : "max-h-[200px] overflow-y-auto"}`}>
           {data.map((item, idx) => (
             <ChartLegendRow
               key={`${item.name}-${idx}`}
@@ -286,6 +321,68 @@ function DonutChartCard({
   );
 }
 
+function IndRefTooltip({
+  index,
+  nombre,
+  className = "",
+}: {
+  index: number;
+  nombre: string;
+  className?: string;
+}) {
+  const triggerRef = useRef<HTMLSpanElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [coords, setCoords] = useState({ x: 0, y: 0 });
+
+  const showTooltip = () => {
+    const el = triggerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setCoords({ x: rect.left + rect.width / 2, y: rect.top - 8 });
+    setVisible(true);
+  };
+
+  return (
+    <>
+      <span
+        ref={triggerRef}
+        className={`inline-block ${className}`}
+        onMouseEnter={showTooltip}
+        onMouseLeave={() => setVisible(false)}
+        onFocus={showTooltip}
+        onBlur={() => setVisible(false)}
+        tabIndex={0}
+        title={nombre}
+      >
+        <span className="cursor-help underline decoration-dotted decoration-blue-400/50 underline-offset-2">
+          Ind. {index + 1}
+        </span>
+      </span>
+      {visible &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <div
+            role="tooltip"
+            style={{
+              position: "fixed",
+              left: coords.x,
+              top: coords.y,
+              transform: "translate(-50%, -100%)",
+              zIndex: 9999,
+            }}
+            className="pointer-events-none w-max max-w-[min(20rem,calc(100vw-2rem))] px-3 py-2 rounded-xl bg-slate-800 dark:bg-slate-700 text-white text-[11px] font-semibold leading-snug shadow-lg text-left normal-case tracking-normal"
+          >
+            <span className="block text-[9px] font-black uppercase text-blue-300 mb-0.5 tracking-widest">
+              Ind. {index + 1}
+            </span>
+            {nombre}
+          </div>,
+          document.body
+        )}
+    </>
+  );
+}
+
 function CampoDimensionMatrix({
   title,
   cornerLabel,
@@ -294,6 +391,8 @@ function CampoDimensionMatrix({
   grid,
   getColLabel,
   accentClass = "text-blue-600 dark:text-blue-400",
+  shortColLabels = false,
+  onExportExcel,
 }: {
   title: string;
   cornerLabel: string;
@@ -302,6 +401,8 @@ function CampoDimensionMatrix({
   grid: Map<string, Map<string, number>>;
   getColLabel: (id: string) => string;
   accentClass?: string;
+  shortColLabels?: boolean;
+  onExportExcel?: () => void;
 }) {
   const { maxCell, grandTotal } = useMemo(() => {
     let maxCell = 1;
@@ -318,27 +419,36 @@ function CampoDimensionMatrix({
   if (campos.length === 0 || colIds.length === 0) return null;
 
   return (
-    <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/50">
-        <Table2 className="w-4 h-4 text-blue-500" />
-        <h5 className={`text-xs font-black uppercase tracking-widest ${accentClass}`}>{title}</h5>
+    <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/50 rounded-t-2xl">
+        <Table2 className="w-4 h-4 text-blue-500 shrink-0" />
+        <h5 className={`text-xs font-black uppercase tracking-widest flex-1 min-w-0 ${accentClass}`}>{title}</h5>
+        {onExportExcel && <ReportExcelButton onClick={onExportExcel} />}
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible rounded-b-2xl">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800">
               <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-0 bg-white dark:bg-slate-900/50 min-w-28">
                 {cornerLabel}
               </th>
-              {colIds.map((colId) => (
+              {colIds.map((colId, colIdx) => {
+                const fullLabel = getColLabel(colId);
+                return (
                 <th
                   key={colId}
-                  title={getColLabel(colId)}
-                  className="px-3 py-3 text-center text-[10px] font-black text-blue-500 uppercase tracking-wider min-w-20 max-w-32 truncate"
+                  className={`px-3 py-3 text-center text-[10px] font-black text-blue-500 uppercase tracking-wider ${
+                    shortColLabels ? "min-w-14 whitespace-nowrap" : "min-w-20 max-w-32 truncate"
+                  }`}
                 >
-                  {getColLabel(colId)}
+                  {shortColLabels ? (
+                    <IndRefTooltip index={colIdx} nombre={fullLabel} />
+                  ) : (
+                    <span title={fullLabel}>{fullLabel}</span>
+                  )}
                 </th>
-              ))}
+                );
+              })}
               <th className="px-4 py-3 text-right text-[10px] font-black text-blue-500 uppercase tracking-wider">Σ</th>
             </tr>
           </thead>
@@ -404,8 +514,8 @@ function NacPerfilMatrix({ rows }: { rows: ReportRow[] }) {
   return (
     <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
       <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/50">
-        <Table2 className="w-4 h-4 text-blue-500" />
-        <h5 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+        <Table2 className="w-4 h-4 text-blue-500 shrink-0" />
+        <h5 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest flex-1 min-w-0">
           Matriz Nacionalidad × Perfil
         </h5>
       </div>
@@ -478,32 +588,21 @@ export function ReportGlobalCrossSection({
   rows: ReportRow[];
   embedded?: boolean;
 }) {
-  const [selectedIndicadorId, setSelectedIndicadorId] = useState(ALL_INDICADORES_ID);
   const [selectedCampoIds, setSelectedCampoIds] = useState<Set<string>>(new Set());
 
   const stats = useMemo(() => computeGlobalCrossStats(rows), [rows]);
-  const indicadoresEnUso = useMemo(() => getIndicadoresEnUso(rows), [rows]);
-
-  const rowsForIndicadorScope = useMemo(
-    () =>
-      selectedIndicadorId === ALL_INDICADORES_ID
-        ? rows
-        : rows.filter((r) => r.indicadorId === selectedIndicadorId),
-    [rows, selectedIndicadorId]
-  );
-
-  const availableCampos = useMemo(() => getAvailableCampos(rowsForIndicadorScope), [rowsForIndicadorScope]);
+  const availableCampos = useMemo(() => getAvailableCampos(rows), [rows]);
 
   useEffect(() => {
     setSelectedCampoIds(new Set(availableCampos.map((c) => c.catalogId)));
   }, [availableCampos]);
 
   const filteredRows = useMemo(
-    () => filterReportRows(rows, selectedIndicadorId, selectedCampoIds),
-    [rows, selectedIndicadorId, selectedCampoIds]
+    () => filterReportRows(rows, ALL_INDICADORES_ID, selectedCampoIds),
+    [rows, selectedCampoIds]
   );
 
-  const filterKey = `${selectedIndicadorId}:${[...selectedCampoIds].sort().join(",")}`;
+  const filterKey = [...selectedCampoIds].sort().join(",");
 
   const nacData = useMemo(
     () => aggregateReportSlices(filteredRows, "nacionalidad"),
@@ -537,10 +636,6 @@ export function ReportGlobalCrossSection({
     () => buildReportCampoDimensionCross(filteredRows, camposSeleccionados, "perfil"),
     [filteredRows, camposSeleccionados]
   );
-  const crossCampoInd = useMemo(
-    () => buildReportCampoDimensionCross(filteredRows, camposSeleccionados, "indicador"),
-    [filteredRows, camposSeleccionados]
-  );
 
   const toggleCampo = (catalogId: string) => {
     setSelectedCampoIds((prev) => {
@@ -568,25 +663,9 @@ export function ReportGlobalCrossSection({
       )}
 
       <div className="flex flex-col gap-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-900/15 border border-blue-100 dark:border-blue-800/50">
-        <div className="flex flex-col sm:flex-row sm:items-end gap-3">
-          <div className="flex-1 min-w-0 space-y-1.5">
-            <label className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
-              Indicador
-            </label>
-            <select
-              value={selectedIndicadorId}
-              onChange={(e) => setSelectedIndicadorId(e.target.value)}
-              className="w-full px-3 py-2.5 rounded-xl border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer truncate"
-            >
-              <option value={ALL_INDICADORES_ID}>Todos los indicadores</option>
-              {indicadoresEnUso.map((ind) => (
-                <option key={ind.id} value={ind.id} title={ind.nombre}>
-                  {ind.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 pb-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Campos</span>
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setSelectedCampoIds(new Set(availableCampos.map((c) => c.catalogId)))}
@@ -611,7 +690,6 @@ export function ReportGlobalCrossSection({
         </div>
 
         <div className="space-y-1.5">
-          <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Campos</span>
           <div className="flex flex-wrap gap-2">
             {availableCampos.map((opt) => {
               const checked = selectedCampoIds.has(opt.catalogId);
@@ -645,9 +723,7 @@ export function ReportGlobalCrossSection({
         <p className="text-[11px] text-slate-500 dark:text-slate-400">
           {selectedCampoIds.size === 0
             ? "Marca al menos un campo para ver las gráficas."
-            : selectedIndicadorId === ALL_INDICADORES_ID
-              ? "Suma los campos marcados en todos los indicadores (p. ej. todas las «Mujeres»)."
-              : "Suma solo los campos marcados del indicador seleccionado."}
+            : "Suma los campos marcados en todos los indicadores (p. ej. todas las «Mujeres»). Para ver un indicador en detalle, usa la sección «Detalle por indicador»."}
         </p>
       </div>
 
@@ -692,6 +768,13 @@ export function ReportGlobalCrossSection({
             grid={crossCampoNac.grid}
             getColLabel={crossCampoNac.getColLabel}
             accentClass="text-amber-600 dark:text-amber-400"
+            onExportExcel={() =>
+              downloadSingleSheet(
+                buildCampoDimensionCrossRows(crossCampoNac),
+                "campos-nacionalidad.xlsx",
+                "Campos x Nacionalidad"
+              )
+            }
           />
           <CampoDimensionMatrix
             title="Campos × Perfil"
@@ -700,14 +783,13 @@ export function ReportGlobalCrossSection({
             colIds={crossCampoPerfil.colIds}
             grid={crossCampoPerfil.grid}
             getColLabel={crossCampoPerfil.getColLabel}
-          />
-          <CampoDimensionMatrix
-            title="Campos × Indicador"
-            cornerLabel="Campo ↓ / Indicador →"
-            campos={crossCampoInd.campos}
-            colIds={crossCampoInd.colIds}
-            grid={crossCampoInd.grid}
-            getColLabel={crossCampoInd.getColLabel}
+            onExportExcel={() =>
+              downloadSingleSheet(
+                buildCampoDimensionCrossRows(crossCampoPerfil),
+                "campos-perfil.xlsx",
+                "Campos x Perfil"
+              )
+            }
           />
         </div>
       )}
@@ -719,72 +801,390 @@ export function ReportGlobalCrossSection({
   }
 
   return (
-    <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0 space-y-6">
+    <div data-report-export-block className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0 space-y-6">
       {inner}
     </div>
   );
 }
 
-/* ─── Por política de migración ─── */
+function policyDescriptionStart(text: string, maxLen = 90): string {
+  const trimmed = text.trim();
+  if (trimmed.length <= maxLen) return trimmed;
+  return `${trimmed.slice(0, maxLen).trim()}…`;
+}
 
-export function ReportPoliticaCrossSection({ rows }: { rows: ReportRow[] }) {
+function PoliticaInfoCard({
+  politica,
+  fullDescription = false,
+}: {
+  politica: { codigo: string; descripcion: string };
+  fullDescription?: boolean;
+}) {
+  return (
+    <div className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden">
+      <div className="flex items-start gap-3 p-4">
+        <div className="w-1.5 min-h-10 bg-blue-600 rounded-full shrink-0 self-stretch" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-black text-blue-600 dark:text-blue-400">{politica.codigo}</p>
+          <p
+            className={`text-xs text-slate-600 dark:text-slate-400 mt-1 leading-snug ${
+              fullDescription ? "" : "line-clamp-3"
+            }`}
+          >
+            {politica.descripcion}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PoliticaPickerCard({
+  politica,
+  onClick,
+}: {
+  politica: { codigo: string; descripcion: string } | null;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30 overflow-hidden text-left cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+    >
+      <div className="flex items-start gap-3 p-4">
+        <div className="w-1.5 min-h-10 bg-blue-600 rounded-full shrink-0 self-stretch" />
+        <div className="flex-1 min-w-0">
+          {politica ? (
+            <>
+              <p className="text-sm font-black text-blue-600 dark:text-blue-400">{politica.codigo}</p>
+              <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 leading-snug line-clamp-3">
+                {politica.descripcion}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-black text-slate-500">Seleccionar política</p>
+              <p className="text-xs text-slate-400 mt-1">Elija una política de migración para ver el detalle</p>
+            </>
+          )}
+        </div>
+        <ChevronDown className="w-5 h-5 shrink-0 text-slate-400 mt-0.5" />
+      </div>
+    </button>
+  );
+}
+
+function PoliticaPickerModal({
+  isOpen,
+  onClose,
+  politicas,
+  selectedId,
+  onApply,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  politicas: { id: string; codigo: string; descripcion: string }[];
+  selectedId: string | null;
+  onApply: (id: string) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(selectedId);
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      setDraft(selectedId);
+      setSearch("");
+    }
+  }, [isOpen, selectedId]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return politicas;
+    return politicas.filter(
+      (p) =>
+        p.codigo.toLowerCase().includes(q) ||
+        p.descripcion.toLowerCase().includes(q)
+    );
+  }, [politicas, search]);
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Seleccionar política de migración</DialogTitle>
+          <DialogDescription>
+            Elija una política para ver el cruce de datos y el detalle por indicador.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar..."
+            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-slate-400 dark:focus:ring-slate-500"
+          />
+        </div>
+
+        <div className="max-h-72 overflow-y-auto rounded-xl border border-slate-200 dark:border-slate-800">
+          {filtered.length === 0 ? (
+            <p className="px-4 py-6 text-center text-xs text-slate-400 font-semibold">
+              {search.trim() ? "Sin resultados" : "No hay políticas disponibles"}
+            </p>
+          ) : (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {filtered.map((pol) => {
+                const checked = draft === pol.id;
+                return (
+                  <button
+                    key={pol.id}
+                    type="button"
+                    onClick={() => setDraft(pol.id)}
+                    className={`w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors cursor-pointer ${
+                      checked
+                        ? "bg-slate-100 dark:bg-slate-800/50"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-900/50"
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center ${
+                        checked
+                          ? "bg-slate-600 dark:bg-slate-500 border-slate-600 dark:border-slate-500"
+                          : "border-slate-300 dark:border-slate-600"
+                      }`}
+                    >
+                      {checked && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-bold text-blue-600 dark:text-blue-400">
+                        {pol.codigo}
+                      </span>
+                      <span className="block text-[11px] text-slate-500 mt-0.5 leading-snug">
+                        {policyDescriptionStart(pol.descripcion, 120)}
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            disabled={!draft}
+            onClick={() => draft && onApply(draft)}
+            className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 dark:bg-slate-600 dark:hover:bg-slate-500 text-white text-xs font-bold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Aplicar
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function IndicadorReferenciaTable({
+  indicadores,
+}: {
+  indicadores: { id: string; nombre: string }[];
+}) {
+  if (indicadores.length === 0) return null;
+
+  return (
+    <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800">
+      <div className="flex items-center gap-2 px-5 py-3 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800/50 rounded-t-2xl">
+        <Table2 className="w-4 h-4 text-blue-500 shrink-0" />
+        <h5 className="text-xs font-black uppercase tracking-widest text-blue-600 dark:text-blue-400 flex-1 min-w-0">
+          Referencia de indicadores
+        </h5>
+      </div>
+      <div className="overflow-x-auto rounded-b-2xl">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800">
+              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider w-24">
+                Código
+              </th>
+              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                Indicador
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {indicadores.map((ind, i) => (
+              <tr
+                key={ind.id}
+                className={`border-b border-slate-50 dark:border-slate-800/50 last:border-0 ${
+                  i % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-900/30"
+                }`}
+              >
+                <td className="px-4 py-2.5 font-black text-blue-600 dark:text-blue-400 whitespace-nowrap align-top">
+                  Ind. {i + 1}
+                </td>
+                <td className="px-4 py-2.5 text-slate-600 dark:text-slate-400 leading-snug align-top">
+                  {ind.nombre}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Por política + detalle por indicador ─── */
+
+export function ReportPoliticaIndicadorSection({ rows }: { rows: ReportRow[] }) {
   const politicas = useMemo(() => getPoliticasEnDatos(rows), [rows]);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedPoliticaId, setSelectedPoliticaId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (politicas.length === 0) {
+      setSelectedPoliticaId(null);
+      return;
+    }
+    if (!selectedPoliticaId || !politicas.some((p) => p.id === selectedPoliticaId)) {
+      setSelectedPoliticaId(politicas[0].id);
+    }
+  }, [politicas, selectedPoliticaId]);
+
+  const selectedPolitica = useMemo(
+    () => politicas.find((p) => p.id === selectedPoliticaId) ?? null,
+    [politicas, selectedPoliticaId]
+  );
+
+  const polRows = useMemo(
+    () => (selectedPoliticaId ? rows.filter((r) => r.politicaId === selectedPoliticaId) : []),
+    [rows, selectedPoliticaId]
+  );
+
+  const camposPolitica = useMemo(() => getAvailableCampos(polRows), [polRows]);
+
+  const crossCampoIndPolitica = useMemo(
+    () => buildReportCampoDimensionCross(polRows, camposPolitica, "indicador"),
+    [polRows, camposPolitica]
+  );
+
+  const indicadoresPolitica = useMemo(
+    () =>
+      crossCampoIndPolitica.colIds.map((id) => ({
+        id,
+        nombre: crossCampoIndPolitica.getColLabel(id),
+      })),
+    [crossCampoIndPolitica]
+  );
+
+  const allPoliticaCross = useMemo(
+    () =>
+      politicas
+        .map((pol) => {
+          const pr = rows.filter((r) => r.politicaId === pol.id);
+          const campos = getAvailableCampos(pr);
+          const cross = buildReportCampoDimensionCross(pr, campos, "indicador");
+          const indicadores = cross.colIds.map((id) => ({
+            id,
+            nombre: cross.getColLabel(id),
+          }));
+          return { politica: pol, cross, indicadores };
+        })
+        .filter((p) => p.cross.colIds.length > 0),
+    [rows, politicas]
+  );
 
   if (politicas.length === 0) return null;
 
+  const sectionTitle = (
+    <div className="flex items-center gap-3 px-1">
+      <div className="w-2 h-7 bg-blue-600 rounded-full shrink-0" />
+      <h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+        Por política de migración
+      </h3>
+    </div>
+  );
+
   return (
-    <div className="w-full space-y-3">
-      <div className="flex items-center gap-3 px-1">
-        <div className="w-2 h-7 bg-blue-600 rounded-full shrink-0" />
-        <h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-          Por política de migración
-        </h3>
+    <div className="w-full space-y-8">
+      <div className="report-export-hide space-y-4">
+        {sectionTitle}
+
+        <PoliticaPickerCard
+          politica={selectedPolitica}
+          onClick={() => setModalOpen(true)}
+        />
+
+        {polRows.length > 0 && crossCampoIndPolitica.colIds.length > 0 && (
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <ReportExcelButton
+                label="Excel"
+                onClick={() =>
+                  downloadCampoIndicadorExcel(
+                    crossCampoIndPolitica,
+                    indicadoresPolitica,
+                    selectedPolitica?.codigo ?? "politica"
+                  )
+                }
+              />
+            </div>
+            <CampoDimensionMatrix
+              title="Campos × Indicador"
+              cornerLabel="Campo ↓ / Indicador →"
+              campos={crossCampoIndPolitica.campos}
+              colIds={crossCampoIndPolitica.colIds}
+              grid={crossCampoIndPolitica.grid}
+              getColLabel={crossCampoIndPolitica.getColLabel}
+              shortColLabels
+            />
+            <IndicadorReferenciaTable indicadores={indicadoresPolitica} />
+          </div>
+        )}
       </div>
 
-      {politicas.map((pol) => {
-        const polRows = rows.filter((r) => r.politicaId === pol.id);
-        const isOpen = expandedId === pol.id;
-        return (
-          <div
-            key={pol.id}
-            className={`rounded-2xl border overflow-hidden transition-colors ${
-              isOpen ? "border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900/50" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30"
-            }`}
-          >
-            <button
-              type="button"
-              onClick={() => setExpandedId(isOpen ? null : pol.id)}
-              className="w-full flex items-start gap-3 p-4 text-left cursor-pointer hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
-              aria-expanded={isOpen}
-            >
-              <div className="w-1.5 min-h-10 bg-blue-600 rounded-full shrink-0 self-stretch" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-black text-blue-600 dark:text-blue-400">{pol.codigo}</p>
-                <p className={`text-xs text-slate-600 dark:text-slate-400 mt-1 leading-snug ${isOpen ? "" : "line-clamp-2"}`}>
-                  {pol.descripcion}
-                </p>
-              </div>
-              <ChevronDown className={`w-5 h-5 shrink-0 text-slate-400 transition-transform mt-0.5 ${isOpen ? "rotate-180" : ""}`} />
-            </button>
-            <AnimatePresence initial={false}>
-              {isOpen && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="overflow-hidden border-t border-slate-100 dark:border-slate-800"
-                >
-                  <div className="p-4 pt-2">
-                    <ReportGlobalCrossSection rows={polRows} embedded />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
+      <div className="report-export-only hidden space-y-6">
+        {sectionTitle}
+        {allPoliticaCross.map(({ politica, cross, indicadores }) => (
+          <div key={politica.id} data-report-export-block className="space-y-4">
+            <PoliticaInfoCard politica={politica} fullDescription />
+            <CampoDimensionMatrix
+              title="Campos × Indicador"
+              cornerLabel="Campo ↓ / Indicador →"
+              campos={cross.campos}
+              colIds={cross.colIds}
+              grid={cross.grid}
+              getColLabel={cross.getColLabel}
+              shortColLabels
+            />
+            <IndicadorReferenciaTable indicadores={indicadores} />
           </div>
-        );
-      })}
+        ))}
+      </div>
+
+      <ReportIndicadorDetailSection rows={polRows} />
+
+      <PoliticaPickerModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        politicas={politicas}
+        selectedId={selectedPoliticaId}
+        onApply={(id) => {
+          setSelectedPoliticaId(id);
+          setModalOpen(false);
+        }}
+      />
     </div>
   );
 }
@@ -798,15 +1198,8 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
   if (indicadores.length === 0) return null;
 
   return (
-    <div className="w-full space-y-3">
-      <div className="flex items-center gap-3 px-1">
-        <div className="w-2 h-7 bg-blue-600 rounded-full shrink-0" />
-        <h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-          Detalle por indicador
-        </h3>
-      </div>
-
-      {indicadores.map((ind) => {
+    <div className="w-full space-y-3 report-export-hide">
+      {indicadores.map((ind, indIdx) => {
         const indRows = rows.filter((r) => r.indicadorId === ind.id);
         const crossRows = aggregateReportByNacPerfil(indRows);
         const campos = getCampoTotalsForIndicador(indRows);
@@ -825,9 +1218,17 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
         const isOpen = expandedId === ind.id;
 
         return (
-          <div
-            key={ind.id}
-            className={`rounded-2xl border overflow-hidden ${
+          <div key={ind.id} className="space-y-3">
+            {indIdx === 0 && (
+              <div className="flex items-center gap-3 px-1">
+                <div className="w-2 h-7 bg-blue-600 rounded-full shrink-0" />
+                <h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                  Detalle por indicador
+                </h3>
+              </div>
+            )}
+            <div
+              className={`rounded-2xl border overflow-hidden ${
               isOpen ? "border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900/50" : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/30"
             }`}
           >
@@ -859,12 +1260,21 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                   className="overflow-hidden"
                 >
                   <div className="px-4 pb-6 space-y-6 border-t border-slate-100 dark:border-slate-800 pt-4">
+                    <div className="flex justify-end report-export-hide">
+                      <ReportExcelButton
+                        label="Excel"
+                        onClick={() => downloadIndicadorDetailExcel(ind.nombre, indRows)}
+                      />
+                    </div>
+
                     <NacPerfilMatrix rows={indRows} />
 
                     <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                       <div className="flex items-center gap-2 px-5 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
-                        <Table2 className="w-4 h-4 text-slate-400" />
-                        <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest">Resumen cruzado por campos</h5>
+                        <Table2 className="w-4 h-4 text-slate-400 shrink-0" />
+                        <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest flex-1 min-w-0">
+                          Resumen cruzado por campos
+                        </h5>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
@@ -912,7 +1322,7 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
                       <div className="bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-5">
                         <div className="flex items-center gap-2">
                           <BarChart3 className="w-4 h-4 text-blue-500" />
@@ -948,12 +1358,14 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                         iconClass="text-amber-500"
                         data={nacDonut}
                         chartKey={`ind-nac-${ind.id}`}
+                        size="lg"
                       />
                     </div>
                   </div>
                 </motion.div>
               )}
             </AnimatePresence>
+            </div>
           </div>
         );
       })}

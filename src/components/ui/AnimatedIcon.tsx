@@ -7,6 +7,7 @@ interface AnimatedIconProps {
   className?: string;
   size?: string | number;
   target?: string;
+  trigger?: string;
   delay?: string | number;
   speed?: string | number;
   primaryColor?: string;
@@ -18,6 +19,7 @@ export default function AnimatedIcon({
   className,
   size = "100%",
   target,
+  trigger = "hover",
   delay = 0,
   speed = 2,
   primaryColor,
@@ -40,7 +42,7 @@ export default function AnimatedIcon({
       {/* @ts-ignore */}
       <lord-icon
         src={`https://cdn.lordicon.com/${iconKey}.json`}
-        trigger="hover"
+        trigger={trigger}
         target={target}
         delay={delay}
         speed={speed}

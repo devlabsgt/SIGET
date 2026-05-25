@@ -193,7 +193,10 @@ export function buildReportCampoDimensionCross(
 
   const colIds = [
     ...new Set(Array.from(grid.values()).flatMap((row) => [...row.keys()])),
-  ];
+  ].sort((a, b) => {
+    if (dimension !== "indicador") return 0;
+    return (colLabels.get(a) || "").localeCompare(colLabels.get(b) || "", "es");
+  });
 
   return {
     campos: campos.map((c) => ({ catalogId: c.catalogId, nombre: c.nombre })),

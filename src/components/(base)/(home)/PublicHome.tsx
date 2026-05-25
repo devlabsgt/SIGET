@@ -1,13 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import LogoTrifinio from "@/components/(SIGET)/logo/LogoTrifinio";
-import LogoTrifinioMobile from "@/components/(SIGET)/logo/LogoTrifinio-mobile";
+import { HeroVideoLayout } from "@/components/(base)/(home)/ConoceMasVideo";
+import {
+  ObservatorioHomeSections,
+  ObservatorioFooterCurtain,
+  FOOTER_SCROLL_SPACER_VH,
+} from "@/components/(base)/(home)/ObservatorioHomeSections";
 import { useUser } from "@/components/(base)/providers/UserProvider";
-import { cn } from "@/lib/utils";
 
 export function PublicHome() {
   const user = useUser();
+  const [videoOpen, setVideoOpen] = useState(false);
   const { scrollY } = useScroll();
   const logoY = useTransform(scrollY, [0, 600], [0, -300]);
   const logoOpacity = useTransform(scrollY, [0, 400], [1, 0]);
@@ -19,41 +24,38 @@ export function PublicHome() {
   });
 
   return (
-    <div className="relative w-full min-h-screen">
-      <div className="flex flex-col md:hidden w-full min-h-screen bg-card">
+    <div className="relative flex w-full flex-col" style={{ zoom: 0.9 }}>
+      {/* 1. Hero móvil */}
+      <div className="flex flex-col w-full bg-card md:hidden">
         <div
-          className={cn(
-            "w-full relative z-[2]",
-            user ? "pt-[6.5rem]" : "pt-16",
-          )}
+          className="relative w-full shrink-0"
+          style={{ paddingTop: user ? "100px" : "56px" }}
         >
-          <div className="relative w-full">
-            <div className="w-full overflow-hidden">
-              <motion.img
-                src="/trifinio/hero-background2.jpg"
-                alt="Plan Trifinio"
-                style={{
-                  y: useTransform(scrollY, [0, 800], [0, 150]),
-                  scale: bgScale,
-                }}
-                className="w-full h-auto object-contain block origin-center"
-              />
-            </div>
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative isolate w-full">
-                <LogoTrifinioMobile backgroundEffect="blur" />
-              </div>
-            </div>
+          <img
+            src="/trifinio/hero-background2.jpg"
+            alt="Plan Trifinio"
+            className="w-full h-auto block"
+          />
+          <div
+            className="absolute inset-0 flex flex-col items-center justify-center px-4"
+            style={{ top: user ? "100px" : "56px" }}
+          >
+            <HeroVideoLayout
+              videoOpen={videoOpen}
+              onOpen={() => setVideoOpen(true)}
+              onClose={() => setVideoOpen(false)}
+              mobile
+            />
           </div>
-        </div>
-
-        <div className="relative flex-1 w-full bg-muted dark:bg-background px-4 pt-8 pb-20">
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
         </div>
       </div>
 
-      <div className="hidden md:block relative w-full min-h-screen">
-        <div className="fixed top-0 left-0 w-full h-[75vh] z-0 bg-[#0a1628] overflow-hidden">
+      {/* 1. Hero desktop — 100vh en el flujo; sticky (no fixed global) */}
+      <section className="relative hidden h-screen w-full shrink-0 md:block">
+        <div
+          className="sticky top-0 z-10 h-screen w-full overflow-hidden bg-[#0a1628]"
+          style={{ zoom: 1 / 0.9 }}
+        >
           <motion.div
             className="absolute inset-0 bg-cover bg-center origin-center"
             style={{
@@ -61,23 +63,38 @@ export function PublicHome() {
               scale: bgScale,
             }}
           />
+          <motion.div
+            className="absolute inset-0 flex justify-center items-center z-[5] pt-16 px-4 lg:px-8 -translate-y-6 lg:-translate-y-8"
+            style={{ y: logoY, opacity: logoOpacity }}
+          >
+            <div className="relative w-full max-w-5xl">
+              <HeroVideoLayout
+                videoOpen={videoOpen}
+                onOpen={() => setVideoOpen(true)}
+                onClose={() => setVideoOpen(false)}
+              />
+            </div>
+          </motion.div>
         </div>
+      </section>
 
-        <motion.div
-          className="fixed top-0 left-0 w-full h-[65vh] flex justify-center items-center z-[5] pt-16 pb-[140px]"
-          style={{ y: logoY, opacity: logoOpacity }}
-        >
-          <div className="relative flex justify-center items-center px-8">
-            <LogoTrifinio />
-          </div>
-        </motion.div>
-
-        <div className="relative z-10 w-full mt-[65vh]">
-          <div className="relative w-full min-h-screen bg-muted dark:bg-background rounded-t-[3rem] px-8 lg:px-12 pt-10 pb-20">
-            <div className="absolute inset-0 pointer-events-none rounded-t-[3rem] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
-          </div>
+      {/* 2. Contenido blanco — encima del footer fijo; curvas arriba/abajo en desktop */}
+      <section className="relative z-20 w-full shrink-0 bg-background dark:bg-background md:overflow-hidden md:rounded-t-[3rem] md:rounded-b-[3rem] md:shadow-[0_28px_80px_rgba(10,22,40,0.14)]">
+        <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(#d1d5db_1px,transparent_1px)] bg-size-[24px_24px] opacity-60 md:block dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] md:rounded-t-[3rem] md:rounded-b-[3rem]" />
+        <div className="relative z-10 pt-2 md:pt-10">
+          <ObservatorioHomeSections />
         </div>
-      </div>
+      </section>
+
+      {/* 3. Spacer (desktop): mismo alto que el footer; deja ver el footer fijo al llegar abajo */}
+      <div
+        className="hidden w-full shrink-0 md:block"
+        style={{ height: `${FOOTER_SCROLL_SPACER_VH}vh`, zoom: 1 / 0.9 }}
+        aria-hidden
+      />
+
+      {/* 4. Footer — móvil al final del flujo; desktop fijo abajo (revealed al hacer scroll) */}
+      <ObservatorioFooterCurtain />
     </div>
   );
 }

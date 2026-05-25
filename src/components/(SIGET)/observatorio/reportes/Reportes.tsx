@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronLeft,
@@ -14,6 +14,9 @@ import {
   Filter,
   Check,
   Search,
+  FileSpreadsheet,
+  FileText,
+  Image as ImageIcon,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,12 +28,11 @@ import {
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -45,9 +47,21 @@ import {
 } from "./lib/reportes-actions";
 import {
   ReportGlobalCrossSection,
-  ReportPoliticaCrossSection,
-  ReportIndicadorDetailSection,
+  ReportPoliticaIndicadorSection,
 } from "./ReportCrossSections";
+import { ReportExcelButton } from "./ReportExcelButton";
+import { ReportExportHeader } from "./ReportExportHeader";
+import {
+  buildOrgSummaryRows,
+  downloadCompleteReportExcel,
+  downloadSingleSheet,
+} from "./lib/reportes-excel";
+import { DownloadMenu, type DownloadMenuOption } from "./DownloadMenu";
+import {
+  downloadNodeAsJpeg,
+  downloadNodeAsPdf,
+  printNode,
+} from "./lib/reportes-export";
 
 /* ──────────────────────────────────────────────────────────────
    Constants & Helpers
@@ -56,7 +70,6 @@ import {
 import {
   GUATEMALTECO_CELESTE,
   chartColor,
-  indicadorColor,
   isGuatemalteco,
   nationalityColor,
   perfilColor,
@@ -73,6 +86,17 @@ const MONTH_FULL = [
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
+const SIN_ESPECIFICAR_LABEL = "Sin especificar";
+
+function sortNacionalidadNames(names: string[], totals?: Map<string, number>): string[] {
+  return [...names].sort((a, b) => {
+    if (a === SIN_ESPECIFICAR_LABEL) return -1;
+    if (b === SIN_ESPECIFICAR_LABEL) return 1;
+    if (totals) return (totals.get(b) ?? 0) - (totals.get(a) ?? 0);
+    return a.localeCompare(b, "es");
+  });
+}
+
 const tooltipStyle = {
   borderRadius: "12px",
   border: "1px solid #e2e8f0",
@@ -87,11 +111,6 @@ function fmt(n: number) {
 }
 
 /** Ancho del eje Y según la etiqueta más larga (evita hueco a la izquierda en barras horizontales) */
-function calcCategoryAxisWidth(labels: string[], min = 64, max = 220): number {
-  const longest = labels.reduce((m, s) => Math.max(m, s.length), 0);
-  return Math.min(max, Math.max(min, longest * 6 + 8));
-}
-
 function truncateLabel(label: string, maxLen = 32): string {
   return label.length > maxLen ? `${label.slice(0, maxLen)}…` : label;
 }
@@ -178,7 +197,19 @@ export default function Reportes({ onBack }: ReportesProps) {
   const [endMonth, setEndMonth] = useState("");
 
   // ── Chart tab state ──
-  const [activeChartTab, setActiveChartTab] = useState<"campos" | "nacionalidad" | "perfil" | "indicador">("campos");
+  const [activeChartTab, setActiveChartTab] = useState<"campos" | "nacionalidad" | "perfil">("campos");
+
+  // ── Refs para captura (PDF / JPEG) ──
+  const reportContentRef = useRef<HTMLDivElement>(null);
+  const [isMobileExport, setIsMobileExport] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const update = () => setIsMobileExport(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   // ── Load data ──
   useEffect(() => {
@@ -335,20 +366,9 @@ export default function Reportes({ onBack }: ReportesProps) {
       .map(([name, value], i) => ({ name, value, color: perfilColor(i) }));
   }, [filteredRows]);
 
-  const indicadorDonutData = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const r of filteredRows) {
-      map.set(r.indicadorNombre, (map.get(r.indicadorNombre) || 0) + r.cantidad);
-    }
-    return Array.from(map.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([name, value], i) => ({ name, value, color: indicadorColor(i) }));
-  }, [filteredRows]);
-
   const activeDonutData = activeChartTab === "campos" ? campoDonutData
     : activeChartTab === "nacionalidad" ? nacDonutData
-    : activeChartTab === "perfil" ? perfilDonutData
-    : indicadorDonutData;
+    : perfilDonutData;
 
   const activeDonutTotal = activeDonutData.reduce((s, d) => s + d.value, 0);
 
@@ -363,31 +383,61 @@ export default function Reportes({ onBack }: ReportesProps) {
       .sort((a, b) => b.total - a.total);
   }, [filteredRows]);
 
-  const orgYAxisWidth = useMemo(
-    () => calcCategoryAxisWidth(orgBarData.map((d) => d.org)),
-    [orgBarData]
-  );
+  // ── Tendencia mensual apilada: registros + nacionalidades por mes ──
+  const monthlyStackChart = useMemo(() => {
+    const nacTotals = new Map<string, number>();
+    for (const r of filteredRows) {
+      const n = r.nacionalidadNombre || "Sin especificar";
+      nacTotals.set(n, (nacTotals.get(n) || 0) + r.cantidad);
+    }
+    const nacNames = sortNacionalidadNames(
+      Array.from(nacTotals.keys()),
+      nacTotals
+    );
 
-  // ── Bar chart: monthly trend ──
-  const monthlyData = useMemo(() => {
-    const map = new Map<string, { key: string; label: string; total: number; sortVal: number }>();
+    type MonthRow = Record<string, number | string>;
+    const monthMap = new Map<string, MonthRow>();
+    const registroSets = new Map<string, Set<string>>();
+
     for (const r of filteredRows) {
       const key = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
-      const label = `${MONTH_NAMES[r.mes]} ${r.anio}`;
-      const existing = map.get(key);
-      if (existing) {
-        existing.total += r.cantidad;
-      } else {
-        map.set(key, { key, label, total: r.cantidad, sortVal: r.anio * 100 + r.mes });
+      if (!monthMap.has(key)) {
+        const row: MonthRow = {
+          key,
+          label: `${MONTH_NAMES[r.mes]} ${r.anio}`,
+          sortVal: r.anio * 100 + r.mes,
+          registros: 0,
+        };
+        for (const n of nacNames) row[n] = 0;
+        monthMap.set(key, row);
+        registroSets.set(key, new Set());
       }
+      const nac = r.nacionalidadNombre || "Sin especificar";
+      const row = monthMap.get(key)!;
+      row[nac] = Number(row[nac]) + r.cantidad;
+      registroSets.get(key)!.add(r.registroId);
     }
-    return Array.from(map.values()).sort((a, b) => a.sortVal - b.sortVal);
+
+    for (const [key, set] of registroSets) {
+      const row = monthMap.get(key);
+      if (row) row.registros = set.size;
+    }
+
+    const data = Array.from(monthMap.values()).sort(
+      (a, b) => Number(a.sortVal) - Number(b.sortVal)
+    );
+
+    return { data, nacNames };
   }, [filteredRows]);
 
-  // ── Cross table: Campo × Nacionalidad ──
-  // (reemplazado por ReportGlobalCrossSection — matrices Campo×Dimensión)
+  const monthlyNacColors = useMemo(() => {
+    let otherIdx = 0;
+    return monthlyStackChart.nacNames.map((name) =>
+      isGuatemalteco(name) ? GUATEMALTECO_CELESTE : nationalityColor(name, otherIdx++)
+    );
+  }, [monthlyStackChart.nacNames]);
 
-  // ── Resumen table: by org ──
+  // ── Bar chart: by organization ──
   const orgSummaryData = useMemo(() => {
     const map = new Map<string, {
       sectorNombre: string;
@@ -458,6 +508,19 @@ export default function Reportes({ onBack }: ReportesProps) {
     return null;
   }, [dateMode, singleMonth, startMonth, endMonth]);
 
+  const exportDateLabel = useMemo(() => {
+    if (dateMode === "Mes" && singleMonth) {
+      const [y, m] = singleMonth.split("-").map(Number);
+      return `${MONTH_FULL[m]} ${y}`;
+    }
+    if (dateMode === "Rango" && startMonth && endMonth) {
+      const [sy, sm] = startMonth.split("-").map(Number);
+      const [ey, em] = endMonth.split("-").map(Number);
+      return `${MONTH_FULL[sm]} ${sy} – ${MONTH_FULL[em]} ${ey}`;
+    }
+    return "Todo el periodo";
+  }, [dateMode, singleMonth, startMonth, endMonth]);
+
   const modalConfig = useMemo(() => {
     if (openFilterModal === "politica") {
       return {
@@ -513,6 +576,16 @@ export default function Reportes({ onBack }: ReportesProps) {
     applySectorFilter,
   ]);
 
+  const downloadOptions = useMemo(
+    () =>
+      buildDownloadOptions({
+        filteredRows,
+        getNode: () => reportContentRef.current,
+        isMobile: isMobileExport,
+      }),
+    [filteredRows, isMobileExport]
+  );
+
   /* ──────────────────────────────────────────────────────────────
      RENDER
      ────────────────────────────────────────────────────────────── */
@@ -543,116 +616,147 @@ export default function Reportes({ onBack }: ReportesProps) {
       className="w-full min-w-0 max-w-none pb-10 space-y-6"
     >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-2">
+      <div className="flex items-center gap-4 mb-2 flex-wrap">
         <button
           onClick={onBack}
           className="p-2.5 rounded-xl bg-card border border-border hover:bg-muted transition-colors shadow-sm cursor-pointer shrink-0"
         >
           <ChevronLeft className="w-5 h-5 text-muted-foreground" />
         </button>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">Análisis de Datos</h2>
           <p className="text-xs sm:text-sm text-slate-500">Reportes y cruce de variables del observatorio</p>
         </div>
+        {filteredRows.length > 0 && (
+          <DownloadMenu
+            label="Descargar"
+            options={downloadOptions}
+          />
+        )}
       </div>
 
       {/* ═══ FILTERS ═══ */}
       <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Filtros</h3>
-        </div>
 
-        {/* Filtro por fecha */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-              Filtro por fecha
-            </p>
-            {dateFilterLabel && (
-              <span className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 text-right shrink-0">
-                {dateFilterLabel}
-              </span>
+        {/* Fila principal: título + switch + selector de fecha */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Título */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Filtros</h3>
+          </div>
+
+          <div className="w-px h-5 bg-border/60 hidden sm:block shrink-0" />
+
+          {/* Switch Todo | Mes | Rango */}
+          <div className="flex bg-muted/70 dark:bg-muted/30 p-1 rounded-xl border border-border/40 shrink-0">
+            {(["Todo", "Mes", "Rango"] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setDateMode(mode)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  dateMode === mode
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                    : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-muted/50"
+                }`}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+
+          {/* Selector de fecha inline */}
+          <AnimatePresence mode="wait">
+            {dateMode === "Mes" && (
+              <motion.div key="mes" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="overflow-hidden shrink-0">
+                <div className="relative flex items-center">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none z-10" />
+                  {!singleMonth && (
+                    <span className="absolute left-8 text-slate-400 text-xs font-bold pointer-events-none z-10 whitespace-nowrap">Seleccionar mes</span>
+                  )}
+                  <input
+                    type="month"
+                    value={singleMonth}
+                    onChange={(e) => setSingleMonth(e.target.value)}
+                    className={`pl-8 pr-3 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${singleMonth ? "text-foreground" : "text-transparent"}`}
+                  />
+                </div>
+              </motion.div>
             )}
+            {dateMode === "Rango" && (
+              <motion.div
+                key="rango"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2 shrink-0"
+              >
+                <div className="relative flex items-center">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none z-10" />
+                  {!startMonth && <span className="absolute left-8 text-slate-400 text-[10px] font-bold pointer-events-none z-10">Inicio</span>}
+                  <input
+                    type="month"
+                    value={startMonth}
+                    onChange={(e) => setStartMonth(e.target.value)}
+                    className={`pl-8 pr-2 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${startMonth ? "text-foreground" : "text-transparent"}`}
+                  />
+                </div>
+                <span className="text-xs font-bold text-slate-400 shrink-0">al</span>
+                <div className="relative flex items-center">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none z-10" />
+                  {!endMonth && <span className="absolute left-8 text-slate-400 text-[10px] font-bold pointer-events-none z-10">Final</span>}
+                  <input
+                    type="month"
+                    value={endMonth}
+                    onChange={(e) => setEndMonth(e.target.value)}
+                    className={`pl-8 pr-2 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${endMonth ? "text-foreground" : "text-transparent"}`}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Sector / Política / Organización — solo en lg+ en la misma fila */}
+          <div className="hidden lg:flex items-center gap-2 ml-auto shrink-0">
+            <div className="w-px h-5 bg-border/60 shrink-0" />
+            <FilterPickerButton
+              label="Sector"
+              subtitle={filterButtonSubtitle(selectedSectorIds, sectorPickerItems, "Todos los sectores")}
+              active={selectedSectorIds.length > 0}
+              onClick={() => setOpenFilterModal("sector")}
+            />
+            <FilterPickerButton
+              label="Política"
+              subtitle={
+                selectedSectorIds.length === 0
+                  ? "Seleccione sector"
+                  : filterButtonSubtitle(selectedPoliticaIds, politicaPickerItems, "Todas")
+              }
+              active={selectedPoliticaIds.length > 0}
+              dimmed={selectedSectorIds.length === 0}
+              onClick={() => {
+                if (selectedSectorIds.length === 0) { setOpenFilterModal("sector"); return; }
+                setOpenFilterModal("politica");
+              }}
+            />
+            <FilterPickerButton
+              label="Organización"
+              subtitle={filterButtonSubtitle(selectedOrgIds, orgPickerItems, "Todas")}
+              active={selectedOrgIds.length > 0}
+              onClick={() => setOpenFilterModal("org")}
+            />
           </div>
 
-          <div className="flex flex-col gap-2 w-full">
-            <div className="flex w-full bg-muted/70 dark:bg-muted/30 p-1 rounded-xl border border-border/40">
-              {(["Todo", "Mes", "Rango"] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setDateMode(mode)}
-                  className={`flex-1 px-2 sm:px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    dateMode === mode
-                      ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
-                      : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-muted/50"
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-
-            <AnimatePresence mode="wait">
-              {dateMode === "Mes" && (
-                <motion.div key="mes" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="w-full">
-                  <div className="relative flex items-center">
-                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none z-10" />
-                    {!singleMonth && (
-                      <span className="absolute left-10 text-slate-400 text-xs font-bold pointer-events-none z-10">Seleccionar mes</span>
-                    )}
-                    <input
-                      type="month"
-                      value={singleMonth}
-                      onChange={(e) => setSingleMonth(e.target.value)}
-                      className={`w-full pl-10 pr-3 py-2.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${singleMonth ? "text-foreground" : "text-transparent"}`}
-                    />
-                  </div>
-                </motion.div>
-              )}
-              {dateMode === "Rango" && (
-                <motion.div
-                  key="rango"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="flex flex-col sm:flex-row sm:items-center gap-2 w-full"
-                >
-                  <div className="relative flex-1 flex items-center min-w-0">
-                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none z-10" />
-                    {!startMonth && <span className="absolute left-10 text-slate-400 text-[10px] font-bold pointer-events-none z-10">Inicio</span>}
-                    <input
-                      type="month"
-                      value={startMonth}
-                      onChange={(e) => setStartMonth(e.target.value)}
-                      className={`w-full pl-10 pr-2 py-2.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${startMonth ? "text-foreground" : "text-transparent"}`}
-                    />
-                  </div>
-                  <span className="text-xs font-bold text-slate-400 shrink-0 text-center sm:px-1">al</span>
-                  <div className="relative flex-1 flex items-center min-w-0">
-                    <Calendar className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none z-10" />
-                    {!endMonth && <span className="absolute left-10 text-slate-400 text-[10px] font-bold pointer-events-none z-10">Final</span>}
-                    <input
-                      type="month"
-                      value={endMonth}
-                      onChange={(e) => setEndMonth(e.target.value)}
-                      className={`w-full pl-10 pr-2 py-2.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${endMonth ? "text-foreground" : "text-transparent"}`}
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Label resumen de fecha activa — solo cuando no hay botones de sector (< lg) */}
+          {dateFilterLabel && (
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 lg:hidden">
+              {dateFilterLabel}
+            </span>
+          )}
         </div>
 
-        <div className="my-5 border-t border-border/60" />
-
-        {/* Sector, política y organización */}
-        <div className="space-y-3">
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
-            Sector, política y organización
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {/* En lg+: sector/política/org en la misma fila que fecha. En mobile: nueva fila */}
+        <div className="mt-3 lg:hidden border-t border-border/60 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
           <FilterPickerButton
             label="Sector"
             subtitle={filterButtonSubtitle(selectedSectorIds, sectorPickerItems, "Todos los sectores")}
@@ -669,10 +773,7 @@ export default function Reportes({ onBack }: ReportesProps) {
             active={selectedPoliticaIds.length > 0}
             dimmed={selectedSectorIds.length === 0}
             onClick={() => {
-              if (selectedSectorIds.length === 0) {
-                setOpenFilterModal("sector");
-                return;
-              }
+              if (selectedSectorIds.length === 0) { setOpenFilterModal("sector"); return; }
               setOpenFilterModal("politica");
             }}
           />
@@ -682,7 +783,6 @@ export default function Reportes({ onBack }: ReportesProps) {
             active={selectedOrgIds.length > 0}
             onClick={() => setOpenFilterModal("org")}
           />
-          </div>
         </div>
 
         {modalConfig && (
@@ -706,17 +806,20 @@ export default function Reportes({ onBack }: ReportesProps) {
 
       {/* ═══ DONUT CHART WITH TABS + KPIs ═══ */}
       {filteredRows.length > 0 ? (
-        <>
-          <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0">
+        <div ref={reportContentRef} id="reporte-contenido" className="space-y-6 bg-background">
+          <div data-report-export-block className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0">
+            <ReportExportHeader dateLabel={exportDateLabel} />
             <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6 border-b border-slate-100 dark:border-slate-800 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                   <PieChartIcon className="w-5 h-5 text-slate-500 dark:text-slate-400" /> Desglose por Dimensión
                 </h3>
-                <p className="text-xs text-slate-500 mt-1">Seleccione una dimensión para visualizar el desglose de atenciones.</p>
+                <p className="text-xs text-slate-500 mt-1 report-export-hide">
+                  Seleccione una dimensión para visualizar el desglose de atenciones.
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap bg-muted/70 dark:bg-muted/30 border border-border/40 p-1 rounded-xl w-full xl:w-auto">
-                {(["campos", "nacionalidad", "perfil", "indicador"] as const).map((tab) => (
+              <div className="report-export-hide grid grid-cols-2 gap-1 sm:flex sm:flex-wrap bg-muted/70 dark:bg-muted/30 border border-border/40 p-1 rounded-xl w-full xl:w-auto">
+                {(["campos", "nacionalidad", "perfil"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveChartTab(tab)}
@@ -726,13 +829,14 @@ export default function Reportes({ onBack }: ReportesProps) {
                         : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-muted/50"
                     }`}
                   >
-                    {tab === "campos" ? "Campos" : tab === "nacionalidad" ? "Nacionalidad" : tab === "perfil" ? "Perfil" : "Indicador"}
+                    {tab === "campos" ? "Campos" : tab === "nacionalidad" ? "Nacionalidad" : "Perfil"}
                   </button>
                 ))}
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-[10.5rem_minmax(0,1fr)_minmax(0,1.15fr)] gap-4 xl:gap-6 items-stretch xl:items-center">
+            {/* Pantalla: una dimensión a la vez */}
+            <div className="report-export-hide grid grid-cols-1 xl:grid-cols-[10.5rem_minmax(0,1fr)_minmax(0,1.15fr)] gap-4 xl:gap-6 items-stretch xl:items-center">
               <div className="grid grid-cols-3 xl:grid-cols-1 gap-2 xl:gap-3">
                 <KpiCard compact icon={Users} label="Total Atenciones" value={fmt(kpis.totalAtenciones)} color="blue" />
                 <KpiCard compact icon={BarChart3} label="Registros" value={fmt(kpis.totalRegistros)} color="sky" />
@@ -793,71 +897,58 @@ export default function Reportes({ onBack }: ReportesProps) {
                 })}
               </div>
             </div>
+
+            {/* Impresión: KPIs + las 3 dimensiones */}
+            <div className="report-export-only hidden">
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <KpiCard icon={Users} label="Total Atenciones" value={fmt(kpis.totalAtenciones)} color="blue" />
+                <KpiCard icon={BarChart3} label="Registros" value={fmt(kpis.totalRegistros)} color="sky" />
+                <KpiCard icon={Building2} label="Organizaciones" value={fmt(kpis.totalOrgs)} color="cyan" />
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <DimensionDonutPanel title="Campos" data={campoDonutData} chartId="print-campos" />
+                <DimensionDonutPanel title="Nacionalidad" data={nacDonutData} chartId="print-nac" />
+                <DimensionDonutPanel title="Perfil" data={perfilDonutData} chartId="print-perfil" />
+              </div>
+            </div>
           </div>
 
-          {/* ═══ CHARTS: org + tendencia mensual ═══ */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 w-full min-w-0">
-            {/* By Org */}
-            <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0">
+          {/* ═══ CHARTS: org (2/5) + tendencia mensual (3/5) ═══ */}
+          <div data-report-export-block className="grid grid-cols-1 xl:grid-cols-5 gap-6 w-full min-w-0">
+            {/* By Org — 2/5 */}
+            <div className="xl:col-span-2 bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0">
               <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-blue-500" /> Atenciones por Organización
               </h3>
               {orgBarData.length > 0 ? (
-                <div className="w-full min-w-0" style={{ height: Math.max(250, orgBarData.length * 50) }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={orgBarData}
-                      layout="vertical"
-                      margin={{ left: 0, right: 8, top: 4, bottom: 4 }}
-                      barCategoryGap="18%"
-                    >
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#64748b" opacity={0.15} />
-                      <XAxis
-                        type="number"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: "#64748b", fontSize: 11 }}
-                        tickFormatter={(v) => fmt(Number(v))}
-                      />
-                      <YAxis
-                        dataKey="org"
-                        type="category"
-                        axisLine={false}
-                        tickLine={false}
-                        width={orgYAxisWidth}
-                        tick={{ fill: "#64748b", fontSize: 11 }}
-                        tickFormatter={(v) => truncateLabel(String(v))}
-                      />
-                      <Tooltip
-                        cursor={{ fill: "rgba(100,116,139,0.05)" }}
-                        contentStyle={tooltipStyle}
-                        formatter={(v) => fmt(Number(v))}
-                        labelFormatter={(label) => String(label)}
-                      />
-                      <Bar dataKey="total" name="Total" radius={[0, 6, 6, 0]} barSize={22}>
-                        {orgBarData.map((_, index) => (
-                          <Cell key={`org-bar-${index}`} fill={chartColor(index)} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <OrgBarChartList data={orgBarData} />
               ) : (
                 <EmptyState />
               )}
             </div>
 
-            {/* Monthly trend — gráfica de puntos */}
-            <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0">
+            {/* Tendencia mensual — 3/5 */}
+            <div className="xl:col-span-3 bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-5 xl:p-6 w-full min-w-0">
               <h3 className="text-lg font-bold mb-4 text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <TrendingUp className="w-5 h-5 text-blue-500" /> Tendencia Mensual
               </h3>
-              {monthlyData.length > 0 ? (
-                <div className="h-[300px] w-full min-w-0">
+              {monthlyStackChart.data.length > 0 ? (
+                <div className="h-[320px] w-full min-w-0">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData} margin={{ left: 4, right: 12, top: 12, bottom: 4 }}>
+                    <BarChart
+                      data={monthlyStackChart.data}
+                      margin={{ left: 4, right: 12, top: 12, bottom: 4 }}
+                      barCategoryGap="28%"
+                      barGap={2}
+                    >
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#64748b" opacity={0.15} />
-                      <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#64748b", fontSize: 11 }} dy={5} />
+                      <XAxis
+                        dataKey="label"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: "#64748b", fontSize: 11 }}
+                        dy={5}
+                      />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
@@ -866,32 +957,66 @@ export default function Reportes({ onBack }: ReportesProps) {
                         tickFormatter={(v) => fmt(Number(v))}
                       />
                       <Tooltip
-                        cursor={{ stroke: "#94a3b8", strokeWidth: 1, strokeDasharray: "4 4" }}
-                        contentStyle={tooltipStyle}
-                        formatter={(v) => [fmt(Number(v)), "Total Atenciones"]}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="total"
-                        name="Total Atenciones"
-                        stroke="transparent"
-                        strokeWidth={0}
-                        dot={({ cx, cy, index }) => {
-                          if (cx == null || cy == null) return null;
-                          const fill = chartColor(index ?? 0);
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null;
+                          const row = payload[0]?.payload as Record<string, number | string>;
                           return (
-                            <circle cx={cx} cy={cy} r={6} fill={fill} stroke="#fff" strokeWidth={2} />
+                            <div style={tooltipStyle} className="rounded-xl border border-slate-200 p-3 text-xs shadow-md">
+                              <p className="font-bold text-slate-800 mb-2">{label}</p>
+                              <p className="text-slate-600 mb-2">
+                                <span className="font-semibold">Registros:</span>{" "}
+                                {fmt(Number(row?.registros ?? 0))}
+                              </p>
+                              {payload
+                                .filter((entry) => entry.name !== "registros")
+                                .sort((a, b) => {
+                                  const an = String(a.name);
+                                  const bn = String(b.name);
+                                  if (an === SIN_ESPECIFICAR_LABEL) return -1;
+                                  if (bn === SIN_ESPECIFICAR_LABEL) return 1;
+                                  return 0;
+                                })
+                                .map((entry) => (
+                                <p key={String(entry.name)} className="text-slate-700">
+                                  <span style={{ color: entry.color }}>●</span>{" "}
+                                  {entry.name}: {fmt(Number(entry.value))}
+                                </p>
+                              ))}
+                            </div>
                           );
                         }}
-                        activeDot={({ cx, cy, index }) => {
-                          if (cx == null || cy == null) return null;
-                          const fill = chartColor(index ?? 0);
-                          return (
-                            <circle cx={cx} cy={cy} r={8} fill={fill} stroke="#fff" strokeWidth={2} />
-                          );
-                        }}
                       />
-                    </LineChart>
+                      <Legend
+                        wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+                        formatter={(value) =>
+                          value === "registros" ? "Registros" : String(value)
+                        }
+                      />
+                      <Bar
+                        dataKey="registros"
+                        name="registros"
+                        stackId="mes"
+                        fill="#334155"
+                        barSize={44}
+                        isAnimationActive={false}
+                      />
+                      {monthlyStackChart.nacNames.map((nac, i) => (
+                        <Bar
+                          key={nac}
+                          dataKey={nac}
+                          name={nac}
+                          stackId="mes"
+                          fill={monthlyNacColors[i]}
+                          barSize={44}
+                          radius={
+                            i === monthlyStackChart.nacNames.length - 1
+                              ? [4, 4, 0, 0]
+                              : [0, 0, 0, 0]
+                          }
+                          isAnimationActive={false}
+                        />
+                      ))}
+                    </BarChart>
                   </ResponsiveContainer>
                 </div>
               ) : (
@@ -902,15 +1027,23 @@ export default function Reportes({ onBack }: ReportesProps) {
 
           <ReportGlobalCrossSection rows={filteredRows} />
 
-          <ReportPoliticaCrossSection rows={filteredRows} />
-
-          <ReportIndicadorDetailSection rows={filteredRows} />
-
           {/* ═══ SUMMARY TABLE ═══ */}
-          <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-4 md:p-6 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Resumen General por Organización</h3>
-              <p className="text-xs text-slate-500 mt-1">Desglose de atenciones en todos los sectores participantes.</p>
+          <div data-report-export-block className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-4 md:p-6 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800 dark:text-slate-200">Resumen General por Organización</h3>
+                <p className="text-xs text-slate-500 mt-1">Desglose de atenciones en todos los sectores participantes.</p>
+              </div>
+              <ReportExcelButton
+                label="Excel"
+                onClick={() =>
+                  downloadSingleSheet(
+                    buildOrgSummaryRows(filteredRows),
+                    "resumen-por-organizacion.xlsx",
+                    "Resumen org"
+                  )
+                }
+              />
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left">
@@ -950,7 +1083,9 @@ export default function Reportes({ onBack }: ReportesProps) {
               </table>
             </div>
           </div>
-        </>
+
+          <ReportPoliticaIndicadorSection rows={filteredRows} />
+        </div>
       ) : (
         <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 flex flex-col items-center justify-center text-center">
           <BarChart3 className="w-16 h-16 text-slate-200 dark:text-slate-800 mb-4" />
@@ -963,8 +1098,197 @@ export default function Reportes({ onBack }: ReportesProps) {
 }
 
 /* ──────────────────────────────────────────────────────────────
+   Download helpers
+   ────────────────────────────────────────────────────────────── */
+
+function buildDownloadOptions({
+  filteredRows,
+  getNode,
+  isMobile,
+}: {
+  filteredRows: ReportRow[];
+  getNode: () => HTMLElement | null;
+  isMobile: boolean;
+}): DownloadMenuOption[] {
+  const dateStamp = new Date().toISOString().slice(0, 10);
+  const baseName = `reporte-observatorio-${dateStamp}`;
+
+  const requireNode = () => {
+    const node = getNode();
+    if (!node) {
+      throw new Error(
+        "No se pudo capturar el contenido. Espere a que termine de cargar e intente de nuevo."
+      );
+    }
+    return node;
+  };
+
+  const pdfOption: DownloadMenuOption = isMobile
+    ? {
+        id: "pdf",
+        label: "Descargar PDF",
+        description: "Archivo PDF en tamaño oficio, igual que en computadora.",
+        icon: FileText,
+        iconClass: "text-red-600 dark:text-red-400",
+        onSelect: async () => {
+          const node = requireNode();
+          await downloadNodeAsPdf(node, `${baseName}.pdf`);
+        },
+      }
+    : {
+        id: "pdf",
+        label: "Imprimir PDF",
+        description: "Vista de impresión en tamaño oficio. Desde ahí puede guardar como PDF.",
+        icon: FileText,
+        iconClass: "text-red-600 dark:text-red-400",
+        onSelect: async () => {
+          const node = requireNode();
+          await printNode(node, "Análisis de Datos — Observatorio");
+        },
+      };
+
+  return [
+    {
+      id: "excel",
+      label: "Excel completo",
+      description: "Libro con datos generales, por política e indicador.",
+      icon: FileSpreadsheet,
+      iconClass: "text-emerald-600 dark:text-emerald-400",
+      onSelect: () => downloadCompleteReportExcel(filteredRows),
+    },
+    pdfOption,
+    {
+      id: "image",
+      label: "Imagen (JPEG)",
+      description: "Captura completa del reporte.",
+      icon: ImageIcon,
+      iconClass: "text-blue-600 dark:text-blue-400",
+      onSelect: async () => {
+        const node = requireNode();
+        await downloadNodeAsJpeg(node, `${baseName}.jpg`);
+      },
+    },
+  ];
+}
+
+/* ──────────────────────────────────────────────────────────────
    Sub-components
    ────────────────────────────────────────────────────────────── */
+
+type DonutSlice = { name: string; value: number; color: string };
+
+function OrgBarChartList({ data }: { data: { org: string; total: number }[] }) {
+  const max = Math.max(...data.map((d) => d.total), 1);
+  const twoColumns = data.length > 6;
+
+  return (
+    <div
+      className={
+        twoColumns
+          ? "grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2.5 w-full"
+          : "flex flex-col gap-2.5 w-full"
+      }
+    >
+      {data.map((item, i) => {
+        const pct = (item.total / max) * 100;
+        return (
+          <div key={item.org} className="min-w-0 w-full text-left">
+            <div className="flex items-center justify-between gap-2 mb-0.5">
+              <p
+                className="text-[10px] font-bold text-slate-700 dark:text-slate-300 leading-tight truncate"
+                title={item.org}
+              >
+                {item.org}
+              </p>
+              <span className="text-[10px] font-mono font-black text-slate-500 shrink-0 tabular-nums">
+                {fmt(item.total)}
+              </span>
+            </div>
+            <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  width: `${pct}%`,
+                  backgroundColor: chartColor(i),
+                  minWidth: item.total > 0 ? 3 : 0,
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function DimensionDonutPanel({
+  title,
+  data,
+  chartId,
+}: {
+  title: string;
+  data: DonutSlice[];
+  chartId: string;
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  const chartSize = 210;
+  const chartCenter = chartSize / 2;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-500 mb-3">
+        {title}
+      </h4>
+      {data.length === 0 ? (
+        <p className="text-xs text-slate-400 font-semibold py-6 text-center">Sin datos</p>
+      ) : (
+        <div className="flex flex-row gap-4 items-center">
+          <div className="shrink-0" style={{ width: chartSize, height: chartSize }}>
+            <PieChart width={chartSize} height={chartSize}>
+              <Pie
+                data={data}
+                cx={chartCenter}
+                cy={chartCenter}
+                innerRadius={58}
+                outerRadius={94}
+                paddingAngle={data.length > 1 ? 3 : 0}
+                dataKey="value"
+                stroke="none"
+                isAnimationActive={false}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`${chartId}-${index}`} fill={entry.color} />
+                ))}
+              </Pie>
+            </PieChart>
+          </div>
+          <div className="flex-1 min-w-0 space-y-1.5">
+            {data.map((item, index) => {
+              const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : "0";
+              return (
+                <div key={`${chartId}-leg-${index}`} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    <span className="text-[10px] font-semibold text-slate-700 leading-tight line-clamp-2">
+                      {item.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[9px] font-bold text-slate-400">{pct}%</span>
+                    <span className="text-[10px] font-black text-slate-900 font-mono">{fmt(item.value)}</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function KpiCard({ icon: Icon, label, value, color, compact }: {
   icon: typeof Users;

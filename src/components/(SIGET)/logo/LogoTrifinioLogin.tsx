@@ -90,14 +90,14 @@ export default function LogoTrifinioLogin({
           <div className="absolute inset-x-[-20%] inset-y-[-10%] bg-white/50 dark:bg-transparent blur-[60px] -z-10 rounded-[100px]" />
         )}
 
-        <div className="flex flex-row items-center justify-center gap-4 w-full">
-          <motion.div variants={logoVariants} className="flex-shrink-0">
+        <div className="flex flex-row items-center justify-center gap-5 w-full">
+          <motion.div variants={logoVariants} className="shrink-0">
             <Image
               src="/trifinio/logo.png"
               alt="Plan Trifinio"
               width={100}
               height={100}
-              className="w-[85px] h-auto object-contain"
+              className="w-[92px] md:w-[100px] h-auto object-contain"
               priority
             />
           </motion.div>
@@ -111,7 +111,7 @@ export default function LogoTrifinioLogin({
             <motion.h1
               variants={titleVariants}
               className="font-black whitespace-nowrap text-azul-trifinio dark:text-white leading-[0.95]"
-              style={{ fontFamily: "'Arial Black', sans-serif", fontSize: "1.65rem" }}
+              style={{ fontFamily: "'Arial Black', sans-serif", fontSize: "1.75rem" }}
             >
               Plan Trifinio
             </motion.h1>
@@ -119,7 +119,7 @@ export default function LogoTrifinioLogin({
             <motion.p
               variants={sloganVariants}
               className="font-bold italic mt-1 text-azul-trifinio dark:text-white leading-tight"
-              style={{ fontFamily: "Arial, sans-serif", fontSize: "1.05rem" }}
+              style={{ fontFamily: "Arial, sans-serif", fontSize: "1.1rem" }}
             >
               &ldquo;Agua sin fronteras&rdquo;
             </motion.p>
@@ -131,8 +131,8 @@ export default function LogoTrifinioLogin({
 
             <motion.p
               variants={countriesVariants}
-              className="font-semibold mt-2 text-azul-trifinio dark:text-white"
-              style={{ fontFamily: "Arial, sans-serif", fontSize: "0.55rem", letterSpacing: "0.15em" }}
+              className="font-semibold mt-2 text-azul-trifinio dark:text-white whitespace-nowrap text-[clamp(8px,2.35vw,0.6rem)] tracking-wide sm:tracking-[0.15em]"
+              style={{ fontFamily: "Arial, sans-serif" }}
             >
               El Salvador&ensp;•&ensp;Guatemala&ensp;•&ensp;Honduras
             </motion.p>
