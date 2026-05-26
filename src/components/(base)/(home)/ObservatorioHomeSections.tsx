@@ -2110,6 +2110,9 @@ const FOOTER_PLAN_TRIFINIO_LINKS = [
   },
 ] as const;
 
+const FOOTER_PLAN_TRIFINIO_LINKS_LEFT = FOOTER_PLAN_TRIFINIO_LINKS.slice(0, 3);
+const FOOTER_PLAN_TRIFINIO_LINKS_RIGHT = FOOTER_PLAN_TRIFINIO_LINKS.slice(3);
+
 const FOOTER_SOCIAL = [
   {
     label: "Facebook",
@@ -2184,14 +2187,68 @@ function FooterPlanTrifinioBrand() {
   );
 }
 
-function FooterAnimatedLabel({ children }: { children: React.ReactNode }) {
+type FooterUnderlineMode = "hover-draw" | "always" | "responsive";
+
+/** Solo móvil: subrayado celeste fijo en cada línea */
+const FOOTER_UNDERLINE_MOBILE =
+  "max-md:underline max-md:decoration-2 max-md:decoration-celeste-trifinio max-md:underline-offset-[5px] max-md:[box-decoration-break:clone]";
+
+/** Solo escritorio: línea fina que se dibuja al hover (sin text-decoration) */
+const FOOTER_UNDERLINE_HOVER_LINE =
+  "pointer-events-none absolute bottom-0 left-0 hidden h-0.5 w-full origin-left scale-x-0 bg-celeste-trifinio transition-transform duration-300 ease-out group-hover:scale-x-100 md:block";
+
+function FooterSectionHeading({
+  children,
+  align = "start",
+  className,
+}: {
+  children: React.ReactNode;
+  align?: "start" | "end";
+  className?: string;
+}) {
   return (
-    <span className="relative inline-block pb-0.5">
+    <p
+      className={cn(
+        "flex items-center gap-2 text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio",
+        align === "end" ? "justify-end" : "justify-start",
+        className
+      )}
+    >
       {children}
+      <ExternalLink className="size-3.5 shrink-0 opacity-80" aria-hidden />
+    </p>
+  );
+}
+
+function FooterLinkLabel({
+  children,
+  mode = "hover-draw",
+}: {
+  children: React.ReactNode;
+  mode?: FooterUnderlineMode;
+}) {
+  if (mode === "always") {
+    return <span className={FOOTER_UNDERLINE_MOBILE}>{children}</span>;
+  }
+
+  if (mode === "responsive") {
+    return (
       <span
-        aria-hidden
-        className="absolute bottom-0 left-0 h-px w-full origin-left scale-x-0 bg-celeste-trifinio transition-transform duration-300 ease-out group-hover:scale-x-100"
-      />
+        className={cn(
+          "relative inline max-md:pb-0 md:pb-0.5",
+          FOOTER_UNDERLINE_MOBILE
+        )}
+      >
+        {children}
+        <span aria-hidden className={FOOTER_UNDERLINE_HOVER_LINE} />
+      </span>
+    );
+  }
+
+  return (
+    <span className="relative inline pb-0.5">
+      {children}
+      <span aria-hidden className={FOOTER_UNDERLINE_HOVER_LINE} />
     </span>
   );
 }
@@ -2201,17 +2258,25 @@ function FooterLinkItem({
   href,
   external,
   animatedUnderline = false,
+  underlineMode = "hover-draw",
+  showExternalIcon = true,
 }: {
   label: string;
   href: string;
   external: boolean;
   animatedUnderline?: boolean;
+  underlineMode?: FooterUnderlineMode;
+  showExternalIcon?: boolean;
 }) {
-  const className =
-    "group inline-flex items-center gap-2 text-base font-semibold text-white/85 transition-colors hover:text-white md:text-lg";
+  const className = cn(
+    "group max-w-full text-base font-semibold text-white/85 transition-colors hover:text-white md:text-lg",
+    showExternalIcon
+      ? "inline-flex items-center gap-2"
+      : "inline-block"
+  );
 
   const labelContent = animatedUnderline ? (
-    <FooterAnimatedLabel>{label}</FooterAnimatedLabel>
+    <FooterLinkLabel mode={underlineMode}>{label}</FooterLinkLabel>
   ) : (
     label
   );
@@ -2225,7 +2290,9 @@ function FooterLinkItem({
         className={className}
       >
         {labelContent}
-        <ExternalLink className="size-4 opacity-60 transition-opacity group-hover:opacity-100" />
+        {showExternalIcon ? (
+          <ExternalLink className="size-4 shrink-0 opacity-60 transition-opacity group-hover:opacity-100" />
+        ) : null}
       </a>
     );
   }
@@ -2241,7 +2308,7 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "relative z-10 flex h-full w-full flex-col justify-end gap-8 px-6 pb-8 sm:px-10 md:gap-10 md:px-14 md:pb-10 lg:px-20 xl:px-24",
+        "relative z-10 flex h-full w-full flex-col justify-end gap-8 px-4 pb-8 sm:px-6 md:gap-10 md:px-10 md:pb-10 lg:px-14 xl:px-16",
         className,
       )}
     >
@@ -2262,22 +2329,29 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
         <div className="min-w-0 md:col-span-3">
           <div className="grid grid-cols-2 items-start gap-4 md:grid-cols-1 md:gap-0">
             <div className="min-w-0">
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio">
-                Observatorio Web
-              </p>
+              <FooterSectionHeading>Observatorio Web</FooterSectionHeading>
               <ul className="mt-5 space-y-3.5">
                 {FOOTER_SIGET_LINKS.map((link) => (
                   <li key={link.label}>
-                    <FooterLinkItem {...link} animatedUnderline />
+                    <FooterLinkItem
+                      {...link}
+                      animatedUnderline
+                      underlineMode="responsive"
+                    />
                   </li>
                 ))}
               </ul>
             </div>
 
             <div className="min-w-0 text-right md:text-left">
-              <p className="text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio md:mt-8">
-                Redes
-              </p>
+              <div className="md:mt-8">
+                <FooterSectionHeading
+                  align="end"
+                  className="md:justify-start"
+                >
+                  Redes
+                </FooterSectionHeading>
+              </div>
               <ul className="mt-5 flex flex-col items-end space-y-3.5 md:items-start">
                 {FOOTER_SOCIAL.map(({ label, href, icon: Icon }) => (
                   <li key={label}>
@@ -2290,7 +2364,7 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
                       <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-celeste-trifinio transition-colors group-hover:border-celeste-trifinio/50 group-hover:bg-white/10">
                         <Icon className="size-4" />
                       </span>
-                      <FooterAnimatedLabel>{label}</FooterAnimatedLabel>
+                      <FooterLinkLabel mode="responsive">{label}</FooterLinkLabel>
                     </a>
                   </li>
                 ))}
@@ -2301,13 +2375,44 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
 
         {/* Columna 3 — Plan Trifinio (a la derecha) */}
         <div className="min-w-0 md:col-span-4 md:text-right">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio">
+          <FooterSectionHeading className="md:justify-end">
             Plan Trifinio
-          </p>
-          <ul className="mt-5 space-y-3.5 md:flex md:flex-col md:items-end">
+          </FooterSectionHeading>
+          <div className="mt-5 flex justify-between gap-6 md:hidden">
+            <ul className="flex min-w-0 flex-col items-start gap-3">
+              {FOOTER_PLAN_TRIFINIO_LINKS_LEFT.map((link) => (
+                <li key={link.label} className="min-w-0 max-w-44 sm:max-w-xs">
+                  <FooterLinkItem
+                    {...link}
+                    animatedUnderline
+                    underlineMode="responsive"
+                    showExternalIcon={false}
+                  />
+                </li>
+              ))}
+            </ul>
+            <ul className="flex min-w-0 flex-col items-end gap-3 text-right">
+              {FOOTER_PLAN_TRIFINIO_LINKS_RIGHT.map((link) => (
+                <li key={link.label} className="min-w-0 max-w-44 sm:max-w-xs">
+                  <FooterLinkItem
+                    {...link}
+                    animatedUnderline
+                    underlineMode="responsive"
+                    showExternalIcon={false}
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
+          <ul className="mt-5 hidden space-y-3.5 md:flex md:flex-col md:items-end">
             {FOOTER_PLAN_TRIFINIO_LINKS.map((link) => (
-              <li key={link.label}>
-                <FooterLinkItem {...link} animatedUnderline />
+              <li key={link.label} className="text-right">
+                <FooterLinkItem
+                  {...link}
+                  animatedUnderline
+                  underlineMode="responsive"
+                  showExternalIcon={false}
+                />
               </li>
             ))}
           </ul>
@@ -2326,11 +2431,11 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
             rel="noopener noreferrer"
             className="group inline-flex items-center"
           >
-            <FooterAnimatedLabel>
+            <FooterLinkLabel>
               <AuroraText className="text-xs whitespace-nowrap">
                 Kore | Ing. de Software
               </AuroraText>
-            </FooterAnimatedLabel>
+            </FooterLinkLabel>
           </a>
         </p>
       </div>
