@@ -9,6 +9,7 @@ export function useSignupLogic() {
   const [username, setUsername] = useState("");
   const [passwordValue, setPasswordValue] = useState("");
   const [rol, setRol] = useState("user");
+  const [organizacionId, setOrganizacionId] = useState("");
 
   const [state, formAction, isPending] = useActionState(signup, null);
 
@@ -21,6 +22,8 @@ export function useSignupLogic() {
     setPasswordValue,
     rol,
     setRol,
+    organizacionId,
+    setOrganizacionId,
     showPassword,
     setShowPassword,
     state,

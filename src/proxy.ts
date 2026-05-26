@@ -74,6 +74,29 @@ if (user) {
         return NextResponse.redirect(url);
       }
 
+      const canAccessObservatorio =
+        realRole === "admin" ||
+        realRole === "super" ||
+        realRole.includes("observatorio");
+
+      const canAccessPlantillas = ["admin", "super", "admin-observatorio"].includes(
+        realRole,
+      );
+
+      if (pathname.startsWith("/siget/observatorio/plantillas")) {
+        if (!canAccessPlantillas) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/sin-acceso";
+          return NextResponse.redirect(url);
+        }
+      } else if (pathname.startsWith("/siget/observatorio")) {
+        if (!canAccessObservatorio) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/sin-acceso";
+          return NextResponse.redirect(url);
+        }
+      }
+
       if (requireAuth && !["super", "admin"].includes(realRole)) {
         const userAgent = request.headers.get("user-agent") || "Desconocido";
 

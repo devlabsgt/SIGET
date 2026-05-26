@@ -5,6 +5,8 @@
 
 :root {
   --banner-height: 0px;
+  --mobile-header-height: 3.5rem;
+  --mobile-breadcrumb-height: 3.5rem;
 
   &[data-connection="offline"], 
   &[data-connection="slow"] {
@@ -38,25 +40,25 @@
 
 .dark {
   /* Paleta inspirada en VS Code Dark+ — grises suaves, bajo contraste */
-  --background: oklch(23.5% 0 0);
+  --background: oklch(30% 0 0);
   --foreground: oklch(84% 0 0);
-  --card: oklch(26% 0 0);
+  --card: oklch(33% 0 0);
   --card-foreground: oklch(84% 0 0);
-  --popover: oklch(29% 0 0);
+  --popover: oklch(35% 0 0);
   --popover-foreground: oklch(84% 0 0);
   --primary: oklch(84% 0 0);
-  --primary-foreground: oklch(23.5% 0 0);
-  --secondary: oklch(29% 0 0);
+  --primary-foreground: oklch(30% 0 0);
+  --secondary: oklch(35% 0 0);
   --secondary-foreground: oklch(84% 0 0);
-  --muted: oklch(29% 0 0);
-  --muted-foreground: oklch(58% 0 0);
-  --accent: oklch(32% 0 0);
+  --muted: oklch(35% 0 0);
+  --muted-foreground: oklch(62% 0 0);
+  --accent: oklch(38% 0 0);
   --accent-foreground: oklch(84% 0 0);
   --destructive: oklch(60% 0.15 25);
   --destructive-foreground: oklch(98% 0 0);
-  --border: oklch(36% 0 0);
-  --input: oklch(32% 0 0);
-  --ring: oklch(50% 0 0);
+  --border: oklch(42% 0 0);
+  --input: oklch(36% 0 0);
+  --ring: oklch(52% 0 0);
 }
 
 @theme inline {
@@ -99,6 +101,15 @@
       transform: rotate(-5deg) scale(0.9);
     }
   }
+
+  @keyframes org-marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
 }
 
 @layer base {
@@ -114,6 +125,13 @@
   header.fixed {
     top: var(--banner-height) !important;
     transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  }
+
+  @media (min-width: 768px) {
+    :root {
+      --mobile-header-height: 0px;
+      --mobile-breadcrumb-height: 0px;
+    }
   }
   
   /* Evitar zoom automático en dispositivos móviles (iOS Safari / Chromium) */

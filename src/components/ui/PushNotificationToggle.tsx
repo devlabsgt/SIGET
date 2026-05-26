@@ -136,9 +136,10 @@ export function PushNotificationToggle({ className }: { className?: string }) {
     )
   }
 
-  const bellColor = isSubscribed 
-    ? (isDark ? '#facc15' : '#eab308') 
-    : (isDark ? '#737373' : '#9ca3af');
+  const activeBellClassName =
+    "text-yellow-500 fill-yellow-500 dark:text-yellow-400 dark:fill-yellow-400";
+  const inactiveBellClassName =
+    "text-gray-400 dark:text-neutral-500 group-hover/bell:text-yellow-500 dark:group-hover/bell:text-yellow-400";
 
   return (
     <button
@@ -161,8 +162,10 @@ export function PushNotificationToggle({ className }: { className?: string }) {
         <div style={{ position: 'relative', display: 'flex' }}>
           <Bell
             strokeWidth={2}
-            className="transition-transform duration-500 ease-out group-hover/bell:scale-110 group-hover/bell:-rotate-12"
-            style={{ width: '26px', height: '26px', color: bellColor, fill: bellColor }}
+            className={cn(
+              "size-[26px] transition-transform duration-500 ease-out group-hover/bell:scale-110 group-hover/bell:-rotate-12",
+              activeBellClassName,
+            )}
           />
           <div style={{
             position: 'absolute',
@@ -183,8 +186,10 @@ export function PushNotificationToggle({ className }: { className?: string }) {
       ) : (
         <BellOff
           strokeWidth={2}
-          className="transition-transform duration-500 ease-out group-hover/bell:scale-110 group-hover/bell:-rotate-12"
-          style={{ width: '26px', height: '26px', color: bellColor }}
+          className={cn(
+            "size-[26px] transition-all duration-500 ease-out group-hover/bell:scale-110 group-hover/bell:-rotate-12",
+            inactiveBellClassName,
+          )}
         />
       )}
     </button>

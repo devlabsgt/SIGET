@@ -1,16 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as motion from "framer-motion/client";
 import { AuroraText } from "@/components/ui/aurora-text";
+import { cn } from "@/lib/utils";
 
 export default function ConditionalFooter() {
   const pathname = usePathname();
   if (pathname === "/") return null;
 
+  const isDashboard = pathname === "/siget";
+
   return (
-    <footer className="w-full bg-card border-t border-border/40 relative z-10 mt-auto">
+    <footer
+      className={cn(
+        "w-full relative z-10 mt-auto",
+        isDashboard
+          ? "bg-muted dark:bg-muted border-t-0"
+          : "bg-card border-t border-border/40",
+      )}
+    >
       <div className="mx-auto flex h-14 md:h-16 items-center justify-center px-4 md:px-8">
         <motion.div
           initial={{ opacity: 0, y: 10 }}

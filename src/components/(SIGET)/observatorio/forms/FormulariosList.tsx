@@ -1,45 +1,88 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, Loader2, ClipboardList, ArrowRight, LayoutTemplate } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Formularios from "./Formularios";
-import { useSectores, usePoliticas } from "./lib/hooks";
+import { useSectores, usePoliticas, useOrganizacionSectores } from "./lib/hooks";
 import { ObsPolitica } from "./lib/actions";
+import {
+  useUser,
+  useUserContext,
+} from "@/components/(base)/providers/UserProvider";
+
+const ROLES_WITH_PLANTILLAS = ["admin", "super", "admin-observatorio"];
 
 export default function FormulariosList() {
   const router = useRouter();
+  const user = useUser();
+  const { effectiveRole } = useUserContext();
+  const canSeePlantillas = ROLES_WITH_PLANTILLAS.includes(effectiveRole);
+  const canChooseOrg =
+    effectiveRole.includes("admin") || effectiveRole === "super";
+  const restrictByOrg = !canChooseOrg;
+  const userOrganizacionId = user?.user_metadata?.organizacion_id as
+    | string
+    | undefined;
+
   const [selectedPolitica, setSelectedPolitica] = useState<ObsPolitica | null>(null);
 
   const { data: sectores = [], isLoading: loadingSectores } = useSectores();
   const { data: politicas = [], isLoading: loadingPoliticas } = usePoliticas();
+  const { data: orgSectorIds = [], isLoading: loadingOrgSectores } =
+    useOrganizacionSectores(userOrganizacionId, restrictByOrg);
 
   const [activeSector, setActiveSector] = useState<string>("all");
+
+  const visibleSectores = useMemo(() => {
+    if (!restrictByOrg) return sectores;
+    if (!userOrganizacionId) return [];
+    return sectores.filter((s) => orgSectorIds.includes(s.id));
+  }, [restrictByOrg, sectores, userOrganizacionId, orgSectorIds]);
+
+  const visiblePoliticas = useMemo(() => {
+    if (!restrictByOrg) return politicas;
+    if (!userOrganizacionId) return [];
+    return politicas.filter((p: ObsPolitica) =>
+      orgSectorIds.includes(p.sector_id),
+    );
+  }, [restrictByOrg, politicas, userOrganizacionId, orgSectorIds]);
 
   if (selectedPolitica) {
     return (
       <Formularios
         onBack={() => setSelectedPolitica(null)}
         initialPolitica={selectedPolitica}
+        canChooseOrg={canChooseOrg}
+        userOrganizacionId={userOrganizacionId}
       />
     );
   }
 
   const effectiveSector =
-    activeSector === "all" && sectores.length > 0 ? sectores[0].id : activeSector;
+    activeSector === "all" && visibleSectores.length > 0
+      ? visibleSectores[0].id
+      : activeSector;
 
   const filteredPoliticas = (
     effectiveSector === "all"
-      ? politicas
-      : politicas.filter((p: any) => p.sector_id === effectiveSector)
+      ? visiblePoliticas
+      : visiblePoliticas.filter((p: ObsPolitica) => p.sector_id === effectiveSector)
   ) as ObsPolitica[];
 
   const sortedPoliticas = [...filteredPoliticas].sort((a, b) =>
     (a.codigo || "").localeCompare(b.codigo || "", "es", { numeric: true })
   );
 
-  const isLoading = loadingSectores || loadingPoliticas;
+  const isLoading =
+    loadingSectores || loadingPoliticas || (restrictByOrg && loadingOrgSectores);
+
+  const emptyMessage = restrictByOrg && !userOrganizacionId
+    ? "No tiene una organización asignada. Contacte a un administrador."
+    : canSeePlantillas
+      ? "Aún no se han creado plantillas para este sector. Vaya a la sección de Plantillas para crear formularios primero."
+      : "Aún no hay formularios disponibles para su organización en este sector. Contacte a un administrador si necesita acceso.";
 
   return (
     <div className="flex-1 w-full px-2 md:px-6 lg:px-12 max-w-[1600px] mx-auto pb-20 pt-32 md:pt-20">
@@ -70,9 +113,9 @@ export default function FormulariosList() {
         </div>
 
         <div className="bg-card rounded-[2.5rem] border border-border overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none">
-          {!isLoading && sectores.length > 0 && (
+          {!isLoading && visibleSectores.length > 0 && (
             <div className="flex items-center border-b border-border bg-muted/50 dark:bg-secondary/30 overflow-x-auto no-scrollbar">
-              {sectores.map((s: any) => (
+              {visibleSectores.map((s: any) => (
                 <button
                   key={s.id}
                   onClick={() => setActiveSector(s.id)}
@@ -103,14 +146,16 @@ export default function FormulariosList() {
                   No hay formularios disponibles
                 </h3>
                 <p className="text-muted-foreground max-w-sm mx-auto mb-8">
-                  Aún no se han creado plantillas para este sector. Vaya a la sección de Plantillas para crear formularios primero.
+                  {emptyMessage}
                 </p>
-                <button
-                  onClick={() => router.push("/siget/observatorio/plantillas")}
-                  className="px-6 py-3 bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 font-bold rounded-xl hover:bg-purple-200 dark:hover:bg-purple-500/20 transition-colors cursor-pointer"
-                >
-                  Ir a Plantillas
-                </button>
+                {canSeePlantillas && (
+                  <button
+                    onClick={() => router.push("/siget/observatorio/plantillas")}
+                    className="px-6 py-3 bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400 font-bold rounded-xl hover:bg-purple-200 dark:hover:bg-purple-500/20 transition-colors cursor-pointer"
+                  >
+                    Ir a Plantillas
+                  </button>
+                )}
               </div>
             ) : (
               <AnimatePresence mode="wait">

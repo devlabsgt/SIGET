@@ -75,13 +75,18 @@ export async function updateProfile(
     contacto_emergencia: formData.contacto_emergencia,
     telefono_emergencia: formData.telefono_emergencia,
     rol: formData.rol,
+    organizacion_id: formData.organizacion_id,
   };
 
-  const profileData = Object.fromEntries(
+  const profileData: Record<string, unknown> = Object.fromEntries(
     Object.entries(rawData).filter(
       ([, v]) => v !== undefined && v !== null && v !== "",
     ),
   );
+
+  if (formData.organizacion_id === "" || formData.organizacion_id === null) {
+    profileData.organizacion_id = null;
+  }
 
   const { error: profileError } = await supabase
     .from("profiles")
@@ -92,11 +97,14 @@ export async function updateProfile(
     throw new Error(profileError.message);
   }
 
-  const metadataUpdates: Record<string, string> = {};
+  const metadataUpdates: Record<string, string | null> = {};
 
   if (formData.telefono) metadataUpdates.phone = formData.telefono;
   if (formData.nombre) metadataUpdates.nombre = formData.nombre;
   if (formData.rol) metadataUpdates.rol = formData.rol;
+  if (formData.organizacion_id !== undefined) {
+    metadataUpdates.organizacion_id = formData.organizacion_id || null;
+  }
 
   if (Object.keys(metadataUpdates).length > 0) {
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(

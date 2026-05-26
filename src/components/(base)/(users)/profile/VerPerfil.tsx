@@ -57,15 +57,16 @@ export default function VerPerfil({ isOpen, onClose, userId }: VerPerfilProps) {
   const roleLabels: Record<string, string> = {
     user: "Usuario (Estándar)",
     observatorio: "Observatorio",
+    "admin-observatorio": "Admin Observatorio",
     admin: "Administrador",
     super: "Super Admin",
   };
 
   let roleOptions: string[] = [];
   if (sessionRole === "super") {
-    roleOptions = ["super", "admin", "observatorio", "user"];
+    roleOptions = ["super", "admin", "admin-observatorio", "observatorio", "user"];
   } else if (sessionRole === "admin") {
-    roleOptions = ["admin", "observatorio", "user"];
+    roleOptions = ["admin", "admin-observatorio", "observatorio", "user"];
   }
 
   const targetIsSuper = profile?.rol === "super";

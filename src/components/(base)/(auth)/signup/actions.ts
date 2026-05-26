@@ -1,7 +1,21 @@
 "use server";
 
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
+import { createClient } from "@/utils/supabase/server";
 import { authSchema } from "./schemas";
+
+export async function getOrganizaciones() {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("obs_organizaciones")
+    .select("id, nombre")
+    .order("nombre");
+  if (error) {
+    console.error("[getOrganizaciones]", error);
+    return [];
+  }
+  return data as { id: string; nombre: string }[];
+}
 
 function getAdminClient() {
   return createSupabaseAdmin(
@@ -33,6 +47,7 @@ export async function signup(
     username: formData.get("username"),
     password: formData.get("password"),
     rol: formData.get("rol"),
+    organizacion_id: formData.get("organizacion_id") || undefined,
   };
 
   const validated = authSchema.safeParse(rawData);
@@ -43,7 +58,7 @@ export async function signup(
     };
   }
 
-  const { name, username, password, rol } = validated.data;
+  const { name, username, password, rol, organizacion_id } = validated.data;
   const fakeEmail = `${username}@app.com`;
 
   const supabaseAdmin = getAdminClient();
@@ -56,10 +71,12 @@ export async function signup(
       name,
       username,
       rol,
+      organizacion_id: organizacion_id ?? null,
     },
   });
 
   if (error) {
+    console.error("[signup] createUser error:", error);
     if (error.message.includes("already registered") || error.status === 422) {
       return {
         errors: {
@@ -67,25 +84,61 @@ export async function signup(
         },
       };
     }
-    return { message: error.message };
+    return { message: translateError(error.message) };
   }
 
   if (data.user) {
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
-      .insert({
-        id: data.user.id,
-        nombre: name,
-        rol: rol,
-      });
+      .upsert(
+        {
+          id: data.user.id,
+          nombre: name,
+          rol: rol,
+          organizacion_id: organizacion_id ?? null,
+        },
+        { onConflict: "id" },
+      );
 
     if (profileError) {
+      console.error("[signup] profile upsert error:", profileError);
       await supabaseAdmin.auth.admin.deleteUser(data.user.id);
       return {
-        message: "Error al crear perfil de usuario: " + profileError.message,
+        message:
+          "No se pudo guardar el perfil del usuario: " +
+          translateError(profileError.message),
       };
     }
   }
 
   return { success: true };
+}
+
+function translateError(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes("duplicate key") && m.includes("unique constraint")) {
+    return "Ya existe un registro con esos datos (usuario duplicado).";
+  }
+  if (m.includes("violates foreign key")) {
+    return "Referencia inválida en la base de datos. Contacta al administrador.";
+  }
+  if (m.includes("violates check constraint")) {
+    return "Algún valor no cumple las reglas de la base de datos (revisa el rol).";
+  }
+  if (m.includes("violates not-null")) {
+    return "Falta un campo obligatorio en la base de datos.";
+  }
+  if (m.includes("row-level security") || m.includes("rls")) {
+    return "No tienes permisos para realizar esta acción (RLS).";
+  }
+  if (m.includes("invalid api key") || m.includes("jwt")) {
+    return "Configuración de Supabase inválida (revisa SUPABASE_SERVICE_ROLE_KEY).";
+  }
+  if (m.includes("password") && m.includes("weak")) {
+    return "La contraseña es demasiado débil.";
+  }
+  if (m.includes("network") || m.includes("fetch")) {
+    return "Error de conexión con el servidor. Intenta de nuevo.";
+  }
+  return "Error al crear el usuario: " + msg;
 }

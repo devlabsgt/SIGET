@@ -7,11 +7,16 @@ import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { useFormulario, SIN_ESPECIFICAR, type RegistroEntradaLocal } from "./lib/hooks";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
 
-import { ObsPolitica } from "./lib/actions";
+import { ObsOrganizacion, ObsPolitica } from "./lib/actions";
+import { useOrgLogoDisplayUrl } from "@/components/(uploads)/imgs/useOrgLogoDisplayUrl";
+import { ORG_LOGO_SURFACE_CLASS, ORG_LOGO_DARK_PLATE_CLASS } from "@/components/(uploads)/imgs/constants";
+import { cn } from "@/lib/utils";
 
 interface FormulariosProps {
   onBack: () => void;
   initialPolitica?: ObsPolitica | null;
+  canChooseOrg?: boolean;
+  userOrganizacionId?: string;
 }
 
 function PoliticaDescripcionAccordion({ codigo, descripcion }: { codigo: string; descripcion: string }) {
@@ -101,6 +106,118 @@ const purpleCardIdle =
   "bg-purple-50/40 dark:bg-purple-900/10 text-slate-600 dark:text-slate-300 border border-purple-200 dark:border-purple-800/70 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20";
 const purpleCardSelected =
   "bg-purple-600 text-white border border-purple-600 shadow-md shadow-purple-500/20";
+
+function FormOrgLogoOption({
+  org,
+  selected = false,
+  onSelect,
+  locked = false,
+}: {
+  org: Pick<ObsOrganizacion, "id" | "nombre" | "logo">;
+  selected?: boolean;
+  onSelect?: () => void;
+  locked?: boolean;
+}) {
+  const { url } = useOrgLogoDisplayUrl(org.logo ?? null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [url]);
+
+  const showLogo = Boolean(url) && !imgError;
+
+  const nameClass =
+    "font-bold text-azul-trifinio text-center leading-tight line-clamp-2 uppercase tracking-wide w-full px-1 text-[9px] md:text-[10px]";
+
+  const logoAreaClass = cn(
+    "flex w-full items-center justify-center transition-transform duration-300 ease-out group-hover:-translate-y-1 p-3 md:p-4",
+    locked ? "h-[8rem] md:h-[10rem]" : "h-[6.5rem] md:h-[7.5rem]"
+  );
+
+  const imgClass = cn(
+    "block w-auto h-auto max-w-full object-contain pointer-events-none",
+    locked ? "max-h-[7rem] md:max-h-[9rem]" : "max-h-[5.5rem] md:max-h-[6.5rem]"
+  );
+
+  const nameOnlySlotClass = cn(
+    "flex w-full items-center justify-center rounded-xl dark:bg-white dark:shadow-[0_2px_14px_rgba(0,0,0,0.35)]",
+    locked ? "h-[8rem] md:h-[10rem]" : "h-[6.5rem] md:h-[7.5rem]"
+  );
+
+  const containerClass = cn(
+    "group relative flex flex-col items-center shrink-0 w-full",
+    locked && "max-w-md mx-auto"
+  );
+
+  const tileClass = cn(
+    "rounded-xl transition-all w-full flex items-center justify-center border-0 bg-transparent shadow-none outline-none",
+    locked
+      ? "cursor-default"
+      : cn(
+          "cursor-pointer",
+          selected
+            ? "scale-[1.03] shadow-md dark:shadow-black/40"
+            : "opacity-90 hover:opacity-100 hover:scale-[1.02]"
+        )
+  );
+
+  const logoContent = showLogo ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={url!}
+      alt={org.nombre}
+      className={imgClass}
+      onError={() => setImgError(true)}
+    />
+  ) : (
+    <p className={cn(nameClass, "line-clamp-3")}>{org.nombre}</p>
+  );
+
+  const logoArea = (
+    <div
+      className={cn(
+        logoAreaClass,
+        ORG_LOGO_SURFACE_CLASS,
+        ORG_LOGO_DARK_PLATE_CLASS,
+        "overflow-hidden w-full"
+      )}
+    >
+      {showLogo ? logoContent : <div className={nameOnlySlotClass}>{logoContent}</div>}
+    </div>
+  );
+
+  const hoverName = showLogo ? (
+    <p
+      className={cn(
+        nameClass,
+        "min-h-7 pt-1.5 opacity-0 translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 ease-out pointer-events-none"
+      )}
+    >
+      {org.nombre}
+    </p>
+  ) : (
+    <div className="min-h-7 pt-1.5" aria-hidden />
+  );
+
+  if (locked) {
+    return (
+      <div className={containerClass}>
+        <div className={tileClass}>{logoArea}</div>
+        {hoverName}
+      </div>
+    );
+  }
+
+  return (
+    <div className={containerClass}>
+      <button type="button" onClick={onSelect} className={tileClass} aria-label={org.nombre}>
+        {logoArea}
+      </button>
+      {hoverName}
+    </div>
+  );
+}
 
 type CrosstabRow = {
   nacionalidadId: string;
@@ -374,14 +491,14 @@ function CampoDimensionMatrix({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border">
-              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-0 bg-card dark:bg-background min-w-[7rem]">
+              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-0 bg-card dark:bg-background min-w-28">
                 {cornerLabel}
               </th>
               {colIds.map((colId) => (
                 <th
                   key={colId}
                   title={getColLabel(colId)}
-                  className="px-3 py-3 text-center text-[10px] font-black text-purple-500 uppercase tracking-wider min-w-20 max-w-[8rem] truncate"
+                  className="px-3 py-3 text-center text-[10px] font-black text-purple-500 uppercase tracking-wider min-w-20 max-w-32 truncate"
                 >
                   {getColLabel(colId)}
                 </th>
@@ -998,7 +1115,7 @@ function NacPerfilMatrix({
                 Nacionalidad ↓ / Perfil →
               </th>
               {perfilIds.map((pid) => (
-                <th key={pid} className="px-3 py-3 text-center text-[10px] font-black text-purple-500 uppercase tracking-wider min-w-[5rem]">
+                <th key={pid} className="px-3 py-3 text-center text-[10px] font-black text-purple-500 uppercase tracking-wider min-w-20">
                   {getPerfilNombre(pid)}
                 </th>
               ))}
@@ -1056,7 +1173,7 @@ function OrganizacionesSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full">
       {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className={`h-12 ${skeletonPurpleBlock}`} />
+        <div key={i} className={`h-28 md:h-32 ${skeletonPurpleBlock}`} />
       ))}
     </div>
   );
@@ -1083,7 +1200,12 @@ function Step2Skeleton({ withMonth }: { withMonth: boolean }) {
   );
 }
 
-export default function Formularios({ onBack, initialPolitica }: FormulariosProps) {
+export default function Formularios({
+  onBack,
+  initialPolitica,
+  canChooseOrg = false,
+  userOrganizacionId,
+}: FormulariosProps) {
   const {
     sectores,
     organizaciones,
@@ -1112,8 +1234,12 @@ export default function Formularios({ onBack, initialPolitica }: FormulariosProp
     handlePrev,
     handleSectorChange,
     handlePoliticaChange,
-    handleSubmit
-  } = useFormulario(onBack, initialPolitica);
+    handleSubmit,
+    isOrgLocked,
+  } = useFormulario(onBack, initialPolitica, {
+    canChooseOrg,
+    userOrganizacionId,
+  });
 
   const { effectiveRole } = useUserContext();
   const isSuper = effectiveRole?.toLowerCase() === "super";
@@ -1394,20 +1520,30 @@ export default function Formularios({ onBack, initialPolitica }: FormulariosProp
                       <div className="flex flex-col items-center space-y-3 w-full">
                         <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.5em] w-full text-center">Organización</label>
                         {organizaciones.length === 0 ? (
-                           <p className="text-slate-500 text-sm italic py-6">No hay organizaciones en este sector.</p>
+                           <p className="text-slate-500 text-sm italic py-6">
+                             {isOrgLocked
+                               ? "Su organización no está vinculada a este sector."
+                               : "No hay organizaciones en este sector."}
+                           </p>
+                        ) : isOrgLocked ? (
+                          <div className="w-full">
+                            <FormOrgLogoOption
+                              org={formData.organizacion ?? organizaciones[0]}
+                              locked
+                            />
+                            <p className="text-[10px] text-muted-foreground text-center mt-2 italic">
+                              Organización asignada a su usuario
+                            </p>
+                          </div>
                         ) : (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 w-full">
+                          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 w-full">
                             {organizaciones.map((org) => (
-                              <button
+                              <FormOrgLogoOption
                                 key={org.id}
-                                type="button"
-                                onClick={() => setFormData({ ...formData, organizacion: org })}
-                                className={`px-4 py-3.5 rounded-lg text-xs font-bold transition-all cursor-pointer h-full flex items-center justify-center text-center ${
-                                  formData.organizacion?.id === org.id ? purpleCardSelected : purpleCardIdle
-                                }`}
-                              >
-                                {org.nombre}
-                              </button>
+                                org={org}
+                                selected={formData.organizacion?.id === org.id}
+                                onSelect={() => setFormData({ ...formData, organizacion: org })}
+                              />
                             ))}
                           </div>
                         )}
@@ -1533,7 +1669,7 @@ export default function Formularios({ onBack, initialPolitica }: FormulariosProp
                     ) : (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                         {/* ── Entry Form Card (Left Column) ── */}
-                        <div className="bg-gradient-to-br from-slate-50 to-purple-50/40 dark:from-background dark:to-purple-950/10 border border-purple-100 dark:border-purple-900/40 rounded-3xl p-6 space-y-6 sticky top-6">
+                        <div className="bg-linear-to-br from-slate-50 to-purple-50/40 dark:from-background dark:to-purple-950/10 border border-purple-100 dark:border-purple-900/40 rounded-3xl p-6 space-y-6 sticky top-6">
                           <div className="flex flex-col items-center gap-2">
                             <h4 className="text-xs font-black text-purple-400 dark:text-purple-500 uppercase tracking-[0.4em] text-center">Nuevo Registro</h4>
                             {isSuper && (
@@ -1904,7 +2040,7 @@ export default function Formularios({ onBack, initialPolitica }: FormulariosProp
                             className="w-full flex items-start gap-3 p-4 text-left cursor-pointer hover:bg-slate-50/80 dark:hover:bg-accent/40 transition-colors"
                             aria-expanded={isOpen}
                           >
-                            <div className="w-1.5 h-full min-h-[2.5rem] bg-purple-600 rounded-full shrink-0 self-stretch" />
+                            <div className="w-1.5 h-full min-h-10 bg-purple-600 rounded-full shrink-0 self-stretch" />
                             <div className="flex-1 min-w-0">
                               <p
                                 className={`text-sm font-black text-foreground leading-snug ${

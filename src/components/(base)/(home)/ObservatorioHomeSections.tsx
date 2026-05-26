@@ -8,13 +8,14 @@ import {
   AnimatePresence,
   useInView,
 } from "framer-motion";
-import { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import { useRef, useState, useEffect, useCallback, useMemo, type RefObject, type ReactNode } from "react";
 import { Plus, Users, BarChart3, Building2, ExternalLink, Facebook, Youtube } from "lucide-react";
 import AnimatedIcon from "@/components/ui/AnimatedIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
 import { cn } from "@/lib/utils";
 import { AuroraText } from "@/components/ui/aurora-text";
+import { TextAnimate } from "@/components/ui/text-animate";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import {
   getPublicObsStats,
@@ -22,6 +23,7 @@ import {
 } from "@/app/obs-public-actions";
 import { softBarColor } from "@/components/(SIGET)/observatorio/reportes/lib/chart-colors";
 import { TrifinioDottedMapSection } from "@/components/(base)/(home)/TrifinioDottedMapSection";
+import OrganizacionesLogoCintillo from "@/components/(SIGET)/observatorio/OrganizacionesLogoCintillo";
 
 function fmt(n: number) {
   return new Intl.NumberFormat("es-GT").format(n);
@@ -136,14 +138,17 @@ function SectionLabel({
   );
 }
 
-function SectionDivider() {
+function SectionDivider({ className }: { className?: string }) {
   return (
     <motion.div
       initial={{ scaleX: 0 }}
       whileInView={{ scaleX: 1 }}
       viewport={{ once: false, amount: 0.5 }}
       transition={{ duration: 0.6, delay: 0.2 }}
-      className="mx-auto mt-4 h-0.5 w-12 origin-left rounded-full bg-celeste-trifinio"
+      className={cn(
+        "mx-auto mt-4 h-0.5 w-12 origin-left rounded-full bg-celeste-trifinio",
+        className,
+      )}
     />
   );
 }
@@ -209,11 +214,228 @@ function AccederObservatorioButton({
 
 /* ─── parallax banner ─── */
 
+const BANNER_TITLE_ANIM_DURATION = 2;
+const BANNER_CHAR_DURATION = 0.65;
+const BANNER_SEQ_GAP = 0.06;
+
+function bannerChainDelay(previousDelay: number, previousDuration: number) {
+  return previousDelay + previousDuration + BANNER_SEQ_GAP;
+}
+
+function BannerHeroSequence({
+  label,
+  compact = false,
+}: {
+  label: string;
+  compact?: boolean;
+}) {
+  const observatorioText = `— ${label} —`;
+  const aguaText = "\u201CAgua sin fronteras\u201D";
+  const countriesText = "El Salvador · Guatemala · Honduras";
+
+  const obsDelay = 0;
+  const planDelay = bannerChainDelay(obsDelay, BANNER_CHAR_DURATION);
+  const aguaDelay = bannerChainDelay(planDelay, BANNER_CHAR_DURATION);
+  const lineDelay = bannerChainDelay(aguaDelay, BANNER_CHAR_DURATION);
+  const countriesDelay = lineDelay + 0.55;
+
+  const obsLabelClass = cn(
+    "font-black uppercase tracking-[0.35em] text-white drop-shadow-lg",
+    compact
+      ? "mb-10 text-base sm:text-lg"
+      : "mb-12 text-xl md:mb-14 md:text-2xl lg:text-3xl",
+  );
+
+  const planClass =
+    "min-h-[1.1em] w-full whitespace-nowrap text-center font-black leading-[0.95] text-white drop-shadow-xl";
+  const planStyle = {
+    fontFamily: "'Arial Black', sans-serif",
+    fontSize: compact
+      ? "clamp(2rem, 8.5vw, 3.25rem)"
+      : "clamp(2.75rem, 11vw, 4.25rem)",
+  };
+  const aguaClass =
+    "mt-2 min-h-[1.2em] w-full text-center font-bold italic leading-tight text-white drop-shadow-lg";
+  const aguaStyle = {
+    fontFamily: "Arial, sans-serif",
+    fontSize: compact
+      ? "clamp(1.15rem, 5vw, 1.75rem)"
+      : "clamp(1.5rem, 6vw, 2.5rem)",
+  };
+  const countriesClass = cn(
+    "mt-3 min-h-[1.2em] w-full text-center font-semibold text-white/85 drop-shadow-lg",
+    compact
+      ? "max-w-full text-balance text-[clamp(0.8125rem,5.5vw,1.125rem)] tracking-[0.12em] max-[380px]:whitespace-normal sm:whitespace-nowrap"
+      : "whitespace-nowrap tracking-[0.18em]",
+  );
+  const countriesStyle = {
+    fontFamily: "Arial, sans-serif",
+    fontSize: compact ? undefined : "clamp(0.9rem, 3.5vw, 1.35rem)",
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-col items-center",
+        compact ? "-translate-y-6" : "-translate-y-10 md:-translate-y-16",
+      )}
+    >
+      <TextAnimate
+        animation="blurIn"
+        as="p"
+        by="character"
+        duration={BANNER_CHAR_DURATION}
+        delay={obsDelay}
+        startOnView
+        className={obsLabelClass}
+      >
+        {observatorioText}
+      </TextAnimate>
+
+      <div
+        className={cn(
+          "flex w-full items-center justify-center",
+          compact
+            ? "flex-col gap-3 px-2"
+            : "flex-col gap-3 md:flex-row md:gap-3 lg:gap-4",
+        )}
+      >
+        <motion.img
+          initial={{ opacity: 0, scale: 0.82, filter: "blur(10px)" }}
+          whileInView={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+          viewport={{ once: false, amount: 0.3 }}
+          transition={{ duration: 0.35, delay: planDelay, ease: "easeOut" }}
+          src="/trifinio/logo.png"
+          alt="Plan Trifinio"
+          className={cn(
+            "shrink-0 object-contain drop-shadow-2xl",
+            compact ? "size-28 sm:size-32" : "size-32 md:size-[180px] lg:size-[200px]",
+          )}
+        />
+        <div className="flex min-w-0 w-full flex-col items-center text-center md:w-auto">
+          <TextAnimate
+            animation="blurIn"
+            as="p"
+            by="character"
+            duration={BANNER_CHAR_DURATION}
+            delay={planDelay}
+            startOnView
+            className={planClass}
+            style={planStyle}
+          >
+            Plan Trifinio
+          </TextAnimate>
+
+          <TextAnimate
+            animation="blurIn"
+            as="p"
+            by="character"
+            duration={BANNER_CHAR_DURATION}
+            delay={aguaDelay}
+            startOnView
+            className={aguaClass}
+            style={aguaStyle}
+          >
+            {aguaText}
+          </TextAnimate>
+
+          <div className="mt-3 grid w-max max-w-full grid-cols-1">
+            <div
+              className={cn(
+                "col-start-1 row-start-1 mb-3 w-full min-w-0 self-end",
+                compact ? "h-px" : "h-[2px]",
+              )}
+              aria-hidden
+            >
+              <motion.div
+                initial={{ scaleX: 0 }}
+                whileInView={{ scaleX: 1 }}
+                viewport={{ once: false, amount: 0.3 }}
+                transition={{ duration: 0.55, delay: lineDelay, ease: "easeOut" }}
+                className="h-full w-full origin-left bg-white"
+              />
+            </div>
+
+            <TextAnimate
+              animation="blurIn"
+              as="p"
+              by="character"
+              duration={BANNER_CHAR_DURATION}
+              delay={countriesDelay}
+              startOnView
+              className={cn(
+                countriesClass,
+                "col-start-1 row-start-2 mt-0 w-max max-w-full justify-self-center",
+              )}
+              style={countriesStyle}
+            >
+              {countriesText}
+            </TextAnimate>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BannerLabel({
+  label,
+  compact = false,
+}: {
+  label: string;
+  compact?: boolean;
+}) {
+  return (
+    <TextAnimate
+      animation="blurIn"
+      as="p"
+      by="word"
+      duration={1.2}
+      delay={0}
+      startOnView
+      className={cn(
+        "mb-3 font-black uppercase tracking-[0.35em] text-white drop-shadow-lg",
+        compact ? "text-xs sm:text-sm" : "mb-5 text-base md:text-lg lg:text-xl",
+      )}
+    >
+      {`— ${label} —`}
+    </TextAnimate>
+  );
+}
+
+function BannerTitle({
+  title,
+  compact = false,
+}: {
+  title: string;
+  compact?: boolean;
+}) {
+  return (
+    <TextAnimate
+      animation="blurIn"
+      as="h1"
+      by="character"
+      duration={BANNER_TITLE_ANIM_DURATION}
+      startOnView
+      className={cn(
+        "font-black text-white leading-tight drop-shadow-xl",
+        compact
+          ? "mx-auto w-full max-w-full text-balance text-center text-[clamp(0.6875rem,4.2vw,2.75rem)] tracking-tight max-[380px]:whitespace-normal sm:whitespace-nowrap"
+          : "whitespace-nowrap text-6xl lg:text-7xl xl:text-8xl",
+      )}
+      style={{ fontFamily: "'Arial Black', sans-serif", color: "#ffffff" }}
+    >
+      {title}
+    </TextAnimate>
+  );
+}
+
 function FullWidthImageBanner({
   src,
   alt,
   overlay = "from-[#0a1628]/80 via-[#0a1628]/40 to-transparent",
   label,
+  showPlanTrifinioBrand = false,
   title,
   imageClassName,
   fixedBackground = false,
@@ -222,6 +444,7 @@ function FullWidthImageBanner({
   alt: string;
   overlay?: string;
   label?: string;
+  showPlanTrifinioBrand?: boolean;
   title?: string;
   imageClassName?: string;
   fixedBackground?: boolean;
@@ -233,11 +456,6 @@ function FullWidthImageBanner({
   });
   const imgY = useTransform(scrollYProgress, [0, 1], ["-12%", "12%"]);
   const textY = useTransform(scrollYProgress, [0, 1], ["20px", "-20px"]);
-  const textOpacity = useTransform(
-    scrollYProgress,
-    [0.2, 0.45, 0.55, 0.8],
-    [0, 1, 1, 0],
-  );
   const fixedBgOpacity = useTransform(scrollYProgress, [0.5, 0.88], [1, 0]);
 
   return (
@@ -254,17 +472,15 @@ function FullWidthImageBanner({
             "absolute inset-0 bg-linear-to-b from-[#0a1628]/60 via-transparent to-[#0a1628]/60",
           )}
         />
-        {(label || title) && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center px-4 text-center">
-            {label && (
-              <p className="mb-3 text-[10px] font-black uppercase tracking-[0.3em] text-white/90 drop-shadow-lg">
-                — {label} —
-              </p>
-            )}
-            {title && (
-              <h3 className="text-xl font-black text-white leading-tight drop-shadow-xl">
-                {title}
-              </h3>
+        {(label || title || showPlanTrifinioBrand) && (
+          <div className="absolute inset-0 flex w-full min-w-0 flex-col items-center justify-center px-4 text-center">
+            {showPlanTrifinioBrand && label ? (
+              <BannerHeroSequence label={label} compact />
+            ) : (
+              <>
+                {label && <BannerLabel label={label} compact />}
+                {title && <BannerTitle title={title} compact />}
+              </>
             )}
           </div>
         )}
@@ -295,20 +511,18 @@ function FullWidthImageBanner({
               />
               <div className={cn("absolute inset-0 bg-linear-to-r", overlay)} />
             </motion.div>
-            {(label || title) && (
+            {(label || title || showPlanTrifinioBrand) && (
               <motion.div
-                style={{ y: textY, opacity: textOpacity }}
+                style={{ y: textY }}
                 className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center px-6 text-center"
               >
-                {label && (
-                  <p className="mb-5 text-sm font-black uppercase tracking-[0.35em] text-white/90 drop-shadow-lg">
-                    — {label} —
-                  </p>
-                )}
-                {title && (
-                  <h3 className="whitespace-nowrap text-5xl lg:text-6xl font-black text-white leading-tight drop-shadow-xl">
-                    {title}
-                  </h3>
+                {showPlanTrifinioBrand && label ? (
+                  <BannerHeroSequence label={label} />
+                ) : (
+                  <>
+                    {label && <BannerLabel label={label} />}
+                    {title && <BannerTitle title={title} />}
+                  </>
                 )}
               </motion.div>
             )}
@@ -325,20 +539,18 @@ function FullWidthImageBanner({
               )}
             />
             <div className={cn("absolute inset-0 bg-linear-to-r", overlay)} />
-            {(label || title) && (
+            {(label || title || showPlanTrifinioBrand) && (
               <motion.div
-                style={{ y: textY, opacity: textOpacity }}
+                style={{ y: textY }}
                 className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center"
               >
-                {label && (
-                  <p className="mb-5 text-sm font-black uppercase tracking-[0.35em] text-white/90 drop-shadow-lg">
-                    — {label} —
-                  </p>
-                )}
-                {title && (
-                  <h3 className="whitespace-nowrap text-5xl lg:text-6xl font-black text-white leading-tight drop-shadow-xl">
-                    {title}
-                  </h3>
+                {showPlanTrifinioBrand && label ? (
+                  <BannerHeroSequence label={label} />
+                ) : (
+                  <>
+                    {label && <BannerLabel label={label} />}
+                    {title && <BannerTitle title={title} />}
+                  </>
                 )}
               </motion.div>
             )}
@@ -561,25 +773,21 @@ function CampoStatCell({
   loading: boolean;
 }) {
   return (
-    <div className="flex items-start gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+    <div className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 border border-white/10 min-w-0">
       <div
-        className="w-3 h-3 rounded-full shadow-sm shrink-0 mt-0.5"
+        className="w-2.5 h-2.5 rounded-full shadow-sm shrink-0"
         style={{ backgroundColor: color }}
       />
-      <div className="min-w-0 flex-1">
-        <span className="text-xs font-semibold text-white/80 leading-snug block">
-          {name}
-        </span>
-      </div>
-      <div className="flex flex-col items-end shrink-0 gap-0.5">
-        <span className="text-xs font-bold text-white/45">{pct}%</span>
-        <AnimatedNumber
-          value={value}
-          active={inView}
-          loading={loading}
-          className="text-sm font-black text-white font-mono"
-        />
-      </div>
+      <span className="text-xs font-semibold text-white/80 truncate flex-1 min-w-0">
+        {name}
+      </span>
+      <span className="text-xs font-bold text-white/45 shrink-0">{pct}%</span>
+      <AnimatedNumber
+        value={value}
+        active={inView}
+        loading={loading}
+        className="text-sm font-black text-white font-mono shrink-0"
+      />
     </div>
   );
 }
@@ -793,15 +1001,176 @@ function CampoBreakdownPanel({
   );
 }
 
+function MonitoreoFilterCell({
+  label,
+  value,
+  onChange,
+  children,
+  className,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 min-w-0",
+        className,
+      )}
+    >
+      <span className="text-[10px] font-black uppercase tracking-widest text-celeste-trifinio shrink-0">
+        {label}
+      </span>
+      <div className="relative min-w-0">
+        <select
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full appearance-none bg-transparent pr-5 text-sm font-bold text-white cursor-pointer focus:outline-none text-right"
+        >
+          {children}
+        </select>
+        <span className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-white/60 text-xs">
+          ▾
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function MonitoreoStatInline({
+  icon: Icon,
+  label,
+  value,
+  loading,
+  accent,
+  bg,
+  inView,
+}: {
+  icon: React.ComponentType<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  value: number;
+  loading: boolean;
+  accent: string;
+  bg: string;
+  inView: boolean;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-1 rounded-xl border border-white/10 px-3 py-2.5 min-w-0",
+        "lg:flex-row lg:items-center lg:gap-2 lg:flex-1 lg:min-w-[140px]",
+        bg,
+      )}
+    >
+      <div className="flex items-center gap-1.5 min-w-0 lg:contents">
+        <Icon className={cn("size-3.5 shrink-0 lg:size-4", accent)} strokeWidth={2} />
+        <span
+          className={cn(
+            "text-[10px] font-black uppercase tracking-widest leading-tight",
+            accent,
+          )}
+        >
+          {label}
+        </span>
+      </div>
+      {loading ? (
+        <Skeleton className="h-7 w-16 rounded-md lg:ml-auto lg:h-6 lg:w-14" />
+      ) : (
+        <AnimatedNumber
+          value={value}
+          active={inView}
+          loading={false}
+          className="text-xl font-black text-white lg:ml-auto lg:text-lg"
+        />
+      )}
+    </div>
+  );
+}
+
 function MonitoreoDesglosePanel({
   stats,
   loading,
+  selectedYear,
+  selectedMonth,
+  onYearChange,
+  onMonthChange,
+  statsRef,
+  statsInView,
 }: {
   stats: ObsPublicStats | null;
   loading: boolean;
+  selectedYear: number;
+  selectedMonth: number;
+  onYearChange: (year: number) => void;
+  onMonthChange: (month: number) => void;
+  statsRef: RefObject<HTMLDivElement | null>;
+  statsInView: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-sm">
+      <div ref={statsRef} className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-stretch">
+        <div className="grid grid-cols-2 gap-3 lg:flex lg:shrink-0">
+          <MonitoreoFilterCell
+            label="Año"
+            value={selectedYear}
+            onChange={onYearChange}
+          >
+            <option value={0}>Todos</option>
+            {(stats?.availableYears ?? []).map((yr) => (
+              <option key={yr} value={yr}>
+                {yr}
+              </option>
+            ))}
+          </MonitoreoFilterCell>
+
+          <MonitoreoFilterCell
+            label="Mes"
+            value={selectedMonth}
+            onChange={onMonthChange}
+          >
+            <option value={0}>Todos</option>
+            {(stats?.availableMonths ?? []).map((m) => (
+              <option key={m} value={m}>
+                {MONTH_NAMES[m]}
+              </option>
+            ))}
+          </MonitoreoFilterCell>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 lg:flex lg:flex-1 lg:min-w-0">
+          <MonitoreoStatInline
+            icon={Users}
+            label="Total Atenciones"
+            value={stats?.totalAtenciones ?? 0}
+            loading={loading && !stats}
+            accent="text-violet-400"
+            bg="bg-violet-500/15"
+            inView={statsInView}
+          />
+          <MonitoreoStatInline
+            icon={BarChart3}
+            label="Registros"
+            value={stats?.totalRegistros ?? 0}
+            loading={loading && !stats}
+            accent="text-celeste-trifinio"
+            bg="bg-azul-trifinio/15"
+            inView={statsInView}
+          />
+          <MonitoreoStatInline
+            icon={Building2}
+            label="Organizaciones"
+            value={stats?.totalOrganizaciones ?? 0}
+            loading={loading && !stats}
+            accent="text-celeste-trifinio"
+            bg="bg-celeste-trifinio/15"
+            inView={statsInView}
+          />
+        </div>
+      </div>
+
       <div className="grid gap-6 md:grid-cols-2">
         <DonutChart
           data={stats?.byNacionalidad ?? []}
@@ -889,12 +1258,30 @@ function WhyObservatorioSection() {
   };
 
   return (
-    <section className="relative z-10 flex w-full flex-col justify-start overflow-hidden bg-[#0a1628] px-6 md:px-12 lg:px-16 pt-6 md:pt-36 pb-20 md:min-h-[130vh]">
+    <section className="relative z-10 flex w-full flex-col justify-start overflow-hidden bg-[#0a1628] px-6 md:px-12 lg:px-16 pt-3 md:pt-18 pb-20 md:min-h-[130vh]">
       <DarkSectionBackground />
       <div className="relative z-10 mx-auto max-w-6xl w-full">
         {/* cabecera */}
         <div className="text-center">
-          <SectionLabel>Movilidad Humana</SectionLabel>
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: false, amount: 0.5 }}
+            transition={{ duration: 0.8 }}
+            className="flex items-center justify-center gap-3 md:gap-5"
+          >
+            <span
+              className="h-0 w-6 shrink-0 border-t border-celeste-trifinio md:w-8"
+              aria-hidden
+            />
+            <p className="text-lg font-bold uppercase tracking-[0.18em] text-celeste-trifinio md:text-2xl lg:text-3xl">
+              Movilidad Humana
+            </p>
+            <span
+              className="h-0 w-6 shrink-0 border-t border-celeste-trifinio md:w-8"
+              aria-hidden
+            />
+          </motion.div>
           <motion.h2
             initial={{ opacity: 0, y: 40 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -904,7 +1291,7 @@ function WhyObservatorioSection() {
           >
             Monitoreo integral de las atenciones
           </motion.h2>
-          <SectionDivider />
+          <SectionDivider className="mt-5 h-0 w-56 rounded-none border-t border-celeste-trifinio bg-transparent sm:w-72 md:w-96 lg:w-lg" />
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -941,7 +1328,7 @@ function WhyObservatorioSection() {
                   delay: 0.2 + idx * 0.15,
                   type: "spring",
                 }}
-                className="shrink-0 flex size-16 md:size-[4.5rem] items-center justify-center rounded-2xl bg-[#e8ecf0] dark:bg-[#e8ecf0] pointer-events-none"
+                className="shrink-0 flex size-16 md:size-18 items-center justify-center rounded-2xl bg-[#e8ecf0] dark:bg-[#e8ecf0] pointer-events-none"
               >
                 <AnimatedIcon
                   iconKey={card.iconKey}
@@ -962,122 +1349,6 @@ function WhyObservatorioSection() {
           ))}
         </div>
 
-        {/* filtros + stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false, amount: 0.2 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="mt-10 flex flex-col gap-4"
-        >
-          {/* mobile: año|mes 50/50 → atenciones full → registros|org 50/50
-              desktop: año/mes apilados + 3 stats en fila */}
-          <div
-            ref={statsRef}
-            className="flex flex-col lg:flex-row items-stretch gap-4 w-full"
-          >
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3 shrink-0">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-celeste-trifinio">
-                  Año
-                </span>
-                <div className="relative">
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => handleYear(Number(e.target.value))}
-                    className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-sm appearance-none pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-celeste-trifinio/30 lg:min-w-[140px]"
-                  >
-                    <option value={0}>Todos</option>
-                    {(stats?.availableYears ?? []).map((yr) => (
-                      <option key={yr} value={yr}>
-                        {yr}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 text-xs">
-                    ▾
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[10px] font-black uppercase tracking-widest text-celeste-trifinio">
-                  Mes
-                </span>
-                <div className="relative">
-                  <select
-                    value={selectedMonth}
-                    onChange={(e) => handleMonth(Number(e.target.value))}
-                    className="w-full rounded-2xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-bold text-white shadow-sm appearance-none pr-8 cursor-pointer focus:outline-none focus:ring-2 focus:ring-celeste-trifinio/30 lg:min-w-[140px]"
-                  >
-                    <option value={0}>Todos</option>
-                    {(stats?.availableMonths ?? []).map((m) => (
-                      <option key={m} value={m}>
-                        {MONTH_NAMES[m]}
-                      </option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-white/60 text-xs">
-                    ▾
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <motion.div
-              key={`stats-${selectedYear}-${selectedMonth}`}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className="flex-1 grid grid-cols-2 lg:grid-cols-3 gap-4 min-w-0"
-            >
-              {loading && !stats ? (
-                <>
-                  <StatCardSkeleton className="col-span-2 lg:col-span-1 h-full justify-center" />
-                  <StatCardSkeleton className="h-full justify-center" />
-                  <StatCardSkeleton className="h-full justify-center" />
-                </>
-              ) : (
-                <>
-                  <StatCard
-                    icon={Users}
-                    label="Total Atenciones"
-                    value={stats?.totalAtenciones ?? 0}
-                    loading={loading}
-                    accent="text-violet-400"
-                    bg="bg-violet-500/15"
-                    inView={statsInView}
-                    variant="dark"
-                    className="col-span-2 lg:col-span-1 h-full justify-center"
-                  />
-                  <StatCard
-                    icon={BarChart3}
-                    label="Registros"
-                    value={stats?.totalRegistros ?? 0}
-                    loading={loading}
-                    accent="text-celeste-trifinio"
-                    bg="bg-azul-trifinio/15"
-                    inView={statsInView}
-                    variant="dark"
-                    className="h-full justify-center"
-                  />
-                  <StatCard
-                    icon={Building2}
-                    label="Organizaciones"
-                    value={stats?.totalOrganizaciones ?? 0}
-                    loading={loading}
-                    accent="text-celeste-trifinio"
-                    bg="bg-celeste-trifinio/15"
-                    inView={statsInView}
-                    variant="dark"
-                    className="h-full justify-center"
-                  />
-                </>
-              )}
-            </motion.div>
-          </div>
-        </motion.div>
-
         {/* desglose */}
         <motion.div
           ref={donutsRef}
@@ -1087,7 +1358,16 @@ function WhyObservatorioSection() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="mt-10"
         >
-          <MonitoreoDesglosePanel stats={stats} loading={loading} />
+          <MonitoreoDesglosePanel
+            stats={stats}
+            loading={loading}
+            selectedYear={selectedYear}
+            selectedMonth={selectedMonth}
+            onYearChange={handleYear}
+            onMonthChange={handleMonth}
+            statsRef={statsRef}
+            statsInView={statsInView}
+          />
         </motion.div>
       </div>
     </section>
@@ -1126,7 +1406,7 @@ const ORBIT_ICONS = [
     id: "obs-icon-lt",
     iconKey: "btfhpqdm",
     slot: "left-top" as OrbitSlot,
-    sizeClass: "size-16 md:size-32",
+    sizeClass: "size-20 md:size-32",
     side: "left" as OrbitHintSide,
     align: "top" as OrbitHintAlign,
     description:
@@ -1138,7 +1418,7 @@ const ORBIT_ICONS = [
     id: "obs-icon-lm",
     iconKey: "sagolbcs",
     slot: "left-mid" as OrbitSlot,
-    sizeClass: "size-16 md:size-32",
+    sizeClass: "size-20 md:size-32",
     side: "left" as OrbitHintSide,
     align: "center" as OrbitHintAlign,
     description:
@@ -1150,7 +1430,7 @@ const ORBIT_ICONS = [
     id: "obs-icon-lb",
     iconKey: "vnqckbbs",
     slot: "left-bot" as OrbitSlot,
-    sizeClass: "size-16 md:size-28",
+    sizeClass: "size-20 md:size-28",
     side: "left" as OrbitHintSide,
     align: "bottom" as OrbitHintAlign,
     description:
@@ -1167,7 +1447,7 @@ const ORBIT_ICONS = [
     id: "obs-icon-rt",
     iconKey: "joegeleh",
     slot: "right-top" as OrbitSlot,
-    sizeClass: "size-16 md:size-28",
+    sizeClass: "size-20 md:size-28",
     side: "right" as OrbitHintSide,
     align: "top" as OrbitHintAlign,
     description:
@@ -1179,7 +1459,7 @@ const ORBIT_ICONS = [
     id: "obs-icon-rm",
     iconKey: "byxbxspd",
     slot: "right-mid" as OrbitSlot,
-    sizeClass: "size-16 md:size-28",
+    sizeClass: "size-20 md:size-28",
     side: "right" as OrbitHintSide,
     align: "center" as OrbitHintAlign,
     description:
@@ -1191,7 +1471,7 @@ const ORBIT_ICONS = [
     id: "obs-icon-rb",
     iconKey: "wvhscmei",
     slot: "right-bot" as OrbitSlot,
-    sizeClass: "size-16 md:size-28",
+    sizeClass: "size-20 md:size-28",
     side: "right" as OrbitHintSide,
     align: "bottom" as OrbitHintAlign,
     description:
@@ -1252,7 +1532,7 @@ function ObservatorioIconOrbit() {
     <div className="w-full">
       <div
         ref={orbitRef}
-        className="relative mx-auto my-6 md:my-16 w-full max-w-[min(92vw,22rem)] md:max-w-2xl aspect-square overflow-hidden md:overflow-visible px-1 md:px-10"
+        className="relative mx-auto my-4 md:my-16 w-full max-w-none md:max-w-2xl aspect-square overflow-visible px-0 md:px-10"
       >
         <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center">
           <motion.div
@@ -1260,14 +1540,14 @@ function ObservatorioIconOrbit() {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 1.2, delay: 0.3 }}
-            className="absolute size-36 md:size-72 rounded-full border border-azul-trifinio/40"
+            className="absolute size-44 md:size-72 rounded-full border border-azul-trifinio/40"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.6 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: false, amount: 0.2 }}
             transition={{ duration: 1.4, delay: 0.5 }}
-            className="absolute size-44 md:size-96 rounded-full border border-azul-trifinio/25"
+            className="absolute size-52 md:size-96 rounded-full border border-azul-trifinio/25"
           />
         </div>
 
@@ -1283,7 +1563,7 @@ function ObservatorioIconOrbit() {
               type: "spring",
               stiffness: 120,
             }}
-            className="pointer-events-auto relative flex size-24 md:size-44 items-center justify-center"
+            className="pointer-events-auto relative flex size-32 md:size-44 items-center justify-center"
           >
             <motion.div
               animate={{ y: [0, -6, 0] }}
@@ -1368,7 +1648,7 @@ function ObservatorioIconOrbit() {
         </motion.div>
       </div>
 
-      <ul className="mt-8 mb-12 space-y-4 px-3 md:hidden">
+      <ul className="mt-6 mb-12 w-full space-y-4 md:hidden">
         {ORBIT_ICONS.map((icon) => (
           <li key={`${icon.id}-mobile`} className="flex items-start gap-4">
             <div
@@ -1409,21 +1689,40 @@ function ModulosObservatorioSection() {
   ];
 
   return (
-    <section className="relative flex w-full flex-col justify-start md:justify-center overflow-x-hidden bg-background px-6 md:px-12 lg:px-16 pt-6 pb-20 md:py-36 md:min-h-[130vh]">
+    <section className="relative flex w-full flex-col justify-start overflow-x-hidden bg-background px-6 md:px-12 lg:px-16 pt-0 pb-20 md:pb-36 md:min-h-[130vh]">
       <LightSectionBackground />
 
-      <div className="relative z-10 mx-auto max-w-6xl w-full text-center">
-        <SectionLabel>Observatorio Web</SectionLabel>
+      <div className="relative z-10 mx-auto max-w-6xl w-full py-4 text-center md:py-5">
+        <TextAnimate
+          animation="blurIn"
+          as="p"
+          by="word"
+          duration={1.2}
+          startOnView
+          className="text-[11px] font-light uppercase tracking-[0.25em] text-azul-trifinio md:w-full md:whitespace-nowrap md:font-light md:tracking-[0.12em] md:text-[clamp(2rem,4.75vw,4rem)]"
+        >
+          — Observatorio Web —
+        </TextAnimate>
 
         <motion.h2
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.4 }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="mt-4 text-4xl md:text-5xl lg:text-6xl font-black text-foreground leading-tight"
+          className="mt-4 text-4xl font-black leading-[0.92] tracking-[-0.025em] text-foreground md:text-6xl lg:text-7xl xl:text-8xl"
         >
-          Observatorio Web de Plan Trifinio
+          de Plan Trifinio
         </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: false, amount: 0.3 }}
+          transition={{ duration: 0.7, delay: 0.2 }}
+          className="mt-1 text-2xl font-bold leading-[1.05] tracking-[-0.015em] text-foreground md:mt-1.5 md:text-4xl lg:text-[2.75rem]"
+        >
+          Es una plataforma tecnológica e interactiva
+        </motion.p>
       </div>
 
       <motion.div
@@ -1431,18 +1730,8 @@ function ModulosObservatorioSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.2 }}
         transition={{ duration: 0.7, delay: 0.15 }}
-        className="relative z-10 mx-auto mt-10 md:mt-14 flex w-[65%] max-w-[65%] flex-col items-center text-center"
+        className="relative z-10 mx-auto mt-10 md:mt-8 flex w-full max-w-full flex-col items-center text-center max-md:mt-6 md:w-[65%] md:max-w-[65%]"
       >
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: false, amount: 0.3 }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-          className="text-2xl md:text-4xl lg:text-[2.75rem] font-black text-foreground leading-tight tracking-tight"
-        >
-          Es una plataforma tecnológica e interactiva
-        </motion.p>
-
         <ObservatorioIconOrbit />
 
         <div className="w-full text-left">
@@ -1485,7 +1774,7 @@ function ModulosObservatorioSection() {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: false, amount: 0.15 }}
         transition={{ duration: 0.75 }}
-        className="relative z-10 mx-auto mt-16 md:mt-20 w-[65%] max-w-[65%] border-t border-border pt-14 md:pt-20 pb-4 md:pb-6"
+        className="relative z-10 mx-auto mt-16 md:mt-20 w-full max-w-full border-t border-border pt-14 md:pt-20 pb-4 md:pb-6 md:w-[65%] md:max-w-[65%]"
       >
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -1514,36 +1803,19 @@ function ModulosObservatorioSection() {
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: false, amount: 0.2 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="relative flex w-full min-h-72 md:min-h-80 flex-col overflow-hidden rounded-2xl border border-azul-trifinio bg-azul-trifinio pt-7 shadow-sm dark:border-azul-trifinio/30 dark:bg-transparent dark:bg-linear-to-br dark:from-azul-trifinio/45 dark:via-azul-trifinio/35 dark:to-celeste-trifinio/50"
+              className="relative flex w-full min-h-88 md:min-h-80 flex-col overflow-hidden rounded-2xl border border-azul-trifinio bg-azul-trifinio pt-7 shadow-sm dark:border-azul-trifinio/30 dark:bg-transparent dark:bg-linear-to-br dark:from-azul-trifinio/45 dark:via-azul-trifinio/35 dark:to-celeste-trifinio/50"
             >
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_50%_28%,rgba(26,149,211,0.22),transparent_62%)] opacity-0 dark:opacity-100" />
 
-              <div className="relative flex flex-1 flex-col items-center justify-end px-6 pb-5">
+              <div className="relative flex flex-1 flex-col items-center justify-end px-2 pb-5 md:px-6">
                 {/* abanico de iconos */}
-                <div className="relative h-36 w-full max-w-[320px] md:h-40">
-                  <svg
-                    className="pointer-events-none absolute inset-0 size-full text-white/40 dark:text-white/35"
-                    viewBox="0 0 100 100"
-                    preserveAspectRatio="xMidYMid meet"
-                    fill="none"
-                    aria-hidden
-                  >
-                    <path
-                      d="M 14 72 Q 50 20 86 72"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeDasharray="0 9"
-                      strokeLinecap="round"
-                      shapeRendering="geometricPrecision"
-                    />
-                  </svg>
-
+                <div className="relative h-52 w-full max-w-full md:h-56 md:max-w-[380px]">
                   <motion.div
                     initial={{ opacity: 0, y: 16, rotate: -24 }}
                     whileInView={{ opacity: 1, y: 0, rotate: -18 }}
                     viewport={{ once: false, amount: 0.3 }}
                     transition={{ duration: 0.55, delay: 0.2, type: "spring", stiffness: 200 }}
-                    className="absolute bottom-0 left-[6%] flex size-14 md:size-16 items-center justify-center pointer-events-none"
+                    className="absolute bottom-0 left-0 flex size-28 md:size-32 items-center justify-center pointer-events-none"
                   >
                     <motion.div
                       animate={{ y: [0, -4, 0] }}
@@ -1564,7 +1836,7 @@ function ModulosObservatorioSection() {
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: false, amount: 0.3 }}
                     transition={{ duration: 0.6, delay: 0.12, type: "spring", stiffness: 180 }}
-                    className="absolute left-1/2 top-0 flex size-16 md:size-20 -translate-x-1/2 items-center justify-center pointer-events-none"
+                    className="absolute left-1/2 top-0 flex size-32 md:size-36 -translate-x-1/2 items-center justify-center pointer-events-none"
                   >
                     <motion.div
                       animate={{ y: [0, -5, 0] }}
@@ -1585,7 +1857,7 @@ function ModulosObservatorioSection() {
                     whileInView={{ opacity: 1, y: 0, rotate: 18 }}
                     viewport={{ once: false, amount: 0.3 }}
                     transition={{ duration: 0.55, delay: 0.28, type: "spring", stiffness: 200 }}
-                    className="absolute bottom-0 right-[6%] flex size-14 md:size-16 items-center justify-center pointer-events-none"
+                    className="absolute bottom-0 right-0 flex size-28 md:size-32 items-center justify-center pointer-events-none"
                   >
                     <motion.div
                       animate={{ y: [0, -4, 0] }}
@@ -1677,7 +1949,7 @@ function FaqSection() {
   const [open, setOpen] = useState<number | null>(null);
 
   return (
-    <section className="flex w-full flex-col justify-start md:justify-center px-5 md:px-8 lg:px-10 xl:px-12 pt-12 pb-20 md:pt-24 md:pb-32 lg:pt-28 lg:pb-36 md:min-h-0">
+    <section className="flex w-full flex-col justify-start rounded-b-2xl bg-background px-5 max-md:overflow-hidden md:overflow-visible md:rounded-none md:bg-transparent md:px-8 lg:px-10 xl:px-12 pt-12 pb-20 md:pt-24 md:pb-32 lg:pt-28 lg:pb-36 md:min-h-0">
       <div className="mx-auto grid max-w-7xl w-full gap-12 lg:grid-cols-[1fr_1.12fr] lg:items-start lg:gap-16 xl:gap-20">
         {/* columna izquierda — texto + acordeón */}
         <div>
@@ -1775,7 +2047,7 @@ function FaqSection() {
               <img
                 src="/trifinio/hero-background2.jpg"
                 alt="Región Trifinio"
-                className="aspect-[4/5] xl:aspect-[5/6] w-full min-h-[520px] xl:min-h-[580px] object-cover object-center"
+                className="aspect-4/5 xl:aspect-5/6 w-full min-h-[520px] xl:min-h-[580px] object-cover object-center"
               />
               {/* badge sobre la imagen */}
               <div className="absolute bottom-8 left-8 right-8 rounded-2xl bg-white/10 px-6 py-5 backdrop-blur-md border border-white/20">
@@ -1981,45 +2253,50 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
             Plataforma tecnológica para la recolección, centralización, análisis
             y visualización de datos sobre movilidad humana en la región Trifinio.
           </p>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/60">
+          <p className="mt-4 w-full text-base font-black leading-snug text-white md:max-w-md md:text-sm md:font-normal md:leading-relaxed md:text-white/60">
             Sistema Integral de Gestión Trifinio (SIGET).
-
           </p>
         </div>
 
         {/* Columna 2 — Observatorio Web + Redes */}
         <div className="min-w-0 md:col-span-3">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio">
-            Observatorio Web
-          </p>
-          <ul className="mt-5 space-y-3.5">
-            {FOOTER_SIGET_LINKS.map((link) => (
-              <li key={link.label}>
-                <FooterLinkItem {...link} animatedUnderline />
-              </li>
-            ))}
-          </ul>
+          <div className="grid grid-cols-2 items-start gap-4 md:grid-cols-1 md:gap-0">
+            <div className="min-w-0">
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio">
+                Observatorio Web
+              </p>
+              <ul className="mt-5 space-y-3.5">
+                {FOOTER_SIGET_LINKS.map((link) => (
+                  <li key={link.label}>
+                    <FooterLinkItem {...link} animatedUnderline />
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-          <p className="mt-8 text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio">
-            Redes
-          </p>
-          <ul className="mt-5 space-y-3.5">
-            {FOOTER_SOCIAL.map(({ label, href, icon: Icon }) => (
-              <li key={label}>
-                <a
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-3 text-base font-semibold text-white/85 transition-colors hover:text-white md:text-lg"
-                >
-                  <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-celeste-trifinio transition-colors group-hover:border-celeste-trifinio/50 group-hover:bg-white/10">
-                    <Icon className="size-4" />
-                  </span>
-                  <FooterAnimatedLabel>{label}</FooterAnimatedLabel>
-                </a>
-              </li>
-            ))}
-          </ul>
+            <div className="min-w-0 text-right md:text-left">
+              <p className="text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio md:mt-8">
+                Redes
+              </p>
+              <ul className="mt-5 flex flex-col items-end space-y-3.5 md:items-start">
+                {FOOTER_SOCIAL.map(({ label, href, icon: Icon }) => (
+                  <li key={label}>
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group inline-flex items-center gap-3 text-base font-semibold text-white/85 transition-colors hover:text-white md:text-lg"
+                    >
+                      <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-celeste-trifinio transition-colors group-hover:border-celeste-trifinio/50 group-hover:bg-white/10">
+                        <Icon className="size-4" />
+                      </span>
+                      <FooterAnimatedLabel>{label}</FooterAnimatedLabel>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </div>
 
         {/* Columna 3 — Plan Trifinio (a la derecha) */}
@@ -2063,36 +2340,32 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
 
 /** Altura del footer fijo en desktop. */
 export const FOOTER_HEIGHT_VH = 50;
-/** El spacer controla cuánto sube el bloque blanco.
- *  Menor que FOOTER_HEIGHT_VH → el blanco se detiene antes (muestra más contenido blanco). */
-export const FOOTER_SCROLL_SPACER_VH = 38;
+/** Spacer desktop: un poco más alto que el footer para que el azul asome bajo las esquinas redondeadas del blanco. */
+export const FOOTER_SCROLL_SPACER_VH = 58;
+/** Scroll en móvil: ~100vh para que el bloque blanco suba y desaparezca por completo. */
+export const FOOTER_SCROLL_SPACER_MOBILE_VH = 100;
 
-export function ObservatorioFooterCurtain() {
+export function ObservatorioFooterCurtain({
+  revealed = false,
+}: {
+  revealed?: boolean;
+}) {
   return (
-    <>
-      {/* móvil — footer normal al final */}
-      <footer
-        className="relative z-10 w-full shrink-0 overflow-hidden bg-[#0a1628] md:hidden"
-        aria-label="Pie de página Plan Trifinio"
-      >
-        <DarkSectionBackground />
-        <div className="relative z-10">
-          <ObservatorioFooterContent className="pt-14" />
-        </div>
-      </footer>
-
-      {/* desktop — fijo abajo, detrás del contenido blanco; se revela al llegar al final */}
-      <footer
-        className="fixed bottom-0 left-0 z-0 hidden w-full overflow-hidden bg-[#0a1628] md:flex md:flex-col"
-        style={{ height: `${FOOTER_HEIGHT_VH}vh`, zoom: 1 / 0.9 }}
-        aria-label="Pie de página Plan Trifinio"
-      >
-        <DarkSectionBackground />
-        <div className="relative z-10 flex h-full w-full">
-          <ObservatorioFooterContent />
-        </div>
-      </footer>
-    </>
+    <footer
+      className="fixed bottom-0 left-0 z-0 flex h-[92vh] w-full flex-col overflow-hidden bg-[#0a1628] md:h-[50vh]"
+      style={{
+        zoom: 1 / 0.9,
+        opacity: revealed ? 1 : 0,
+        visibility: revealed ? "visible" : "hidden",
+        pointerEvents: revealed ? undefined : "none",
+      }}
+      aria-label="Pie de página Plan Trifinio"
+    >
+      <DarkSectionBackground />
+      <div className="relative z-10 flex h-full w-full overflow-y-auto md:overflow-visible">
+        <ObservatorioFooterContent className="pt-14 md:pt-0" />
+      </div>
+    </footer>
   );
 }
 
@@ -2107,14 +2380,16 @@ export function ObservatorioHomeSections() {
         src="/trifinio/hero-background2.jpg"
         alt="Panorama regional Trifinio"
         overlay="from-[#0a1628]/90 via-[#2c5f9b]/50 to-[#1a95d3]/30"
-        label="Región Trifinio"
-        title="El Salvador · Guatemala · Honduras"
+        label="Observatorio Web"
+        showPlanTrifinioBrand
         fixedBackground
       />
 
       <WhyObservatorioSection />
 
       <TrifinioDottedMapSection />
+
+      <OrganizacionesLogoCintillo variant="public" />
 
       <FaqSection />
     </>

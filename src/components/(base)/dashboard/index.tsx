@@ -15,62 +15,29 @@ import LogoTrifinio from "@/components/(SIGET)/logo/LogoTrifinio";
 import LogoTrifinioMobile from "@/components/(SIGET)/logo/LogoTrifinio-mobile";
 import VerPerfil from "@/components/(base)/(users)/profile/VerPerfil";
 import PassKeysModal from "@/components/(base)/layout/modals/PassKeysModal";
+import { useAppSettings } from "@/components/(base)/(settings)/hooks";
 import {
   User as UserIcon,
-  Fingerprint,
-  ScanFace,
   KeyRound,
 } from "lucide-react";
+import {
+  DASHBOARD_MODULES,
+  getVisibleDashboardModules,
+} from "@/components/(base)/dashboard/modules";
+import { cn } from "@/lib/utils";
 
-const MODULES = [
-  {
-    id: "observatorio",
-    title: "Observatorio",
-    subtitle: "Web de movilidad humana",
-    desc: "Visualización de datos y estadísticas regionales del SIGET.",
-    icon: "qqvpjphn",
-    href: "/siget/observatorio",
-    allowedRoles: ["super", "admin", "observatorio"],
-  },
-  {
-    id: "perfil",
-    title: "Gestión de",
-    subtitle: "Mi Perfil",
-    desc: "Actualización de credenciales y datos personales del usuario.",
-    icon: "btgcyfug",
-    href: "/siget/perfil",
-  },
-  {
-    id: "dispositivos",
-    title: "Gestión de",
-    subtitle: "Dispositivos",
-    desc: "Administración de dispositivos autorizados y configuración de llaves de acceso.",
-    icon: "gzqipvbr",
-    href: "/siget/admin/dispositivos",
-    requiresAdmin: true,
-  },
-  {
-    id: "usuarios",
-    title: "Gestión de",
-    subtitle: "Usuarios",
-    desc: "Control absoluto de perfiles, permisos y acceso al sistema.",
-    icon: "vxfekxur",
-    href: "/siget/admin/usuarios",
-    requiresAdmin: true,
-  },
-  {
-    id: "configuracion",
-    title: "Ajustes",
-    subtitle: "Avanzados",
-    desc: "Configuración y auditoría de variables del entorno SIGET.",
-    icon: "plusmrxr",
-    href: "/siget/admin/configuraciones",
-    requiresAdmin: true,
-  },
-];
+const MODULES = DASHBOARD_MODULES;
+
+const DASHBOARD_ICON_PLATE_CLASS =
+  "flex items-center justify-center dark:rounded-2xl dark:bg-white";
+
+const DASHBOARD_DOTTED_BG_CLASS =
+  "pointer-events-none bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(50%_0_0)_1px,transparent_1px)] opacity-60";
 
 export function Dashboard() {
   const { user, effectiveRole } = useUserContext();
+  const { data: appSettings } = useAppSettings();
+  const passkeysEnabled = appSettings?.enable_passkeys ?? false;
   const [activeId, setActiveId] = useState<string | null>(null);
   const [expandedPerfil, setExpandedPerfil] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -96,14 +63,7 @@ export function Dashboard() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const isSuperOrAdmin = ["super", "admin"].includes(effectiveRole);
-
-  const visibleModules = MODULES.filter((mod) => {
-    if (mod.requiresAdmin && !isSuperOrAdmin) return false;
-    if (mod.allowedRoles && !mod.allowedRoles.includes(effectiveRole))
-      return false;
-    return true;
-  });
+  const visibleModules = getVisibleDashboardModules(effectiveRole);
 
   const handleCardClick = (id: string, href: string) => {
     if (isMobile) {
@@ -118,7 +78,7 @@ export function Dashboard() {
   };
 
   const CardsGrid = () => (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6 w-full">
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full lg:flex lg:flex-nowrap lg:justify-center lg:items-stretch">
       {visibleModules.map((mod, index) => {
         const isActive = isMobile && activeId === mod.id;
         const isFirstMobile = isMobile && index === 0;
@@ -127,7 +87,7 @@ export function Dashboard() {
           <motion.div
             key={mod.id}
             className={[
-              "cursor-pointer w-full h-auto min-h-[400px] lg:h-[380px] relative",
+              "cursor-pointer w-full h-auto min-h-[400px] lg:h-[380px] lg:w-[280px] xl:w-[300px] lg:flex-none relative",
               isFirstMobile ? "-mt-[20%]" : "",
             ]
               .join(" ")
@@ -183,24 +143,22 @@ export function Dashboard() {
                             </p>
                           </div>
                         </button>
-                        <button
-                          onClick={() => setIsPasskeysOpen(true)}
-                          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/30 bg-white/15 hover:bg-white/25 transition-all cursor-pointer text-left"
-                        >
-                          <div className="flex items-center gap-1 shrink-0">
-                            <Fingerprint className="size-4 text-white/80" />
-                            <ScanFace className="size-4 text-white/80" />
-                            <KeyRound className="size-4 text-white/80" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-white">
-                              Ingreso Seguro
-                            </p>
-                            <p className="text-[10px] text-white/70">
-                              Administrar dispositivos
-                            </p>
-                          </div>
-                        </button>
+                        {passkeysEnabled && (
+                          <button
+                            onClick={() => setIsPasskeysOpen(true)}
+                            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-white/30 bg-white/15 hover:bg-white/25 transition-all cursor-pointer text-left"
+                          >
+                            <KeyRound className="size-5 shrink-0 text-white/80" />
+                            <div>
+                              <p className="text-sm font-bold text-white">
+                                Ingreso Seguro
+                              </p>
+                              <p className="text-[10px] text-white/70">
+                                Administrar dispositivos
+                              </p>
+                            </div>
+                          </button>
+                        )}
                       </motion.div>
                     </motion.div>
                   ) : (
@@ -221,9 +179,14 @@ export function Dashboard() {
                       </div>
                       <div className="w-full h-full flex flex-col justify-center items-center relative z-10 pb-[40px]">
                         <div className="relative z-10 w-full flex justify-center mb-4">
-                          <div className="size-[90px] flex items-center justify-center transition-transform duration-700 ease-out group-hover:-translate-y-4">
+                          <div
+                            className={cn(
+                              "size-[90px] flex items-center justify-center transition-transform duration-700 ease-out group-hover:-translate-y-4",
+                              DASHBOARD_ICON_PLATE_CLASS,
+                            )}
+                          >
                             <AnimatedIcon
-                              iconKey={mod.icon}
+                              iconKey={mod.animatedIcon}
                               target={`#${mod.id}-card`}
                               size={90}
                               speed={1.5}
@@ -305,10 +268,13 @@ export function Dashboard() {
                           hover: { y: -16 },
                           active: { y: -16 },
                         }}
-                        className="size-[90px] flex items-center justify-center transition-transform duration-700"
+                        className={cn(
+                          "size-[90px] flex items-center justify-center transition-transform duration-700",
+                          DASHBOARD_ICON_PLATE_CLASS,
+                        )}
                       >
                         <AnimatedIcon
-                          iconKey={mod.icon}
+                          iconKey={mod.animatedIcon}
                           target={`#${mod.id}-card`}
                           size={90}
                           speed={1.5}
@@ -367,7 +333,7 @@ export function Dashboard() {
   );
 
   return (
-    <div className="relative w-full min-h-screen">
+    <div className="relative w-full">
       {/* MODALES */}
       <VerPerfil
         isOpen={isProfileOpen}
@@ -375,12 +341,12 @@ export function Dashboard() {
         userId={null}
       />
       <PassKeysModal
-        isOpen={isPasskeysOpen}
+        isOpen={isPasskeysOpen && passkeysEnabled}
         onClose={() => setIsPasskeysOpen(false)}
         user={user}
       />
 
-      <div className="flex flex-col md:hidden w-full bg-card">
+      <div className="flex flex-col md:hidden w-full bg-muted dark:bg-muted">
         <div className="w-full pt-[6.5rem] pb-0 -mb-[6%] relative z-[2] mt-4">
           <LogoTrifinioMobile backgroundEffect="blur" />
         </div>
@@ -398,14 +364,14 @@ export function Dashboard() {
         </div>
 
         <div className="relative w-full px-4 pt-8 pb-20">
-          <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
+          <div className={cn("absolute inset-0", DASHBOARD_DOTTED_BG_CLASS)} />
           <div className="relative z-10">
             <CardsGrid />
           </div>
         </div>
       </div>
 
-      <div className="hidden md:block relative w-full min-h-screen">
+      <div className="hidden md:block relative w-full">
         <div className="fixed top-0 left-0 w-full h-[75vh] z-0 bg-[#0a1628] overflow-hidden">
           <motion.div
             className="absolute inset-0 bg-cover bg-center origin-center"
@@ -426,9 +392,9 @@ export function Dashboard() {
         </motion.div>
 
         <div className="relative z-10 w-full mt-[65vh]">
-          <div className="relative w-full min-h-screen bg-muted dark:bg-background rounded-t-[3rem] px-8 lg:px-12 pt-10 pb-20">
-            <div className="absolute inset-0 pointer-events-none rounded-t-[3rem] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
-            <div className="relative z-20 w-full max-w-[1400px] mx-auto -mt-[140px]">
+          <div className="relative w-full bg-muted dark:bg-muted rounded-t-[3rem] px-8 lg:px-12 pt-10 pb-20">
+            <div className={cn("absolute inset-0 rounded-t-[3rem]", DASHBOARD_DOTTED_BG_CLASS)} />
+            <div className="relative z-20 w-full max-w-[min(100%,1600px)] mx-auto -mt-[140px] pb-2">
               <CardsGrid />
             </div>
           </div>

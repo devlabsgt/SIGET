@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
+import { createAdminClient } from "@/utils/supabase/admin";
 
 export interface ObsSector {
   id: string;
@@ -10,6 +11,7 @@ export interface ObsSector {
 export interface ObsOrganizacion {
   id: string;
   nombre: string;
+  logo?: string | null;
 }
 
 export interface ObsPolitica {
@@ -74,10 +76,20 @@ export async function getOrganizacionesBySector(sectorId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("obs_organizaciones_sectores")
-    .select("organizacion_id, obs_organizaciones(id, nombre)")
+    .select("organizacion_id, obs_organizaciones(id, nombre, logo)")
     .eq("sector_id", sectorId);
   if (error) throw new Error(error.message);
   return (data || []).map((row: any) => row.obs_organizaciones as ObsOrganizacion).filter(Boolean);
+}
+
+export async function getSectorIdsByOrganizacion(organizacionId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("obs_organizaciones_sectores")
+    .select("sector_id")
+    .eq("organizacion_id", organizacionId);
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => row.sector_id as string);
 }
 
 export async function getPoliticasBySector(sectorId: string) {
@@ -359,7 +371,25 @@ export async function createSector(nombre: string) {
 export interface OrgWithSectors {
   id: string;
   nombre: string;
+  logo: string | null;
   sectores: { id: string; nombre: string }[];
+}
+
+export async function getOrganizacionesLogos(): Promise<
+  { id: string; nombre: string; logo: string | null }[]
+> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase
+    .from("obs_organizaciones")
+    .select("id, nombre, logo")
+    .order("nombre");
+  if (error) throw new Error(error.message);
+
+  return (data ?? []).map((org) => ({
+    id: org.id,
+    nombre: org.nombre,
+    logo: org.logo ?? null,
+  }));
 }
 
 export async function getAllOrganizaciones(): Promise<OrgWithSectors[]> {
@@ -367,7 +397,7 @@ export async function getAllOrganizaciones(): Promise<OrgWithSectors[]> {
   // Traer todas las organizaciones
   const { data: orgs, error: orgError } = await supabase
     .from("obs_organizaciones")
-    .select("id, nombre")
+    .select("id, nombre, logo")
     .order("nombre");
   if (orgError) throw new Error(orgError.message);
 
@@ -390,8 +420,33 @@ export async function getAllOrganizaciones(): Promise<OrgWithSectors[]> {
   return (orgs || []).map((org: any) => ({
     id: org.id,
     nombre: org.nombre,
+    logo: org.logo ?? null,
     sectores: sectorsByOrg.get(org.id) || [],
   }));
+}
+
+export async function updateOrganizacionLogo(organizacionId: string, logo: string | null) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("obs_organizaciones")
+    .update({ logo })
+    .eq("id", organizacionId);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateOrganizacionNombre(organizacionId: string, nombre: string) {
+  const trimmed = nombre.trim();
+  if (!trimmed) throw new Error("El nombre no puede estar vacío.");
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("obs_organizaciones")
+    .update({ nombre: trimmed })
+    .eq("id", organizacionId)
+    .select("id, nombre")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as ObsOrganizacion;
 }
 
 export async function createOrganizacion(nombre: string) {

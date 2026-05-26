@@ -13,9 +13,38 @@ import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
 import ObsToastContainer from "./ObsToastContainer";
+import { useUserContext } from "@/components/(base)/providers/UserProvider";
+
+const ROLES_WITH_PLANTILLAS = ["admin", "super", "admin-observatorio"];
+
+/** Ordena códigos tipo 1.1.2 · 1.1.10 · 1.2.1 numéricamente por segmento. */
+function comparePoliticaCodigo(a: string, b: string): number {
+  const toParts = (code: string) =>
+    code.trim().split(".").map((part) => {
+      const n = parseInt(part, 10);
+      return Number.isNaN(n) ? part.toLowerCase() : n;
+    });
+
+  const partsA = toParts(a);
+  const partsB = toParts(b);
+  const len = Math.max(partsA.length, partsB.length);
+
+  for (let i = 0; i < len; i++) {
+    const pa = partsA[i];
+    const pb = partsB[i];
+    if (pa === undefined) return -1;
+    if (pb === undefined) return 1;
+    if (pa !== pb) {
+      if (typeof pa === "number" && typeof pb === "number") return pa - pb;
+      return String(pa).localeCompare(String(pb), "es", { numeric: true });
+    }
+  }
+  return a.localeCompare(b, "es", { numeric: true });
+}
 
 export default function PlantillasList() {
   const router = useRouter();
+  const { effectiveRole } = useUserContext();
   const queryClient = useQueryClient();
   const [view, setView] = useState<"list" | "new" | "edit" | "orgs" | "catalogos">("list");
 
@@ -46,6 +75,12 @@ export default function PlantillasList() {
   };
   const [initialSectorForNew, setInitialSectorForNew] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  useEffect(() => {
+    if (!ROLES_WITH_PLANTILLAS.includes(effectiveRole)) {
+      router.replace("/siget/observatorio");
+    }
+  }, [effectiveRole, router]);
 
   const handleCreateSector = async () => {
     const { value: nombre } = await Swal.fire({
@@ -104,7 +139,7 @@ export default function PlantillasList() {
   );
 
   const sortedPlantillas = [...filteredPlantillas].sort((a: any, b: any) =>
-    (a.codigo || "").localeCompare(b.codigo || "", "es", { numeric: true })
+    comparePoliticaCodigo(a.codigo || "", b.codigo || "")
   );
 
   const openPoliticaEditor = (p: any) => {
@@ -154,8 +189,8 @@ export default function PlantillasList() {
               isCollapsed ? "justify-center py-4 px-2" : "gap-3 px-4 py-4"
             } ${
               view === "list"
-                ? "bg-emerald-50 text-emerald-700 dark:bg-white/[0.06] dark:text-emerald-300/90 border-r-2 border-r-emerald-600 dark:border-r-emerald-500/50"
-                : "text-muted-foreground hover:bg-accent/60 dark:hover:bg-white/[0.04]"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-white/6 dark:text-emerald-300/90 border-r-2 border-r-emerald-600 dark:border-r-emerald-500/50"
+                : "text-muted-foreground hover:bg-accent/60 dark:hover:bg-white/4"
             }`}
           >
             <FileText className="w-4 h-4 shrink-0" />
@@ -171,8 +206,8 @@ export default function PlantillasList() {
               isCollapsed ? "justify-center py-4 px-2" : "gap-3 px-4 py-4"
             } ${
               view === "orgs"
-                ? "bg-emerald-50 text-emerald-700 dark:bg-white/[0.06] dark:text-emerald-300/90 border-r-2 border-r-emerald-600 dark:border-r-emerald-500/50"
-                : "text-muted-foreground hover:bg-accent/60 dark:hover:bg-white/[0.04]"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-white/6 dark:text-emerald-300/90 border-r-2 border-r-emerald-600 dark:border-r-emerald-500/50"
+                : "text-muted-foreground hover:bg-accent/60 dark:hover:bg-white/4"
             }`}
             title="Organizaciones y Sectores"
           >
@@ -189,8 +224,8 @@ export default function PlantillasList() {
               isCollapsed ? "justify-center py-4 px-2" : "gap-3 px-4 py-4"
             } ${
               view === "catalogos"
-                ? "bg-emerald-50 text-emerald-700 dark:bg-white/[0.06] dark:text-emerald-300/90 border-r-2 border-r-emerald-600 dark:border-r-emerald-500/50"
-                : "text-muted-foreground hover:bg-accent/60 dark:hover:bg-white/[0.04]"
+                ? "bg-emerald-50 text-emerald-700 dark:bg-white/6 dark:text-emerald-300/90 border-r-2 border-r-emerald-600 dark:border-r-emerald-500/50"
+                : "text-muted-foreground hover:bg-accent/60 dark:hover:bg-white/4"
             }`}
             title="Nacionalidades y Perfiles"
           >
@@ -208,60 +243,45 @@ export default function PlantillasList() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="w-full px-4 md:px-8 py-6 md:pt-6 max-w-full"
+            className={`w-full py-6 md:pt-6 max-w-full ${view === "orgs" || view === "catalogos" ? "px-0 lg:px-4 xl:px-5" : "px-4 md:px-8"}`}
           >
             {/* ── Organizaciones y Sectores View ── */}
             {view === "orgs" ? (
               <>
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400/80">
-                      <Building2 className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                        Organizaciones y Sectores
-                      </h2>
-                      <p className="text-sm text-muted-foreground">Gestione la estructura de organizaciones vinculadas a sectores.</p>
-                    </div>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 lg:mb-8 gap-4 px-4 lg:px-5 xl:px-6 w-full">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                      Organizaciones y Sectores
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Gestione la estructura de organizaciones vinculadas a sectores.</p>
                   </div>
                 </div>
-                <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none py-6 md:py-8 px-0">
+                <div className="w-full px-4 lg:px-5 xl:px-6">
                   <GestionOrgsSectores />
                 </div>
               </>
             ) : view === "catalogos" ? (
               <>
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-                  <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400/80">
-                      <Globe className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                        Nacionalidades y Perfiles
-                      </h2>
-                      <p className="text-sm text-muted-foreground">Administre los catálogos de nacionalidades y perfiles para los registros del observatorio.</p>
-                    </div>
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4 px-4 md:px-8 max-w-6xl mx-auto w-full">
+                  <div>
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                      Nacionalidades y Perfiles
+                    </h2>
+                    <p className="text-sm text-muted-foreground">Administre los catálogos de nacionalidades y perfiles para los registros del observatorio.</p>
                   </div>
                 </div>
-                <div className="bg-card rounded-3xl border border-border overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none py-6 md:py-8">
+                <div className="w-full max-w-6xl mx-auto bg-card md:rounded-3xl border-y md:border border-border overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none py-4 md:py-6">
                   <GestionNacionalidadesPerfiles />
                 </div>
               </>
             ) : (
             <>
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 gap-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400/80">
-                  <LayoutTemplate className="w-6 h-6" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-foreground tracking-tight">
-                    Gestión de Formularios
-                  </h2>
-                  <p className="text-sm text-muted-foreground">Administre los formularios de indicadores para el observatorio.</p>
-                </div>
+              <div>
+                <h2 className="text-2xl font-bold text-foreground tracking-tight">
+                  Gestión de Formularios
+                </h2>
+                <p className="text-sm text-muted-foreground">Administre los formularios de indicadores para el observatorio.</p>
               </div>
             </div>
 
@@ -276,7 +296,7 @@ export default function PlantillasList() {
                       localStorage.setItem("lastSelectedSector", s.id);
                     }}
                     className={`px-8 py-4 text-xs font-bold transition-all whitespace-nowrap cursor-pointer relative ${effectiveActiveSector === s.id
-                      ? "text-emerald-800 bg-emerald-50 dark:text-emerald-300/90 dark:bg-white/[0.05] border-b-2 border-b-emerald-600 dark:border-b-emerald-500/50"
+                      ? "text-emerald-800 bg-emerald-50 dark:text-emerald-300/90 dark:bg-white/5 border-b-2 border-b-emerald-600 dark:border-b-emerald-500/50"
                       : "text-muted-foreground hover:text-foreground"
                       }`}
                   >

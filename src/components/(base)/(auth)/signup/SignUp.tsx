@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { getOrganizaciones } from "./actions";
 import { MagicCard } from "@/components/ui/magic-card";
 import {
   X,
@@ -93,7 +94,16 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
   const [copied, setCopied] = useState(false);
   const [isUsernameEdited, setIsUsernameEdited] = useState(false);
   const [savedData, setSavedData] = useState({ user: "", pass: "" });
+  const [organizaciones, setOrganizaciones] = useState<
+    { id: string; nombre: string }[]
+  >([]);
   const hasMovedToStep2 = useRef(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      getOrganizaciones().then(setOrganizaciones).catch(() => setOrganizaciones([]));
+    }
+  }, [isOpen]);
 
   const suggestedUsername = useMemo(() => {
     if (logic.name.trim().length > 3) {
@@ -123,6 +133,7 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
     logic.setUsername("");
     logic.setPasswordValue(pass);
     logic.setRol("user");
+    logic.setOrganizacionId("");
     logic.setShowPassword(false);
     setPhoneNumber("");
     setCopied(false);
@@ -266,7 +277,7 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                                 </AuroraText>
                                 <Wand2
                                   size={14}
-                                  className="text-primary/70 group-hover/sug:text-primary transition-all group-hover/sug:scale-110 rotate-[15deg]"
+                                  className="text-primary/70 group-hover/sug:text-primary transition-all group-hover/sug:scale-110 rotate-15"
                                 />
                                 
                               </button>
@@ -305,10 +316,33 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                       >
                         <option value="user">Usuario (Estándar)</option>
                         <option value="observatorio">Observatorio</option>
+                        <option value="admin-observatorio">Admin Observatorio</option>
                         <option value="admin">Administrador</option>
                         {currentUserRole === "super" && (
                           <option value="super">Super Admin</option>
                         )}
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="organizacion_id">
+                        Organización{" "}
+                        <span className="font-normal text-muted-foreground">
+                          (opcional)
+                        </span>
+                      </Label>
+                      <Select
+                        id="organizacion_id"
+                        name="organizacion_id"
+                        value={logic.organizacionId}
+                        onChange={(e) => logic.setOrganizacionId(e.target.value)}
+                      >
+                        <option value="">Sin organización</option>
+                        {organizaciones.map((org) => (
+                          <option key={org.id} value={org.id}>
+                            {org.nombre}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 
@@ -321,7 +355,7 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                           </AuroraText>
                           <Wand2
                             size={14}
-                            className="text-primary rotate-[15deg]"
+                            className="text-primary rotate-15"
                           />
                         </div>
                       </div>
@@ -352,6 +386,29 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                         </button>
                       </div>
                     </div>
+
+                    {logic.state?.message && (
+                      <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2">
+                        <p className="text-xs text-destructive font-semibold">
+                          {logic.state.message}
+                        </p>
+                      </div>
+                    )}
+                    {logic.state?.errors?.name && (
+                      <p className="text-[10px] text-destructive font-bold px-1 italic -mt-3">
+                        {logic.state.errors.name[0]}
+                      </p>
+                    )}
+                    {logic.state?.errors?.password && (
+                      <p className="text-[10px] text-destructive font-bold px-1 italic -mt-3">
+                        {logic.state.errors.password[0]}
+                      </p>
+                    )}
+                    {logic.state?.errors?.rol && (
+                      <p className="text-[10px] text-destructive font-bold px-1 italic -mt-3">
+                        {logic.state.errors.rol[0]}
+                      </p>
+                    )}
 
                     <button
                       type="submit"

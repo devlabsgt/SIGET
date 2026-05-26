@@ -1,77 +1,51 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
   FolderOpen,
   Plus,
-  Unlink,
   Link,
   Loader2,
-  ChevronDown,
-  ChevronRight,
-  Check,
   X,
-  AlertCircle,
   Search,
+  Pencil,
 } from "lucide-react";
 import {
   getSectores,
   getAllOrganizaciones,
   createSector,
   createOrganizacion,
+  updateOrganizacionNombre,
   unlinkOrganizacionFromSector,
   linkOrganizacionToSector,
   ObsSector,
   OrgWithSectors,
 } from "./lib/actions";
+import OrgLogoCell from "@/components/(uploads)/imgs/OrgLogoCell";
+import { ORG_LIST_LOGO_CLASS } from "@/components/(uploads)/imgs/ImageUploader";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 
-// ─── Small inline form ────────────────────────────────────────────────────────
-function InlineForm({
-  placeholder,
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  placeholder: string;
-  onConfirm: (value: string) => void;
-  onCancel: () => void;
-  loading: boolean;
-}) {
-  const [value, setValue] = useState("");
-  return (
-    <div className="flex items-center gap-2 mt-2">
-      <input
-        autoFocus
-        type="text"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && value.trim()) onConfirm(value.trim());
-          if (e.key === "Escape") onCancel();
-        }}
-        placeholder={placeholder}
-        className="flex-1 min-w-0 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all"
-      />
-      <button
-        onClick={() => value.trim() && onConfirm(value.trim())}
-        disabled={!value.trim() || loading}
-        className="p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-40 transition-all cursor-pointer shadow-sm"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-      </button>
-      <button
-        onClick={onCancel}
-        className="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-all cursor-pointer border border-slate-200 dark:border-slate-700/60"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
-  );
-}
+type ViewMode = "sector" | "organizaciones";
+
+const VIEW_MODE_STORAGE_KEY = "siget-gestion-estructural-view";
+
+const BTN_OUTLINE_EMERALD =
+  "inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-md font-bold text-xs transition-all cursor-pointer whitespace-nowrap border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed";
+
+const BTN_OUTLINE_EMERALD_MD =
+  "inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-md font-bold text-xs transition-all cursor-pointer border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed";
+
+const BTN_OUTLINE_EMERALD_FLEX =
+  "flex flex-1 items-center justify-center gap-1.5 py-2.5 px-4 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 rounded-md font-bold text-xs transition-all cursor-pointer border border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100/80 dark:hover:bg-emerald-900/30 disabled:opacity-40 disabled:cursor-not-allowed";
+
+const BTN_CANCEL =
+  "flex flex-1 items-center justify-center py-2.5 px-4 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors disabled:opacity-40";
+
+const PANEL_CARD_CLASS =
+  "bg-card rounded-2xl xl:rounded-3xl border border-border overflow-hidden shadow-xl shadow-slate-200/20 dark:shadow-none flex flex-col min-h-0 min-w-0";
 
 interface VincularSectorModalProps {
   sectorId: string;
@@ -79,87 +53,6 @@ interface VincularSectorModalProps {
   todasLasOrgs: OrgWithSectors[];
   onClose: () => void;
   onSuccess: () => void;
-  sectoresTotales: ObsSector[];
-}
-
-// ─── OrgCard ─────────────────────────────────────────────────────────────────
-// Definido fuera del modal para que React NO lo desmonte en cada re-render.
-function OrgCard({
-  d,
-  sectorId,
-  isPending,
-  onLink,
-  onUnlink,
-}: {
-  d: OrgWithSectors;
-  sectorId: string;
-  isPending: boolean;
-  onLink: (id: string, nombre: string) => void;
-  onUnlink: (id: string, nombre: string) => void;
-}) {
-  const isLinked = d.sectores.some((s) => s.id === sectorId);
-  return (
-    <motion.div
-      layout
-      transition={{ type: "spring", stiffness: 380, damping: 32 }}
-      className={`flex items-center justify-between p-3 rounded-xl border gap-3 ${
-        isLinked
-          ? "border-border bg-card dark:bg-secondary/30"
-          : "border-border bg-muted/50 dark:bg-card"
-      }`}
-    >
-      <span className="text-xs font-bold text-foreground truncate flex-1 min-w-0 text-left">
-        {d.nombre}
-      </span>
-
-      {/* Botón animado: fade + rotate entre verde ↔ rojo */}
-      <div className="relative w-8 h-8 shrink-0">
-        <AnimatePresence mode="wait" initial={false}>
-          {isLinked ? (
-            <motion.button
-              key="unlink"
-              onClick={() => onUnlink(d.id, d.nombre)}
-              disabled={isPending}
-              initial={{ opacity: 0, scale: 0.6, rotate: -15 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0.6, rotate: 15 }}
-              whileTap={{ scale: 0.85 }}
-              whileHover={{ scale: 1.12 }}
-              transition={{ type: "spring", stiffness: 420, damping: 24 }}
-              className="absolute inset-0 flex items-center justify-center rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 cursor-pointer border border-rose-500/20 dark:border-rose-900/35 shadow-sm"
-              title="Desvincular de este sector"
-            >
-              {isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Unlink className="w-3.5 h-3.5" />
-              )}
-            </motion.button>
-          ) : (
-            <motion.button
-              key="link"
-              onClick={() => onLink(d.id, d.nombre)}
-              disabled={isPending}
-              initial={{ opacity: 0, scale: 0.6, rotate: 15 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              exit={{ opacity: 0, scale: 0.6, rotate: -15 }}
-              whileTap={{ scale: 0.85 }}
-              whileHover={{ scale: 1.12 }}
-              transition={{ type: "spring", stiffness: 420, damping: 24 }}
-              className="absolute inset-0 flex items-center justify-center rounded-xl bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 cursor-pointer border border-emerald-500/30 shadow-sm"
-              title="Vincular a este sector"
-            >
-              {isPending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Link className="w-3.5 h-3.5" />
-              )}
-            </motion.button>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
 }
 
 function VincularSectorModal({
@@ -168,204 +61,807 @@ function VincularSectorModal({
   todasLasOrgs,
   onClose,
   onSuccess,
-  sectoresTotales,
 }: VincularSectorModalProps) {
-  const [isPending, startTransition] = useTransition();
-
-  // Buscar disponibles
   const [searchDisp, setSearchDisp] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const filteredOrgs = todasLasOrgs.filter((d) =>
-    d.nombre.toLowerCase().includes(searchDisp.toLowerCase())
+  const initialLinkedIds = useMemo(
+    () =>
+      new Set(
+        todasLasOrgs
+          .filter((o) => o.sectores.some((s) => s.id === sectorId))
+          .map((o) => o.id)
+      ),
+    [todasLasOrgs, sectorId]
   );
 
-  // Ordenar primero las vinculadas al sector actual, y luego las desvinculadas.
-  // Alfabéticamente dentro de cada grupo.
-  const sortedOrgs = [...filteredOrgs].sort((a, b) => {
-    const aLinked = a.sectores.some((s) => s.id === sectorId);
-    const bLinked = b.sectores.some((s) => s.id === sectorId);
-    if (aLinked && !bLinked) return -1;
-    if (!aLinked && bLinked) return 1;
-    return a.nombre.localeCompare(b.nombre);
-  });
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    () => new Set(initialLinkedIds)
+  );
 
-  // Crear nueva org desde modal
-  const [newOrgName, setNewOrgName] = useState("");
+  const filteredOrgs = useMemo(
+    () =>
+      todasLasOrgs
+        .filter((d) => d.nombre.toLowerCase().includes(searchDisp.toLowerCase()))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [todasLasOrgs, searchDisp]
+  );
+
+  const { leftOrgs, rightOrgs } = useMemo(() => {
+    const half = Math.ceil(filteredOrgs.length / 2);
+    return {
+      leftOrgs: filteredOrgs.slice(0, half),
+      rightOrgs: filteredOrgs.slice(half),
+    };
+  }, [filteredOrgs]);
+
+  const renderOrgItem = (org: OrgWithSectors) => {
+    const checked = selectedIds.has(org.id);
+    return (
+      <li key={org.id}>
+        <label
+          className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+            checked
+              ? "border-emerald-300/60 dark:border-emerald-800/50 bg-emerald-50/30 dark:bg-emerald-950/10"
+              : "border-border bg-muted/30 dark:bg-card hover:bg-muted/50"
+          } ${saving ? "opacity-60 pointer-events-none" : ""}`}
+        >
+          <input
+            type="checkbox"
+            checked={checked}
+            disabled={saving}
+            onChange={(e) => toggleOrg(org.id, e.target.checked)}
+            className="w-4 h-4 rounded accent-emerald-600 shrink-0 cursor-pointer"
+          />
+          <span className="text-xs font-bold text-foreground truncate flex-1">{org.nombre}</span>
+        </label>
+      </li>
+    );
+  };
+
+  const isDirty = useMemo(() => {
+    if (selectedIds.size !== initialLinkedIds.size) return true;
+    for (const id of selectedIds) {
+      if (!initialLinkedIds.has(id)) return true;
+    }
+    return false;
+  }, [selectedIds, initialLinkedIds]);
+
+  const filteredSelectedCount = filteredOrgs.filter((o) => selectedIds.has(o.id)).length;
+  const allSelected = filteredOrgs.length > 0 && filteredSelectedCount === filteredOrgs.length;
+  const someSelected = filteredSelectedCount > 0 && !allSelected;
+
+  const toggleOrg = (orgId: string, next: boolean) => {
+    setSelectedIds((prev) => {
+      const nextSet = new Set(prev);
+      if (next) nextSet.add(orgId);
+      else nextSet.delete(orgId);
+      return nextSet;
+    });
+  };
+
+  const toggleAllFiltered = (next: boolean) => {
+    setSelectedIds((prev) => {
+      const nextSet = new Set(prev);
+      filteredOrgs.forEach((o) => {
+        if (next) nextSet.add(o.id);
+        else nextSet.delete(o.id);
+      });
+      return nextSet;
+    });
+  };
+
+  const handleClose = async () => {
+    if (isDirty) {
+      const result = await Swal.fire({
+        title: "¿Descartar cambios?",
+        text: "Tiene selecciones sin guardar.",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#e11d48",
+        cancelButtonColor: "#475569",
+        confirmButtonText: "Sí, descartar",
+        cancelButtonText: "Seguir editando",
+        background: document.documentElement.classList.contains("dark") ? "#0f172a" : "#ffffff",
+        color: document.documentElement.classList.contains("dark") ? "#f8fafc" : "#0f172a",
+      });
+      if (!result.isConfirmed) return;
+    }
+    onClose();
+  };
+
+  const handleSave = async () => {
+    const toLink = [...selectedIds].filter((id) => !initialLinkedIds.has(id));
+    const toUnlink = [...initialLinkedIds].filter((id) => !selectedIds.has(id));
+
+    if (toLink.length === 0 && toUnlink.length === 0) {
+      onClose();
+      return;
+    }
+
+    const parts: string[] = [];
+    if (toLink.length > 0) {
+      parts.push(`vincular ${toLink.length} organización${toLink.length !== 1 ? "es" : ""}`);
+    }
+    if (toUnlink.length > 0) {
+      parts.push(`desvincular ${toUnlink.length} organización${toUnlink.length !== 1 ? "es" : ""}`);
+    }
+
+    const result = await Swal.fire({
+      title: "¿Confirmar cambios?",
+      html: `Se ${parts.join(" y ")} del sector <b>${sectorNombre}</b>.`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#059669",
+      cancelButtonColor: "#475569",
+      confirmButtonText: "Sí, guardar",
+      cancelButtonText: "Cancelar",
+      background: document.documentElement.classList.contains("dark") ? "#0f172a" : "#ffffff",
+      color: document.documentElement.classList.contains("dark") ? "#f8fafc" : "#0f172a",
+    });
+
+    if (!result.isConfirmed) return;
+
+    setSaving(true);
+    try {
+      await Promise.all([
+        ...toLink.map((id) => linkOrganizacionToSector(id, sectorId)),
+        ...toUnlink.map((id) => unlinkOrganizacionFromSector(id, sectorId)),
+      ]);
+      toast.success("Vinculaciones actualizadas correctamente.");
+      await onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "No se pudieron guardar los cambios.";
+      toast.error(message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center backdrop-blur-md md:p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-black border border-slate-200 dark:border-slate-800/60 rounded-none md:rounded-3xl shadow-2xl p-6 w-full h-full md:h-auto md:max-h-[90vh] md:max-w-md lg:max-w-2xl flex flex-col"
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/40 shrink-0">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Vincular a Sector
+            </h3>
+            <p className="text-[10px] font-bold uppercase tracking-widest mt-0.5 text-emerald-600 dark:text-emerald-400">
+              {sectorNombre}
+            </p>
+          </div>
+          <button
+            onClick={handleClose}
+            disabled={saving}
+            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 shrink-0 space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Buscar organizaciones..."
+              value={searchDisp}
+              onChange={(e) => setSearchDisp(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/50 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
+            />
+          </div>
+          <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 pl-1">
+            Marque las organizaciones y presione Guardar para aplicar los cambios.
+          </p>
+        </div>
+
+        {filteredOrgs.length > 0 && (
+          <label className="mt-3 flex items-center gap-3 px-3 py-2.5 rounded-xl border border-emerald-200/60 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/10 cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected;
+              }}
+              disabled={saving}
+              onChange={(e) => toggleAllFiltered(e.target.checked)}
+              className="w-4 h-4 rounded accent-emerald-600 cursor-pointer"
+            />
+            <span className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">
+              Seleccionar todas ({filteredOrgs.length})
+            </span>
+            {isDirty && (
+              <span className="text-[9px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider ml-auto">
+                Sin guardar
+              </span>
+            )}
+          </label>
+        )}
+
+        <div className="flex-1 overflow-y-auto py-3 my-2 pr-1 custom-scrollbar">
+          {filteredOrgs.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50/40 dark:bg-slate-900/10 border border-dashed border-slate-200/60 dark:border-slate-800/40 rounded-2xl">
+              <Building2 className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
+              <p className="text-[11px] font-bold text-slate-400">No hay organizaciones.</p>
+              <p className="text-[9px] text-slate-400/80 mt-0.5">
+                Regístrelas en la pestaña Organizaciones.
+              </p>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-2 items-start w-full">
+              <ul className="flex-1 flex flex-col gap-2 w-full min-w-0">
+                {leftOrgs.map(renderOrgItem)}
+              </ul>
+              {rightOrgs.length > 0 && (
+                <ul className="flex-1 flex flex-col gap-2 w-full min-w-0">
+                  {rightOrgs.map(renderOrgItem)}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-auto shrink-0 flex gap-2">
+          <button
+            type="button"
+            onClick={handleClose}
+            disabled={saving}
+            className={BTN_CANCEL}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !isDirty}
+            className={BTN_OUTLINE_EMERALD_FLEX}
+          >
+            {saving ? (
+              <>
+                Guardando...
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              </>
+            ) : (
+              "Guardar"
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+function CrearSectorModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (sector: ObsSector) => Promise<void>;
+}) {
+  const [newSectorName, setNewSectorName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
-  const handleLinkExisting = (orgId: string, orgNombre: string) => {
-    startTransition(async () => {
-      try {
-        await linkOrganizacionToSector(orgId, sectorId);
-        toast.success(`"${orgNombre}" vinculada a "${sectorNombre}" correctamente.`);
-        onSuccess();
-      } catch (err: any) {
-        toast.error(err.message || "No se pudo vincular la organización.");
-      }
-    });
-  };
-
-  const handleUnlinkExisting = (orgId: string, orgNombre: string) => {
-    startTransition(async () => {
-      try {
-        await unlinkOrganizacionFromSector(orgId, sectorId);
-        toast.success(`"${orgNombre}" desvinculada de "${sectorNombre}" correctamente.`);
-        onSuccess();
-      } catch (err: any) {
-        toast.error(err.message || "No se pudo desvincular la organización.");
-      }
-    });
-  };
-
-  const handleCreateAndLink = async (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newOrgName.trim()) return;
+    if (!newSectorName.trim()) return;
 
     setIsCreating(true);
     try {
-      await createOrganizacion(newOrgName);
-      toast.success(`Organización "${newOrgName}" creada correctamente. Ya está disponible en la lista de arriba.`);
-      setNewOrgName("");
-      onSuccess();
-    } catch (err: any) {
-      toast.error(err.message || "No se pudo crear la organización.");
+      const sector = await createSector(newSectorName.trim());
+      toast.success(`Sector "${sector.nombre}" creado con éxito.`);
+      await onCreated(sector);
+      onClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Error al crear sector.";
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 backdrop-blur-sm md:p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center backdrop-blur-md p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-white dark:bg-black border border-slate-200 dark:border-slate-800/60 rounded-none md:rounded-3xl shadow-2xl p-6 w-full h-full md:h-auto md:max-h-[90vh] md:max-w-md lg:max-w-3xl flex flex-col"
+        className="bg-white dark:bg-black border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl p-6 w-full max-w-md flex flex-col"
       >
-        {/* Cabecera del modal */}
-        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/40 shrink-0">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/40">
           <div>
             <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
-              Vincular a Sector
+              Nuevo sector
             </h3>
-            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5 text-emerald-600 dark:text-emerald-400">
-              {sectorNombre}
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+              Registro en el observatorio
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            disabled={isCreating}
+            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="mt-4 shrink-0 space-y-2">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+
+        <form onSubmit={handleCreate} className="pt-4 space-y-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-2">
+              Nombre
+            </label>
             <input
+              autoFocus
               type="text"
-              placeholder="Buscar de las disponibles..."
-              value={searchDisp}
-              onChange={(e) => setSearchDisp(e.target.value)}
-              className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/50 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
+              required
+              value={newSectorName}
+              onChange={(e) => setNewSectorName(e.target.value)}
+              placeholder="Ej. Reintegración Económica, Salud..."
+              className="w-full bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/50 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
             />
           </div>
-          <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 pl-1 text-left uppercase tracking-wider flex items-center gap-1.5 flex-wrap">
-            * Click en el icono
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 shrink-0">
-              <Link className="w-3 h-3 text-emerald-700 dark:text-emerald-400" />
-            </span>
-            para vincular y en
-            <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100/20 dark:border-rose-900/30 shrink-0">
-              <Unlink className="w-3 h-3 text-rose-700 dark:text-rose-400" />
-            </span>
-            para desvincular
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            Después podrá vincular organizaciones a este sector.
           </p>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isCreating}
+              className={BTN_CANCEL}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isCreating || !newSectorName.trim()}
+              className={BTN_OUTLINE_EMERALD_FLEX}
+            >
+              {isCreating ? (
+                <>
+                  Creando...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                </>
+              ) : (
+                <>
+                  Crear sector
+                  <Plus className="w-3.5 h-3.5" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function CrearOrganizacionModal({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+}) {
+  const [newOrgName, setNewOrgName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newOrgName.trim()) return;
+
+    setIsCreating(true);
+    try {
+      await createOrganizacion(newOrgName.trim());
+      toast.success(`Organización "${newOrgName.trim()}" creada correctamente.`);
+      await onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "No se pudo crear la organización.";
+      toast.error(message);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center backdrop-blur-md p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-black border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl p-6 w-full max-w-md flex flex-col"
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/40">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Nueva organización
+            </h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+              Registro en el observatorio
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isCreating}
+            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Listado de Organizaciones con scroll flexible y animaciones layout */}
-        <div className="flex-1 overflow-y-auto py-3 my-2 pr-1 custom-scrollbar">
-          {sortedOrgs.length === 0 ? (
-            <div className="text-center py-8 bg-slate-50/40 dark:bg-slate-900/10 border border-dashed border-slate-200/60 dark:border-slate-800/40 rounded-2xl">
-              <Building2 className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-              <p className="text-[11px] font-bold text-slate-400">No hay organizaciones.</p>
-              <p className="text-[9px] text-slate-400/80 mt-0.5">Use el formulario de abajo para registrar una nueva.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col lg:flex-row gap-3 items-start w-full">
-              {(() => {
-                const halfLength = Math.ceil(sortedOrgs.length / 2);
-                const leftOrgs = sortedOrgs.slice(0, halfLength);
-                const rightOrgs = sortedOrgs.slice(halfLength);
-                return (
-                  <>
-                    {/* Columna Izquierda */}
-                    <div className="flex-1 flex flex-col gap-3 w-full">
-                      {leftOrgs.map((d) => (
-                        <OrgCard
-                          key={d.id}
-                          d={d}
-                          sectorId={sectorId}
-                          isPending={isPending}
-                          onLink={handleLinkExisting}
-                          onUnlink={handleUnlinkExisting}
-                        />
-                      ))}
-                    </div>
-
-                    {/* Columna Derecha */}
-                    {rightOrgs.length > 0 && (
-                      <div className="flex-1 flex flex-col gap-3 w-full">
-                        {rightOrgs.map((d) => (
-                          <OrgCard
-                            key={d.id}
-                            d={d}
-                            sectorId={sectorId}
-                            isPending={isPending}
-                            onLink={handleLinkExisting}
-                            onUnlink={handleUnlinkExisting}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
-            </div>
-          )}
-        </div>
-
-        {/* Formulario de creación de ancho completo al pie */}
-        <form onSubmit={handleCreateAndLink} className="border-t border-slate-100 dark:border-slate-800 pt-4 mt-auto shrink-0 space-y-2.5">
-          <p className="text-[9px] font-black text-emerald-650 dark:text-emerald-450 uppercase tracking-widest pl-1">
-            ¿No encuentra la organización? Regístrela aquí:
-          </p>
-          <div className="space-y-2">
+        <form onSubmit={handleCreate} className="pt-4 space-y-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-2">
+              Nombre
+            </label>
             <input
+              autoFocus
               type="text"
               required
               value={newOrgName}
               onChange={(e) => setNewOrgName(e.target.value)}
-              placeholder="Nombre de la nueva organización..."
+              placeholder="Nombre de la organización..."
               className="w-full bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/50 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
             />
-            <div className="flex justify-center w-full">
-              <button
-                type="submit"
-                disabled={isCreating || !newOrgName.trim()}
-                className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white text-[11px] font-bold tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/10"
-              >
-                {isCreating ? (
+          </div>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400">
+            Después de crearla, podrá subir su logo desde la lista.
+          </p>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isCreating}
+              className={BTN_CANCEL}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isCreating || !newOrgName.trim()}
+              className={BTN_OUTLINE_EMERALD_FLEX}
+            >
+              {isCreating ? (
+                <>
+                  Creando...
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
+                </>
+              ) : (
+                <>
+                  Crear organización
                   <Plus className="w-3.5 h-3.5" />
-                )}
-                Crear organización
-              </button>
-            </div>
+                </>
+              )}
+            </button>
           </div>
         </form>
       </motion.div>
+    </div>
+  );
+}
+
+function EditarOrganizacionModal({
+  org,
+  onClose,
+  onSuccess,
+}: {
+  org: OrgWithSectors;
+  onClose: () => void;
+  onSuccess: () => Promise<void>;
+}) {
+  const [nombre, setNombre] = useState(org.nombre);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = nombre.trim();
+    if (!trimmed) return;
+    if (trimmed === org.nombre) {
+      onClose();
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateOrganizacionNombre(org.id, trimmed);
+      toast.success(`Organización renombrada a "${trimmed}".`);
+      await onSuccess();
+      onClose();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "No se pudo actualizar el nombre.";
+      toast.error(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-100 flex items-center justify-center backdrop-blur-md p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white dark:bg-black border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl p-6 w-full max-w-md flex flex-col"
+      >
+        <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/40">
+          <div>
+            <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Editar organización
+            </h3>
+            <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">
+              Cambiar nombre
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSaving}
+            className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-40"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSave} className="pt-4 space-y-4">
+          <div>
+            <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-2">
+              Nombre
+            </label>
+            <input
+              autoFocus
+              type="text"
+              required
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Nombre de la organización..."
+              className="w-full bg-slate-50 dark:bg-slate-900/30 border border-slate-200 dark:border-slate-800/50 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={isSaving}
+              className={BTN_CANCEL}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSaving || !nombre.trim()}
+              className={BTN_OUTLINE_EMERALD_FLEX}
+            >
+              {isSaving ? (
+                <>
+                  Guardando...
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                </>
+              ) : (
+                "Guardar"
+              )}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function OrganizacionesPanel({
+  orgs,
+  search,
+  onRefresh,
+  className = "",
+  twoColumns = false,
+  showLogoHint = false,
+}: {
+  orgs: OrgWithSectors[];
+  search: string;
+  onRefresh: () => Promise<void>;
+  className?: string;
+  twoColumns?: boolean;
+  showLogoHint?: boolean;
+}) {
+  const [editingOrg, setEditingOrg] = useState<OrgWithSectors | null>(null);
+
+  const filteredOrgs = useMemo(
+    () =>
+      orgs
+        .filter((o) => o.nombre.toLowerCase().includes(search.toLowerCase()))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre)),
+    [orgs, search]
+  );
+
+  const renderOrgRow = (org: OrgWithSectors) => (
+    <div
+      key={org.id}
+      className="flex items-center gap-3 px-3 sm:px-4 md:px-5 py-0 w-full hover:bg-muted/40 dark:hover:bg-accent/20 transition-colors"
+    >
+      <OrgLogoCell
+        orgId={org.id}
+        logoPath={org.logo}
+        onUpdated={onRefresh}
+        compactClassName={ORG_LIST_LOGO_CLASS}
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-black text-slate-900 dark:text-white leading-tight truncate">
+          {org.nombre}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={() => setEditingOrg(org)}
+        className={`${BTN_OUTLINE_EMERALD} shrink-0 px-2.5 py-1.5 mr-1`}
+        title="Editar nombre"
+      >
+        Editar
+        <Pencil className="w-3.5 h-3.5 shrink-0" />
+      </button>
+    </div>
+  );
+
+  return (
+    <>
+    {showLogoHint && (
+      <p className="px-3 sm:px-4 md:px-5 lg:px-5 py-2 text-[10px] text-emerald-600 dark:text-emerald-400 font-bold border-b border-slate-100 dark:border-slate-800/80">
+        Clic en la imagen para ver o editar el logo.
+      </p>
+    )}
+    <div
+      className={`${showLogoHint ? "border-t-0" : "border-t"} border-b border-slate-100 dark:border-slate-800/80 ${className} ${
+        twoColumns
+          ? "grid grid-cols-2 divide-x divide-y divide-slate-100 dark:divide-slate-800/80"
+          : "divide-y divide-slate-100 dark:divide-slate-800/80"
+      }`}
+    >
+      {filteredOrgs.length === 0 ? (
+        <div className={`text-center py-12 px-4 ${twoColumns ? "col-span-2" : ""}`}>
+          <Building2 className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+          <p className="text-sm font-bold text-slate-500">No se encontraron organizaciones.</p>
+          {search && <p className="text-xs text-slate-400 mt-1">Pruebe con otros términos de búsqueda.</p>}
+        </div>
+      ) : (
+        filteredOrgs.map(renderOrgRow)
+      )}
+    </div>
+
+    <AnimatePresence>
+      {editingOrg && (
+        <EditarOrganizacionModal
+          org={editingOrg}
+          onClose={() => setEditingOrg(null)}
+          onSuccess={onRefresh}
+        />
+      )}
+    </AnimatePresence>
+    </>
+  );
+}
+
+function SectoresPanel({
+  sectores,
+  orgs,
+  search,
+  onLinkSector,
+  className = "",
+  singleColumnOrgs = false,
+}: {
+  sectores: ObsSector[];
+  orgs: OrgWithSectors[];
+  search: string;
+  onLinkSector: (sector: { id: string; nombre: string }) => void;
+  className?: string;
+  singleColumnOrgs?: boolean;
+}) {
+  const filteredSectores = useMemo(
+    () => sectores.filter((s) => s.nombre.toLowerCase().includes(search.toLowerCase())),
+    [sectores, search]
+  );
+
+  const orgsBySector = (sectorId: string) =>
+    orgs.filter((o) => o.sectores.some((s) => s.id === sectorId));
+
+  return (
+    <div
+      className={`divide-y divide-slate-100 dark:divide-slate-800/80 border-t border-slate-100 dark:border-slate-800/80 ${className}`}
+    >
+      {filteredSectores.length === 0 ? (
+        <div className="text-center py-12 px-4 bg-slate-50/50 dark:bg-slate-900/10 border border-dashed border-slate-200 dark:border-slate-800 mx-4 my-4 rounded-2xl">
+          <FolderOpen className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
+          <p className="text-sm font-bold text-slate-500">No se encontraron sectores.</p>
+          {search && <p className="text-xs text-slate-400 mt-1">Pruebe con otros términos de búsqueda.</p>}
+        </div>
+      ) : (
+        filteredSectores.map((sector) => {
+          const sectorOrgs = orgsBySector(sector.id);
+          const sortedOrgs = [...sectorOrgs].sort((a, b) => a.nombre.localeCompare(b.nombre));
+
+          return (
+            <div
+              key={sector.id}
+              className="group border-b border-slate-100 dark:border-slate-800/80 last:border-b-0"
+            >
+              <div className="flex items-start justify-between gap-3 px-3 sm:px-4 md:px-5 py-4">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-slate-900 dark:text-white leading-tight transition-colors group-hover:text-emerald-700 dark:group-hover:text-emerald-400">
+                    {sector.nombre}
+                  </p>
+                  {sortedOrgs.length === 0 ? (
+                    <p className="text-[10px] text-slate-400 font-medium italic mt-1">
+                      Ninguna organización vinculada a este sector.
+                    </p>
+                  ) : (
+                    <ul
+                      className={`grid gap-x-4 gap-y-0.5 mt-1 ${
+                        singleColumnOrgs ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2"
+                      }`}
+                    >
+                      {sortedOrgs.map((org) => (
+                        <li
+                          key={org.id}
+                          className="text-[10px] text-slate-400 font-bold tracking-wide leading-snug min-w-0 truncate transition-colors group-hover:text-emerald-400 dark:group-hover:text-emerald-300"
+                          title={org.nombre}
+                        >
+                          {org.nombre}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onLinkSector({ id: sector.id, nombre: sector.nombre })}
+                  className={`${BTN_OUTLINE_EMERALD} px-2.5 py-2 shrink-0`}
+                  title="Vincular"
+                >
+                  Vincular
+                  <Link className="w-3.5 h-3.5 shrink-0" />
+                </button>
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  );
+}
+
+function PanelToolbar({
+  placeholder,
+  search,
+  onSearchChange,
+  onCreate,
+}: {
+  placeholder: string;
+  search: string;
+  onSearchChange: (value: string) => void;
+  onCreate: () => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] items-stretch sm:items-center gap-2 w-full">
+      <div className="relative w-full min-w-0">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+        <input
+          type="text"
+          placeholder={placeholder}
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-xl text-xs font-bold text-slate-700 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
+        />
+      </div>
+      <button type="button" onClick={onCreate} className={`${BTN_OUTLINE_EMERALD_MD} shrink-0 w-full sm:w-auto`}>
+        Crear
+        <Plus className="w-3.5 h-3.5" />
+      </button>
     </div>
   );
 }
@@ -374,16 +870,28 @@ export default function GestionOrgsSectores() {
   const [sectores, setSectores] = useState<ObsSector[]>([]);
   const [orgs, setOrgs] = useState<OrgWithSectors[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedSectorId, setExpandedSectorId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
+  const [viewMode, setViewMode] = useState<ViewMode>("sector");
+  const [searchOrg, setSearchOrg] = useState("");
+  const [searchSector, setSearchSector] = useState("");
 
-  // Inline forms
-  const [showNewSector, setShowNewSector] = useState(false);
-  const [newSectorLoading, setNewSectorLoading] = useState(false);
+  useEffect(() => {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (stored === "sector" || stored === "organizaciones") {
+      setViewMode(stored);
+    }
+  }, []);
 
-  // Modal de vinculación
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, mode);
+    setShowNewSectorModal(false);
+    setShowNewOrgModal(false);
+  };
+
+  const [showNewSectorModal, setShowNewSectorModal] = useState(false);
+  const [showNewOrgModal, setShowNewOrgModal] = useState(false);
+
   const [activeLinkingSector, setActiveLinkingSector] = useState<{ id: string; nombre: string } | null>(null);
-  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
 
   const refresh = async () => {
     try {
@@ -401,64 +909,9 @@ export default function GestionOrgsSectores() {
     refresh();
   }, []);
 
-  const toggleSector = (id: string) => {
-    setExpandedSectorId((prev) => (prev === id ? null : id));
+  const handleSectorCreated = async () => {
+    await refresh();
   };
-
-  const handleCreateSector = async (nombre: string) => {
-    setNewSectorLoading(true);
-    try {
-      const s = await createSector(nombre);
-      toast.success(`Sector "${s.nombre}" creado con éxito.`);
-      setShowNewSector(false);
-      await refresh();
-      setExpandedSectorId(s.id);
-    } catch (err: any) {
-      toast.error(err.message || "Error al crear sector.");
-    } finally {
-      setNewSectorLoading(false);
-    }
-  };
-
-  const handleUnlink = async (org: OrgWithSectors, sectorId: string) => {
-    const result = await Swal.fire({
-      title: "¿Desvincular organización?",
-      text: `¿Está seguro de que desea retirar "${org.nombre}" de este sector?`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#e11d48", // Rose-600
-      cancelButtonColor: "#475569",  // Slate-600
-      confirmButtonText: "Sí, desvincular",
-      cancelButtonText: "Cancelar",
-      background: document.documentElement.classList.contains("dark") ? "#0f172a" : "#ffffff",
-      color: document.documentElement.classList.contains("dark") ? "#f8fafc" : "#0f172a",
-    });
-
-    if (!result.isConfirmed) return;
-
-    setUnlinkingId(org.id);
-    try {
-      await unlinkOrganizacionFromSector(org.id, sectorId);
-      toast.success(`"${org.nombre}" ha sido desvinculada del sector.`);
-      await refresh();
-    } catch (err: any) {
-      toast.error(err.message || "Error al desvincular.");
-    } finally {
-      setUnlinkingId(null);
-    }
-  };
-
-  // ── Filters & Computations ──
-  const filteredSectores = sectores.filter((s) =>
-    s.nombre.toLowerCase().includes(search.toLowerCase())
-  );
-
-  const orgsBySector = (sectorId: string) =>
-    orgs.filter((o) => o.sectores.some((s) => s.id === sectorId));
-
-  // Organizaciones que NO están vinculadas a un sector específico
-  const orgsNotInSector = (sectorId: string) =>
-    orgs.filter((o) => !o.sectores.some((s) => s.id === sectorId));
 
   if (loading) {
     return (
@@ -470,216 +923,153 @@ export default function GestionOrgsSectores() {
   }
 
   return (
-    <div className="space-y-6">
-      
-      {/* ── Toolbar Superior ── */}
-      <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-5 px-6 md:px-8">
-        <div>
-          <h3 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
-            Gestión Estructural
-          </h3>
-          <p className="text-[10px] text-slate-400 mt-0.5">Sectores y organizaciones vinculadas en el observatorio.</p>
-        </div>
+    <div className="w-full">
+      {/* Vista móvil / tablet: un solo recuadro */}
+      <div className={`lg:hidden ${PANEL_CARD_CLASS}`}>
+        <div className="border-b border-slate-100 dark:border-slate-800/80 pb-4 px-3 sm:px-4 md:px-5 pt-4 md:pt-5">
+          <div className="flex flex-col gap-3 w-full">
+            <div className="shrink-0 min-w-0">
+              <h3 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                Gestión Estructural
+              </h3>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                {viewMode === "sector"
+                  ? "Sectores y organizaciones vinculadas en el observatorio."
+                  : "Registro de organizaciones y carga de logos."}
+              </p>
+            </div>
 
-        {/* Acciones principales y buscador: en móvil cada cosa en una sola fila (flex-col) */}
-        <div className="flex flex-col gap-2.5 w-full sm:flex-row sm:items-center sm:flex-1 lg:justify-end">
-          <div className="relative flex-1 w-full sm:max-w-md lg:max-w-xl">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Buscar sector..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-xl text-xs font-bold text-slate-700 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
-            />
-          </div>
-
-          <button
-            onClick={() => setShowNewSector(!showNewSector)}
-            className="flex items-center justify-center gap-1.5 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-md shadow-emerald-500/10 shrink-0 w-full sm:w-auto"
-          >
-            <Plus className="w-3.5 h-3.5" /> Nuevo Sector
-          </button>
-        </div>
-      </div>
-
-      {/* ── Formulario inline para Nuevo Sector ── */}
-      <AnimatePresence>
-        {showNewSector && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
-          >
-            <div className="px-6 md:px-8 py-2">
-              <div className="bg-emerald-50/20 dark:bg-emerald-950/5 border border-emerald-100/50 dark:border-emerald-900/20 rounded-3xl p-5 shadow-sm">
-                <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-1">
-                  Registrar Nuevo Sector
-                </span>
-                <InlineForm
-                  placeholder="Nombre del sector (ej. Reintegración Económica, Salud...)"
-                  onConfirm={handleCreateSector}
-                  onCancel={() => setShowNewSector(false)}
-                  loading={newSectorLoading}
+            <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto_auto] items-stretch sm:items-center gap-2 w-full">
+              <div className="relative w-full min-w-0">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder={viewMode === "sector" ? "Buscar sector..." : "Buscar organización..."}
+                  value={viewMode === "sector" ? searchSector : searchOrg}
+                  onChange={(e) =>
+                    viewMode === "sector" ? setSearchSector(e.target.value) : setSearchOrg(e.target.value)
+                  }
+                  className="w-full pl-9 pr-4 py-2.5 bg-slate-50 dark:bg-background border border-slate-200 dark:border-border rounded-xl text-xs font-bold text-slate-700 dark:text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/10 transition-all"
                 />
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      {/* ── Listado de Sectores ── */}
-      <div className="divide-y divide-slate-100 dark:divide-slate-800/80 border-t border-b border-slate-100 dark:border-slate-800/80 mt-6">
-        {filteredSectores.length === 0 ? (
-          <div className="text-center py-16 bg-slate-50/50 dark:bg-slate-900/10 border border-dashed border-slate-200 dark:border-slate-800 rounded-3xl my-4">
-            <FolderOpen className="w-12 h-12 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-500">No se encontraron sectores.</p>
-            {search && <p className="text-xs text-slate-400 mt-1">Pruebe con otros términos de búsqueda.</p>}
-          </div>
-        ) : (
-          filteredSectores.map((sector, sIdx) => {
-            const sectorOrgs = orgsBySector(sector.id);
-            const sortedOrgs = [...sectorOrgs].sort((a, b) => a.nombre.localeCompare(b.nombre));
-            const isOpen = expandedSectorId === sector.id;
+              <div className="inline-grid grid-cols-2 p-1 rounded-xl border border-border/40 bg-muted/70 dark:bg-muted/30 w-full sm:w-max shrink-0 justify-self-stretch sm:justify-self-auto">
+                {(["sector", "organizaciones"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => handleViewModeChange(mode)}
+                    className={`w-full min-w-22 px-5 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap capitalize text-center ${
+                      viewMode === mode
+                        ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
+                        : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-muted/50"
+                    }`}
+                  >
+                    {mode === "sector" ? "Sectores" : "Organizaciones"}
+                  </button>
+                ))}
+              </div>
 
-            return (
-              <motion.div
-                key={sector.id}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: sIdx * 0.03 }}
-                className={`overflow-hidden transition-all duration-300 rounded-2xl ${
-                  isOpen 
-                    ? "border border-border bg-muted/40 dark:bg-secondary/20 my-3" 
-                    : "border border-transparent bg-transparent"
-                }`}
+              <button
+                type="button"
+                onClick={() =>
+                  viewMode === "sector" ? setShowNewSectorModal(true) : setShowNewOrgModal(true)
+                }
+                className={`${BTN_OUTLINE_EMERALD_MD} shrink-0 w-full sm:w-auto justify-self-stretch sm:justify-self-auto`}
               >
-                {/* Sector Header */}
-                <div
-                  className={`flex items-center gap-3 px-5 py-4.5 cursor-pointer select-none transition-all ${
-                    isOpen 
-                      ? "bg-muted/60 dark:bg-accent/40 border-b border-border" 
-                      : "bg-transparent hover:bg-muted/40 dark:hover:bg-accent/20"
-                  }`}
-                  onClick={() => toggleSector(sector.id)}
-                >
-                  <div className="w-8 h-8 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-black text-slate-900 dark:text-white leading-tight">{sector.nombre}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">
-                      {sectorOrgs.length} organización{sectorOrgs.length !== 1 ? "es" : ""}
-                    </p>
-                  </div>
-                </div>
+                Crear
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
 
-                {/* Listado de Organizaciones del Sector */}
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden bg-muted/30 dark:bg-background rounded-b-2xl"
-                    >
-                      {sortedOrgs.length === 0 ? (
-                        <div className="px-6 py-8 text-center bg-slate-50/20 dark:bg-slate-900/10 flex flex-col items-center justify-center gap-2.5">
-                          <p className="text-xs text-slate-400 font-medium italic">
-                            Ninguna organización vinculada a este sector.
-                          </p>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActiveLinkingSector({ id: sector.id, nombre: sector.nombre });
-                            }}
-                            className="inline-flex items-center px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all cursor-pointer shadow-sm gap-1.5"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Vincular Organización
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="px-6 md:px-8 py-5 space-y-5">
-                          {/* Fila del encabezado de la sección: título a la izquierda, botón a la derecha */}
-                          <div className="flex flex-col gap-1 border-b border-border pb-3">
-                            <div className="flex items-center justify-between gap-4">
-                              <span className="text-[9px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest text-left">
-                                Organizaciones Vinculadas
-                              </span>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveLinkingSector({ id: sector.id, nombre: sector.nombre });
-                                }}
-                                className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-xl border border-emerald-600 dark:border-emerald-500/60 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase tracking-widest transition-all cursor-pointer shrink-0 shadow-sm"
-                              >
-                                Vincular Org
-                                <Link className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
-                              </button>
-                            </div>
-                            <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 pl-1 text-left uppercase tracking-wider flex items-center gap-1.5 flex-wrap mt-1">
-                              * Click en el botón
-                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100/20 dark:border-rose-900/30 shrink-0">
-                                <Unlink className="w-3 h-3 text-rose-700 dark:text-rose-400" />
-                              </span>
-                              para desvincular
-                            </p>
-                          </div>
-
-                          {/* Listado de organizaciones en 2 columnas en pantalla grande */}
-                          <div className="space-y-3">
-                            <ul className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                              {sortedOrgs.map((org) => (
-                                <li
-                                  key={org.id}
-                                  className="flex flex-row items-center justify-between gap-3 p-3.5 bg-slate-50 dark:bg-card border border-border rounded-2xl transition-all w-full hover:bg-slate-100 dark:hover:bg-accent/30"
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center shrink-0">
-                                      <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-                                    </div>
-                                    <span className="text-xs font-bold text-foreground truncate text-left flex-1">
-                                      {org.nombre}
-                                    </span>
-                                  </div>
-                                  <button
-                                    onClick={() => handleUnlink(org, sector.id)}
-                                    disabled={unlinkingId === org.id}
-                                    className="flex items-center justify-center w-8 h-8 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/20 dark:hover:bg-rose-950/40 text-rose-700 dark:text-rose-400 transition-all cursor-pointer border border-rose-100/20 dark:border-rose-900/30 disabled:opacity-40 shrink-0"
-                                    title="Desvincular Organización"
-                                  >
-                                    {unlinkingId === org.id ? (
-                                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                    ) : (
-                                      <Unlink className="w-3.5 h-3.5" />
-                                    )}
-                                  </button>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            );
-          })
+        {viewMode === "organizaciones" ? (
+          <OrganizacionesPanel
+            orgs={orgs}
+            search={searchOrg}
+            onRefresh={refresh}
+            className="border-b-0"
+            showLogoHint
+          />
+        ) : (
+          <SectoresPanel
+            sectores={sectores}
+            orgs={orgs}
+            search={searchSector}
+            onLinkSector={setActiveLinkingSector}
+            className="border-b-0"
+          />
         )}
       </div>
 
-      {/* ── Modal de Vinculación y Creación ── */}
+      {/* Vista escritorio: dos recuadros lado a lado */}
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] gap-4 xl:gap-5 w-full">
+        <div className={PANEL_CARD_CLASS}>
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 space-y-3">
+            <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Organizaciones
+            </h4>
+            <PanelToolbar
+              placeholder="Buscar organización..."
+              search={searchOrg}
+              onSearchChange={setSearchOrg}
+              onCreate={() => setShowNewOrgModal(true)}
+            />
+          </div>
+          <OrganizacionesPanel
+            orgs={orgs}
+            search={searchOrg}
+            onRefresh={refresh}
+            className="border-0"
+            twoColumns
+            showLogoHint
+          />
+        </div>
+
+        <div className={PANEL_CARD_CLASS}>
+          <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800/80 space-y-3">
+            <h4 className="text-[11px] font-black text-slate-900 dark:text-white uppercase tracking-wider">
+              Sectores
+            </h4>
+            <PanelToolbar
+              placeholder="Buscar sector..."
+              search={searchSector}
+              onSearchChange={setSearchSector}
+              onCreate={() => setShowNewSectorModal(true)}
+            />
+          </div>
+          <SectoresPanel
+            sectores={sectores}
+            orgs={orgs}
+            search={searchSector}
+            onLinkSector={setActiveLinkingSector}
+            className="border-0"
+            singleColumnOrgs
+          />
+        </div>
+      </div>
+
       <AnimatePresence>
+        {showNewSectorModal && (
+          <CrearSectorModal
+            onClose={() => setShowNewSectorModal(false)}
+            onCreated={handleSectorCreated}
+          />
+        )}
+        {showNewOrgModal && (
+          <CrearOrganizacionModal
+            onClose={() => setShowNewOrgModal(false)}
+            onSuccess={refresh}
+          />
+        )}
         {activeLinkingSector && (
           <VincularSectorModal
             sectorId={activeLinkingSector.id}
             sectorNombre={activeLinkingSector.nombre}
             todasLasOrgs={orgs}
-            sectoresTotales={sectores}
             onClose={() => setActiveLinkingSector(null)}
-            onSuccess={async () => {
-              await refresh();
-            }}
+            onSuccess={refresh}
           />
         )}
       </AnimatePresence>

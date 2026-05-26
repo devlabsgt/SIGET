@@ -45,6 +45,15 @@ export default function Header() {
 
   return (
     <>
+      <div
+        aria-hidden
+        className="md:hidden shrink-0 pointer-events-none transition-[height] duration-200"
+        style={{
+          height: showBreadcrumb
+            ? "calc(var(--mobile-header-height) + var(--mobile-breadcrumb-height))"
+            : "var(--mobile-header-height)",
+        }}
+      />
       <header className="w-full fixed left-0 transition-all bg-card border-b border-border/40 z-[100] shadow-sm">
         <div className="mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-8 gap-4">
           <div className="flex items-center h-full">
@@ -170,7 +179,7 @@ export default function Header() {
       {showBreadcrumb && (
         <div 
           style={{ top: 'calc(var(--banner-height, 0px) + 56px)' }}
-          className="fixed left-0 md:hidden w-full px-6 py-3 border-b border-border/40 bg-card z-[99]"
+          className="fixed left-0 md:hidden w-full px-6 h-[var(--mobile-breadcrumb-height)] flex items-center bg-card z-[105]"
         >
           <BreadcrumbNav />
         </div>

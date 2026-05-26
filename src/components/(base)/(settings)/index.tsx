@@ -2,9 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useAppSettings, useUpdateAppSettings } from "./hooks";
-import { Settings, Shield, Key, Save, Loader2 } from "lucide-react";
-import LogoTrifinio from "@/components/(SIGET)/logo/LogoTrifinio";
-import { Card } from "@/components/ui/card";
+import { Settings, Shield, Key, Loader2 } from "lucide-react";
+
+const toggleClassName =
+  "w-11 h-6 bg-muted border border-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-background after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-background after:border-border after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-celeste-trifinio dark:peer-checked:bg-celeste-trifinio";
 
 export default function AppSettings() {
   const { data: settings, isLoading, isError } = useAppSettings();
@@ -22,21 +23,23 @@ export default function AppSettings() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center w-full h-40">
-        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex h-40 w-full items-center justify-center px-4 pt-4 md:pt-28">
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="p-4 text-red-500 bg-red-50 rounded-lg font-medium">
-        Error al cargar los ajustes del sistema.
+      <div className="px-4 pt-4 md:pt-28">
+        <div className="rounded-lg bg-red-500/10 p-4 font-medium text-red-600 dark:text-red-400">
+          Error al cargar los ajustes del sistema.
+        </div>
       </div>
     );
   }
 
-const handleAuthChange = (checked: boolean) => {
+  const handleAuthChange = (checked: boolean) => {
     setRequireAuth(checked);
     updateSettings({
       id: settings?.id,
@@ -55,73 +58,74 @@ const handleAuthChange = (checked: boolean) => {
   };
 
   return (
-    <div className="w-full max-w-3xl mx-auto flex flex-col items-center space-y-8 p-4 md:p-6 mt-16 lg:mt-24">
-      {/* LOGO CENTRADO */}
-      <div className="w-full flex justify-center mb-4">
-        <LogoTrifinio scale={0.7} backgroundEffect="none" />
-      </div>
-
-      <div className="flex flex-col gap-1 w-full text-center items-center">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 pb-10 pt-4 md:pt-28">
+      <div className="flex w-full flex-col items-center gap-1 text-center">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-blue-500/10">
-            <Settings className="size-5 text-blue-500" />
+          <div className="rounded-xl bg-amber-500/10 p-2">
+            <Settings className="size-5 text-amber-600 dark:text-amber-400" />
           </div>
           <h1 className="text-3xl font-bold tracking-tighter text-foreground">
             Configuraciones
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground ml-0.5">
+        <p className="text-sm text-muted-foreground">
           Ajustes generales del sistema y seguridad.
         </p>
       </div>
 
-      <Card className="bg-white border border-border shadow-sm overflow-hidden w-full">
-        <div className="p-6 space-y-6">
-          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border/50 bg-background hover:bg-accent/50 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="p-2.5 bg-amber-500/10 rounded-lg">
-                <Shield className="size-5 text-amber-500" />
-              </div>
-              <div className="space-y-0.5 text-left">
-                <h3 className="text-base font-semibold text-foreground">Autorización de dispositivos</h3>
-                <p className="text-xs text-muted-foreground">Requerir aprobación manual para nuevos dispositivos.</p>
-              </div>
+      <div className="flex w-full flex-col divide-y divide-border/25 overflow-hidden rounded-2xl border border-border/80 bg-card">
+        <div className="flex items-center justify-between gap-4 p-4 md:p-5 transition-colors hover:bg-muted/50 dark:hover:bg-white/5">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="rounded-lg bg-amber-500/10 p-2.5">
+              <Shield className="size-5 text-amber-600 dark:text-amber-400" />
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={requireAuth}
-                disabled={isPending}
-                onChange={(e) => handleAuthChange(e.target.checked)}
-              />
-              <div className="w-11 h-6 bg-muted border border-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
-          </div>
-
-          <div className="flex items-center justify-between gap-4 p-4 rounded-xl border border-border/50 bg-background hover:bg-accent/50 transition-colors">
-            <div className="flex items-center gap-4">
-              <div className="p-2.5 bg-purple-500/10 rounded-lg">
-                <Key className="size-5 text-purple-500" />
-              </div>
-              <div className="space-y-0.5 text-left">
-                <h3 className="text-base font-semibold text-foreground">Habilitar Passkeys</h3>
-                <p className="text-xs text-muted-foreground">Permitir el inicio de sesión sin contraseña.</p>
-              </div>
+            <div className="min-w-0 space-y-0.5 text-left">
+              <h3 className="text-base font-semibold text-foreground">
+                Autorización de dispositivos
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Requerir aprobación manual para nuevos dispositivos.
+              </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input
-                type="checkbox"
-                className="sr-only peer"
-                checked={enablePasskeys}
-                disabled={isPending}
-                onChange={(e) => handlePasskeysChange(e.target.checked)}
-              />
-              <div className="w-11 h-6 bg-muted border border-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-            </label>
           </div>
+          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={requireAuth}
+              disabled={isPending}
+              onChange={(e) => handleAuthChange(e.target.checked)}
+            />
+            <div className={toggleClassName} />
+          </label>
         </div>
-      </Card>
+
+        <div className="flex items-center justify-between gap-4 p-4 md:p-5 transition-colors hover:bg-muted/50 dark:hover:bg-white/5">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="rounded-lg bg-purple-500/10 p-2.5">
+              <Key className="size-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="min-w-0 space-y-0.5 text-left">
+              <h3 className="text-base font-semibold text-foreground">
+                Habilitar Passkeys
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Permitir el inicio de sesión sin contraseña.
+              </p>
+            </div>
+          </div>
+          <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+            <input
+              type="checkbox"
+              className="peer sr-only"
+              checked={enablePasskeys}
+              disabled={isPending}
+              onChange={(e) => handlePasskeysChange(e.target.checked)}
+            />
+            <div className={toggleClassName} />
+          </label>
+        </div>
+      </div>
     </div>
   );
 }

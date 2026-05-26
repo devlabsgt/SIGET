@@ -34,7 +34,7 @@ export function BreadcrumbNav() {
       <LayoutGroup id="breadcrumb">
         <motion.div
           layout
-          className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden pt-1"
+          className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden md:pt-1"
         >
           <motion.div layout="position">
             <Link
@@ -58,7 +58,7 @@ export function BreadcrumbNav() {
       <LayoutGroup id="breadcrumb">
         <motion.div
           layout
-          className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden pt-1"
+          className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden md:pt-1"
         >
           <motion.div layout="position">
             <Link
@@ -92,7 +92,7 @@ export function BreadcrumbNav() {
     <LayoutGroup id="breadcrumb">
       <motion.div
         layout
-        className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden pt-1"
+        className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden md:pt-1"
       >
         <motion.div layout="position">
           <Link

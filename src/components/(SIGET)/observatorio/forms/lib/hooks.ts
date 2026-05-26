@@ -4,6 +4,7 @@ import {
   getSectores,
   getAllPoliticas,
   getOrganizacionesBySector, 
+  getSectorIdsByOrganizacion,
   getPoliticasBySector, 
   getIndicadoresByPolitica,
   createPolitica,
@@ -38,6 +39,14 @@ export function usePoliticas() {
   return useQuery({
     queryKey: ["politicas"],
     queryFn: getAllPoliticas
+  });
+}
+
+export function useOrganizacionSectores(organizacionId?: string, enabled = true) {
+  return useQuery({
+    queryKey: ["org-sectores", organizacionId],
+    queryFn: () => getSectorIdsByOrganizacion(organizacionId!),
+    enabled: enabled && !!organizacionId,
   });
 }
 
@@ -419,7 +428,31 @@ export interface RegistroEntradaLocal {
 
 export const SIN_ESPECIFICAR = "__none__";
 
-export function useFormulario(onSuccess: () => void, initialPolitica?: ObsPolitica | null) {
+export function useFormulario(
+  onSuccess: () => void,
+  initialPolitica?: ObsPolitica | null,
+  options?: {
+    canChooseOrg?: boolean;
+    userOrganizacionId?: string;
+  },
+) {
+  const canChooseOrg = options?.canChooseOrg ?? false;
+  const userOrganizacionId = options?.userOrganizacionId;
+  const isOrgLocked = !canChooseOrg && !!userOrganizacionId;
+
+  const resolveOrgs = (orgs: ObsOrganizacion[]) => {
+    if (canChooseOrg) return orgs;
+    if (userOrganizacionId) {
+      const match = orgs.find((org) => org.id === userOrganizacionId);
+      return match ? [match] : [];
+    }
+    return orgs;
+  };
+
+  const resolveInitialOrg = (orgs: ObsOrganizacion[]) => {
+    if (canChooseOrg || !userOrganizacionId) return null;
+    return orgs.find((org) => org.id === userOrganizacionId) ?? null;
+  };
   const [sectores, setSectores] = useState<ObsSector[]>([]);
   const [organizaciones, setOrganizaciones] = useState<ObsOrganizacion[]>([]);
   const [politicas, setPoliticas] = useState<ObsPolitica[]>([]);
@@ -480,8 +513,13 @@ export function useFormulario(onSuccess: () => void, initialPolitica?: ObsPoliti
                 getOrganizacionesBySector(sector.id),
                 getPoliticasBySector(sector.id)
               ]);
-              setOrganizaciones(orgs);
+              const visibleOrgs = resolveOrgs(orgs);
+              const initialOrg = resolveInitialOrg(orgs);
+              setOrganizaciones(visibleOrgs);
               setPoliticas(pols);
+              if (initialOrg) {
+                setFormData((prev) => ({ ...prev, organizacion: initialOrg }));
+              }
             } catch(err) {
               console.error(err);
             } finally {
@@ -533,8 +571,16 @@ export function useFormulario(onSuccess: () => void, initialPolitica?: ObsPoliti
         getOrganizacionesBySector(sector.id),
         getPoliticasBySector(sector.id)
       ]);
-      setOrganizaciones(orgs);
+      const visibleOrgs = resolveOrgs(orgs);
+      const initialOrg = resolveInitialOrg(orgs);
+      setOrganizaciones(visibleOrgs);
       setPoliticas(pols);
+      setFormData((prev) => ({
+        ...prev,
+        sector,
+        organizacion: canChooseOrg ? null : initialOrg,
+        politica: null,
+      }));
     } catch(err) {
       console.error(err);
     } finally {
@@ -718,6 +764,8 @@ export function useFormulario(onSuccess: () => void, initialPolitica?: ObsPoliti
     handlePrev,
     handleSectorChange,
     handlePoliticaChange,
-    handleSubmit
+    handleSubmit,
+    canChooseOrg,
+    isOrgLocked,
   };
 }

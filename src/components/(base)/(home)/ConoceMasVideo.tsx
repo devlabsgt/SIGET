@@ -66,94 +66,45 @@ function YouTubePlayer() {
   );
 }
 
-export function HeroVideoLayout({
-  videoOpen,
-  onOpen,
+/** Un solo reproductor a nivel página — evita audio duplicado si hay hero móvil + desktop. */
+export function VideoPlayerOverlay({
+  open,
   onClose,
-  mobile = false,
 }: {
-  videoOpen: boolean;
-  onOpen: () => void;
+  open: boolean;
   onClose: () => void;
-  mobile?: boolean;
 }) {
   useEffect(() => {
-    if (!videoOpen) return;
+    if (!open) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [videoOpen, onClose]);
+  }, [open, onClose]);
 
   return (
-    <>
-      <AnimatePresence>
-        {videoOpen && (
+    <AnimatePresence>
+      {open && (
+        <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[4] backdrop-blur-[2px]"
+            className="fixed inset-0 z-[200] bg-black/25 backdrop-blur-[2px]"
             onClick={onClose}
           />
-        )}
-      </AnimatePresence>
-
-      <div
-        className={cn(
-          "relative z-[6] w-full mx-auto",
-          mobile && videoOpen ? "max-w-none px-0" : "max-w-2xl px-2",
-        )}
-      >
-        <AnimatePresence mode="wait">
-          {!videoOpen ? (
-            <motion.div
-              key="hero-branding"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={fadeTransition}
-              className="flex flex-col items-center w-full"
-            >
-              <div className="relative isolate w-full">
-                {mobile ? (
-                  <LogoTrifinioMobile backgroundEffect="blur" forceAzulColors />
-                ) : (
-                  <LogoTrifinio forceAzulColors />
-                )}
-              </div>
-              <div className="mt-6 md:mt-8 flex flex-wrap items-center justify-center gap-3">
-                <ConoceMasButton onClick={onOpen} />
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Link
-                    href="/observatorio-web"
-                    className="relative flex items-center gap-2.5 px-4 py-2 md:px-5 md:py-2.5 rounded-lg overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-white/55 backdrop-blur-md border border-white/50 rounded-lg" />
-                    <Globe className="relative size-4 shrink-0 text-azul-trifinio" />
-                    <span className="relative text-sm md:text-base font-semibold tracking-wide text-azul-trifinio whitespace-nowrap">
-                      Observatorio Web
-                    </span>
-                  </Link>
-                </motion.div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="hero-video"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={fadeTransition}
-              className="flex flex-col items-center w-full"
-            >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={fadeTransition}
+            className="fixed inset-x-0 top-1/2 z-[201] mx-auto w-full max-w-2xl -translate-y-1/2 px-2 md:px-4 pointer-events-none"
+          >
+            <div className="pointer-events-auto flex flex-col items-center w-full">
               <div
-                className={cn(
-                  "relative w-full aspect-video overflow-hidden",
-                  mobile ? "rounded-none" : "rounded-sm",
-                )}
+                className="relative w-full aspect-video overflow-hidden rounded-none md:rounded-sm"
                 onClick={(e) => e.stopPropagation()}
               >
                 <YouTubePlayer />
@@ -172,10 +123,61 @@ export function HeroVideoLayout({
                   Clic en cualquier lugar fuera del video para cerrar
                 </p>
               </div>
-            </motion.div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export function HeroVideoLayout({
+  videoOpen,
+  onOpen,
+  mobile = false,
+}: {
+  videoOpen: boolean;
+  onOpen: () => void;
+  mobile?: boolean;
+}) {
+  if (videoOpen) return null;
+
+  return (
+    <div
+      className={cn(
+        "relative z-[6] w-full mx-auto max-w-2xl px-2",
+      )}
+    >
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={fadeTransition}
+        className="flex flex-col items-center w-full"
+      >
+        <div className="relative isolate w-full">
+          {mobile ? (
+            <LogoTrifinioMobile backgroundEffect="blur" forceAzulColors />
+          ) : (
+            <LogoTrifinio forceAzulColors />
           )}
-        </AnimatePresence>
-      </div>
-    </>
+        </div>
+        <div className="mt-4 md:mt-8 flex flex-wrap items-center justify-center gap-3">
+          <ConoceMasButton onClick={onOpen} />
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <Link
+              href="/observatorio-web"
+              className="relative flex items-center gap-2.5 px-4 py-2 md:px-5 md:py-2.5 rounded-lg overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-white/55 backdrop-blur-md border border-white/50 rounded-lg" />
+              <Globe className="relative size-4 shrink-0 text-azul-trifinio" />
+              <span className="relative text-sm md:text-base font-semibold tracking-wide text-azul-trifinio whitespace-nowrap">
+                Observatorio Web
+              </span>
+            </Link>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
   );
 }

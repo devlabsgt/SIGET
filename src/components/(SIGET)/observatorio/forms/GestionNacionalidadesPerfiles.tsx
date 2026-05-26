@@ -102,8 +102,8 @@ function CatalogSection({
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between gap-2 px-1">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2 px-3 sm:px-4 md:px-5">
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4 text-emerald-600" />
           <div>
@@ -120,10 +120,10 @@ function CatalogSection({
         </button>
       </div>
 
-      <div className="bg-card rounded-xl border border-border overflow-hidden">
+      <div className="border-t border-border overflow-hidden">
         <div className="divide-y divide-border">
           {items.map((item) => (
-            <div key={item.id} className="px-3 py-2.5 flex items-center justify-between gap-3 bg-background/40 dark:bg-background/60 hover:bg-muted/50 dark:hover:bg-accent/30 transition-colors">
+            <div key={item.id} className="px-3 sm:px-4 md:px-5 py-2 flex items-center justify-between gap-2 bg-background/40 dark:bg-background/60 hover:bg-muted/50 dark:hover:bg-accent/30 transition-colors">
               <div className="flex-1 min-w-0">
                 {editingId === item.id ? (
                   <input
@@ -180,7 +180,7 @@ function CatalogSection({
           ))}
 
           {isAdding && (
-            <div className="px-3 py-2 bg-emerald-50/10 flex items-center gap-3">
+            <div className="px-3 sm:px-4 md:px-5 py-2 bg-emerald-50/10 flex items-center gap-2">
               <input
                 type="text"
                 value={newValue}
@@ -223,7 +223,8 @@ export default function GestionNacionalidadesPerfiles() {
   const { data: perfiles = [], isLoading: loadingPer } = usePerfiles();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 px-4 md:px-8">
+    <div className="grid grid-cols-1 lg:grid-cols-2 lg:divide-x divide-border w-full">
+      <div className="pb-4 lg:pb-0">
       <CatalogSection
         title="Nacionalidades"
         icon={Globe}
@@ -234,6 +235,8 @@ export default function GestionNacionalidadesPerfiles() {
         onUpdate={updateNacionalidad}
         onDelete={deleteNacionalidad}
       />
+      </div>
+      <div className="pt-4 lg:pt-0 border-t lg:border-t-0 border-border">
       <CatalogSection
         title="Perfiles"
         icon={UserCircle}
@@ -244,6 +247,7 @@ export default function GestionNacionalidadesPerfiles() {
         onUpdate={updatePerfil}
         onDelete={deletePerfil}
       />
+      </div>
     </div>
   );
 }

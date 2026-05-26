@@ -18,7 +18,9 @@ import Swal from "sweetalert2";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateProfile } from "../lib/actions";
 import { useProfile } from "../lib/hooks";
+import { getOrganizaciones } from "@/components/(base)/(auth)/signup/actions";
 import { cn } from "@/lib/utils";
+import { Building2 } from "lucide-react";
 
 const Label = ({
   className,
@@ -91,6 +93,9 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
   const [formData, setFormData] = useState<any>({});
   const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [organizaciones, setOrganizaciones] = useState<
+    { id: string; nombre: string }[]
+  >([]);
 
   useEffect(() => {
     if (perfilData) {
@@ -98,6 +103,10 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
       setHasChanges(false);
     }
   }, [perfilData]);
+
+  useEffect(() => {
+    getOrganizaciones().then(setOrganizaciones).catch(() => setOrganizaciones([]));
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>,
@@ -281,6 +290,29 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
             onChange={handleChange}
             disabled={!canEdit}
           />
+        </div>
+        <div>
+          <Label>Organización</Label>
+          <div className="relative">
+            <Building2
+              size={14}
+              className="absolute left-3 top-3 text-muted-foreground z-10"
+            />
+            <Select
+              name="organizacion_id"
+              value={formData.organizacion_id || ""}
+              onChange={handleChange}
+              disabled={!canEdit}
+              className="pl-9"
+            >
+              <option value="">Sin organización</option>
+              {organizaciones.map((org) => (
+                <option key={org.id} value={org.id}>
+                  {org.nombre}
+                </option>
+              ))}
+            </Select>
+          </div>
         </div>
       </div>
     </div>
