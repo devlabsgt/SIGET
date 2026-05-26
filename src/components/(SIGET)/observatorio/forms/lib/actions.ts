@@ -27,6 +27,13 @@ export interface ObsCampo {
   id: string;
   nombre: string;
   activo: boolean;
+  orden?: number | null;
+}
+
+export interface ObsPredefinedField {
+  id: string;
+  nombre: string;
+  orden: number;
 }
 
 export interface ObsIndicadorCampo {
@@ -140,6 +147,107 @@ export async function getAllCampos() {
     .order("nombre");
   if (error) throw new Error(error.message);
   return data as ObsCampo[];
+}
+
+export async function getPredefinedFields(): Promise<ObsPredefinedField[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("obs_campos")
+    .select("id, nombre, orden")
+    .eq("activo", true);
+
+  if (error) {
+    const { data: fallback, error: fallbackError } = await supabase
+      .from("obs_campos")
+      .select("id, nombre")
+      .eq("activo", true)
+      .order("nombre", { ascending: true });
+    if (fallbackError) throw new Error(fallbackError.message);
+    return (fallback ?? []).map((row, index) => ({
+      id: row.id,
+      nombre: row.nombre,
+      orden: index + 1,
+    }));
+  }
+
+  return (data ?? [])
+    .map((row, index) => ({
+      id: row.id,
+      nombre: row.nombre,
+      orden: typeof row.orden === "number" ? row.orden : index + 1,
+    }))
+    .sort(
+      (a, b) =>
+        a.orden - b.orden ||
+        a.nombre.localeCompare(b.nombre, "es", { sensitivity: "base" })
+    );
+}
+
+export async function createPredefinedField(nombre: string, orden: number) {
+  const trimmed = nombre.trim();
+  if (!trimmed) throw new Error("El nombre no puede estar vacío.");
+
+  const supabase = await createClient();
+  let result = await supabase
+    .from("obs_campos")
+    .insert({ nombre: trimmed, activo: true, orden })
+    .select("id, nombre, orden")
+    .single();
+
+  if (result.error) {
+    result = await supabase
+      .from("obs_campos")
+      .insert({ nombre: trimmed, activo: true })
+      .select("id, nombre")
+      .single();
+  }
+
+  if (result.error) throw new Error(result.error.message);
+  const row = result.data as { id: string; nombre: string; orden?: number | null };
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    orden: row.orden ?? orden,
+  } satisfies ObsPredefinedField;
+}
+
+export async function updatePredefinedField(id: string, nombre: string, orden: number) {
+  const trimmed = nombre.trim();
+  if (!trimmed) throw new Error("El nombre no puede estar vacío.");
+
+  const supabase = await createClient();
+  let result = await supabase
+    .from("obs_campos")
+    .update({ nombre: trimmed, orden })
+    .eq("id", id)
+    .select("id, nombre, orden")
+    .single();
+
+  if (result.error) {
+    result = await supabase
+      .from("obs_campos")
+      .update({ nombre: trimmed })
+      .eq("id", id)
+      .select("id, nombre")
+      .single();
+  }
+
+  if (result.error) throw new Error(result.error.message);
+  const row = result.data as { id: string; nombre: string; orden?: number | null };
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    orden: row.orden ?? orden,
+  } satisfies ObsPredefinedField;
+}
+
+export async function deletePredefinedField(id: string) {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("obs_campos")
+    .update({ activo: false })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
 }
 
 export async function createPolitica(sectorId: string, codigo: string, descripcion: string) {

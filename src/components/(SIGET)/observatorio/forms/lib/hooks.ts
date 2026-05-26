@@ -12,6 +12,7 @@ import {
   createRegistro,
   createSector,
   getAllCampos,
+  getPredefinedFields,
   getNacionalidades,
   getPerfiles,
   ObsSector,
@@ -54,6 +55,13 @@ export function useCampos() {
   return useQuery({
     queryKey: ["campos"],
     queryFn: getAllCampos
+  });
+}
+
+export function usePredefinedFields() {
+  return useQuery({
+    queryKey: ["predefinedFields"],
+    queryFn: getPredefinedFields,
   });
 }
 
