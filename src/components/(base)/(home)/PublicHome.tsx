@@ -39,7 +39,7 @@ export function PublicHome() {
     };
   }, []);
 
-  const headerOffset = user ? 100 : 56;
+  const headerOffset = user ? 100 : 0;
 
   return (
     <div className="relative flex w-full flex-col" style={{ zoom: 0.9 }}>
@@ -114,8 +114,8 @@ export function PublicHome() {
 
       {/* Spacer: revela el footer fijo al llegar abajo */}
       <div
-        className="w-full shrink-0 md:hidden"
-        style={{ height: `${FOOTER_SCROLL_SPACER_MOBILE_VH}vh`, zoom: 1 / 0.9 }}
+        className="hidden w-full shrink-0"
+        style={{ height: `0vh`, zoom: 1 / 0.9 }}
         aria-hidden
       />
       <div

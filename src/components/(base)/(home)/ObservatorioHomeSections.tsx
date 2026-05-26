@@ -1694,12 +1694,9 @@ function ModulosObservatorioSection() {
 
       <div className="relative z-10 mx-auto max-w-6xl w-full py-4 text-center md:py-5">
         <TextAnimate
-          animation="blurIn"
-          as="p"
+          animation="blurInUp"
           by="word"
-          duration={1.2}
-          startOnView
-          className="text-[11px] font-light uppercase tracking-[0.25em] text-azul-trifinio md:w-full md:whitespace-nowrap md:font-light md:tracking-[0.12em] md:text-[clamp(2rem,4.75vw,4rem)]"
+          className="text-sm sm:text-base md:text-lg font-black uppercase tracking-[0.25em] text-celeste-trifinio"
         >
           — Observatorio Web —
         </TextAnimate>
@@ -1709,7 +1706,7 @@ function ModulosObservatorioSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: false, amount: 0.4 }}
           transition={{ duration: 0.8, delay: 0.1 }}
-          className="mt-4 text-4xl font-black leading-[0.92] tracking-[-0.025em] text-foreground md:text-6xl lg:text-7xl xl:text-8xl"
+          className="mt-4 text-4xl font-black leading-[0.92] tracking-[-0.025em] text-azul-trifinio md:text-6xl lg:text-7xl xl:text-8xl"
         >
           de Plan Trifinio
         </motion.h2>
@@ -2209,7 +2206,7 @@ function FooterSectionHeading({
   return (
     <p
       className={cn(
-        "flex items-center gap-2 text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio",
+        "flex items-center gap-2 text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio whitespace-nowrap",
         align === "end" ? "justify-end" : "justify-start",
         className
       )}
@@ -2457,7 +2454,7 @@ export function ObservatorioFooterCurtain({
 }) {
   return (
     <footer
-      className="fixed bottom-0 left-0 z-0 flex h-[92vh] w-full flex-col overflow-hidden bg-[#0a1628] md:h-[50vh]"
+      className="relative z-20 flex h-auto w-full flex-col overflow-hidden bg-[#0a1628] md:fixed md:bottom-0 md:left-0 md:z-0 md:h-[50vh] max-md:!opacity-100 max-md:!visibility-visible max-md:!pointer-events-auto"
       style={{
         zoom: 1 / 0.9,
         opacity: revealed ? 1 : 0,
