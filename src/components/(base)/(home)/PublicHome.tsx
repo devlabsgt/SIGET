@@ -42,8 +42,9 @@ export function PublicHome() {
   const headerOffset = 0;
 
   return (
-    <div className="relative flex w-full flex-col" style={{ zoom: 0.9 }}>
+    <>
       <VideoPlayerOverlay open={videoOpen} onClose={() => setVideoOpen(false)} />
+      <div className="relative flex w-full flex-col" style={{ zoom: 0.9 }}>
 
       {/* Hero desktop — imagen fija con cover */}
       <div
@@ -126,5 +127,6 @@ export function PublicHome() {
 
       <ObservatorioFooterCurtain revealed={footerRevealed} />
     </div>
+    </>
   );
 }

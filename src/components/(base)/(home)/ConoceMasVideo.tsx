@@ -87,40 +87,42 @@ export function VideoPlayerOverlay({
     <AnimatePresence>
       {open && (
         <>
+          {/* Fondo con blur transparente y sutil color de capa */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="fixed inset-0 z-[200] bg-black/25 backdrop-blur-[2px]"
+            className="fixed inset-0 z-[200] bg-black/10 backdrop-blur-xl"
             onClick={onClose}
           />
+          {/* Contenedor del reproductor perfectamente centrado */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
             transition={fadeTransition}
-            className="fixed inset-x-0 top-1/2 z-[201] mx-auto w-full max-w-2xl -translate-y-1/2 px-2 md:px-4 pointer-events-none"
+            className="fixed inset-0 z-[201] flex items-center justify-center p-4 pointer-events-none"
           >
-            <div className="pointer-events-auto flex flex-col items-center w-full">
+            <div className="pointer-events-auto flex flex-col items-center w-full max-w-3xl">
               <div
-                className="relative w-full aspect-video overflow-hidden rounded-none md:rounded-sm"
+                className="relative w-full aspect-video overflow-hidden rounded-xl shadow-2xl border border-white/10"
                 onClick={(e) => e.stopPropagation()}
               >
                 <YouTubePlayer />
                 <button
                   type="button"
                   onClick={onClose}
-                  className="absolute top-1.5 right-1.5 p-1 text-white/80 hover:text-white transition-colors cursor-pointer z-10"
+                  className="absolute top-3 right-3 p-1.5 rounded-full bg-black/40 text-white/80 hover:text-white transition-colors cursor-pointer z-10 backdrop-blur-sm"
                   aria-label="Cerrar video"
                 >
-                  <X className="size-4" />
+                  <X className="size-5" />
                 </button>
               </div>
-              <div className="relative mt-3 mx-4 md:mx-0 px-4 py-2.5 rounded-lg overflow-hidden">
-                <div className="absolute inset-0 bg-white/55 backdrop-blur-md border border-white/50 rounded-lg" />
-                <p className="relative text-center text-xs md:text-sm font-semibold text-azul-trifinio">
-                  Clic en cualquier lugar fuera del video para cerrar
+              <div className="relative mt-4 px-4 py-2 rounded-full overflow-hidden">
+                <div className="absolute inset-0 bg-white/10 backdrop-blur-md border border-white/20 rounded-full" />
+                <p className="relative text-center text-xs md:text-sm font-medium text-white/90">
+                  Clic fuera del video para cerrar
                 </p>
               </div>
             </div>
