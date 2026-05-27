@@ -240,9 +240,9 @@ function BannerHeroSequence({
   const countriesDelay = lineDelay + 0.55;
 
   const obsLabelClass = cn(
-    "font-black uppercase tracking-[0.35em] text-white drop-shadow-lg",
+    "font-black uppercase tracking-[0.25em] text-white drop-shadow-lg",
     compact
-      ? "mb-10 text-base sm:text-lg"
+      ? "mb-6 text-xs sm:text-sm"
       : "mb-12 text-xl md:mb-14 md:text-2xl lg:text-3xl",
   );
 
@@ -251,7 +251,7 @@ function BannerHeroSequence({
   const planStyle = {
     fontFamily: "'Arial Black', sans-serif",
     fontSize: compact
-      ? "clamp(2rem, 8.5vw, 3.25rem)"
+      ? "clamp(1.35rem, 6.2vw, 2.25rem)"
       : "clamp(2.75rem, 11vw, 4.25rem)",
   };
   const aguaClass =
@@ -259,13 +259,13 @@ function BannerHeroSequence({
   const aguaStyle = {
     fontFamily: "Arial, sans-serif",
     fontSize: compact
-      ? "clamp(1.15rem, 5vw, 1.75rem)"
+      ? "clamp(0.85rem, 3.8vw, 1.15rem)"
       : "clamp(1.5rem, 6vw, 2.5rem)",
   };
   const countriesClass = cn(
     "mt-3 min-h-[1.2em] w-full text-center font-semibold text-white/85 drop-shadow-lg",
     compact
-      ? "max-w-full text-balance text-[clamp(0.8125rem,5.5vw,1.125rem)] tracking-[0.12em] max-[380px]:whitespace-normal sm:whitespace-nowrap"
+      ? "max-w-full text-balance text-[clamp(0.6rem,3.2vw,0.8125rem)] tracking-[0.08em] whitespace-nowrap"
       : "whitespace-nowrap tracking-[0.18em]",
   );
   const countriesStyle = {
