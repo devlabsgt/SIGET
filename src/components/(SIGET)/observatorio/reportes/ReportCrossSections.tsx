@@ -58,6 +58,8 @@ import { HEATMAP_RGB, GUATEMALTECO_CELESTE, isGuatemalteco, nationalityColor, na
 const LEGEND_ACCORDION_MIN_LEN = 42;
 
 const tooltipStyle = {
+  backgroundColor: "#ffffff",
+  color: "#0f172a",
   borderRadius: "12px",
   border: "1px solid #e2e8f0",
   fontWeight: "bold" as const,
@@ -297,7 +299,12 @@ function DonutChartCard({
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatChartNumber(Number(value))} contentStyle={tooltipStyle} />
+                  <Tooltip
+                    formatter={(value) => formatChartNumber(Number(value))}
+                    contentStyle={tooltipStyle}
+                    itemStyle={{ color: "#0f172a" }}
+                    labelStyle={{ color: "#0f172a" }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </motion.div>

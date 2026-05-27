@@ -240,9 +240,9 @@ function BannerHeroSequence({
   const countriesDelay = lineDelay + 0.55;
 
   const obsLabelClass = cn(
-    "font-black uppercase tracking-[0.25em] text-white drop-shadow-lg",
+    "font-black uppercase tracking-[0.2em] text-white drop-shadow-lg",
     compact
-      ? "mb-6 text-xs sm:text-sm"
+      ? "mb-4 text-[10px]"
       : "mb-12 text-xl md:mb-14 md:text-2xl lg:text-3xl",
   );
 
@@ -251,21 +251,21 @@ function BannerHeroSequence({
   const planStyle = {
     fontFamily: "'Arial Black', sans-serif",
     fontSize: compact
-      ? "clamp(1.35rem, 6.2vw, 2.25rem)"
+      ? "clamp(1.2rem, 5vw, 1.8rem)"
       : "clamp(2.75rem, 11vw, 4.25rem)",
   };
   const aguaClass =
-    "mt-2 min-h-[1.2em] w-full text-center font-bold italic leading-tight text-white drop-shadow-lg";
+    "mt-1.5 min-h-[1.2em] w-full text-center font-bold italic leading-tight text-white drop-shadow-lg";
   const aguaStyle = {
     fontFamily: "Arial, sans-serif",
     fontSize: compact
-      ? "clamp(0.85rem, 3.8vw, 1.15rem)"
+      ? "clamp(0.75rem, 3.2vw, 1rem)"
       : "clamp(1.5rem, 6vw, 2.5rem)",
   };
   const countriesClass = cn(
-    "mt-3 min-h-[1.2em] w-full text-center font-semibold text-white/85 drop-shadow-lg",
+    "mt-2 min-h-[1.2em] w-full text-center font-semibold text-white/85 drop-shadow-lg",
     compact
-      ? "max-w-full text-balance text-[clamp(0.6rem,3.2vw,0.8125rem)] tracking-[0.08em] whitespace-nowrap"
+      ? "max-w-full text-balance text-[clamp(0.55rem,2.8vw,0.75rem)] tracking-[0.06em] whitespace-nowrap"
       : "whitespace-nowrap tracking-[0.18em]",
   );
   const countriesStyle = {
@@ -277,7 +277,7 @@ function BannerHeroSequence({
     <div
       className={cn(
         "flex w-full flex-col items-center",
-        compact ? "-translate-y-6" : "-translate-y-10 md:-translate-y-16",
+        compact ? "translate-y-1" : "-translate-y-10 md:-translate-y-16",
       )}
     >
       <TextAnimate
@@ -491,15 +491,15 @@ function FullWidthImageBanner({
         ref={ref}
         className={cn(
           "relative hidden w-full md:block",
-          fixedBackground ? "h-screen bg-[#0a1628]" : "",
+          fixedBackground ? "h-[70vh] bg-[#0a1628]" : "",
         )}
-        style={fixedBackground ? undefined : { height: "110vh" }}
+        style={fixedBackground ? undefined : { height: "70vh" }}
       >
         {fixedBackground ? (
           <>
             <motion.div
               style={{ opacity: fixedBgOpacity }}
-              className="sticky top-0 z-0 h-screen w-full overflow-hidden"
+              className="sticky top-0 z-0 h-[70vh] w-full overflow-hidden"
             >
               <img
                 src={src}
@@ -2044,19 +2044,19 @@ function FaqSection() {
               <img
                 src="/trifinio/hero-background2.jpg"
                 alt="Región Trifinio"
-                className="aspect-4/5 xl:aspect-5/6 w-full min-h-[520px] xl:min-h-[580px] object-cover object-center"
+                className="aspect-3/2 xl:aspect-4/3 w-full min-h-[340px] xl:min-h-[420px] object-cover object-center"
               />
               {/* badge sobre la imagen */}
-              <div className="absolute bottom-8 left-8 right-8 rounded-2xl bg-white/10 px-6 py-5 backdrop-blur-md border border-white/20">
-                <p className="text-sm font-black uppercase tracking-widest text-white">
+              <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-white/10 px-5 py-4 backdrop-blur-md border border-white/20">
+                <p className="text-xs font-black uppercase tracking-widest text-white">
                   Observatorio Web
                 </p>
-                <div className="my-3 h-px w-full bg-white/50" />
+                <div className="my-2.5 h-px w-full bg-white/50" />
                 <p
                   className="font-black text-white leading-none"
                   style={{
                     fontFamily: "'Arial Black', sans-serif",
-                    fontSize: "clamp(1.25rem, 2.2vw, 1.75rem)",
+                    fontSize: "clamp(1.1rem, 1.8vw, 1.45rem)",
                   }}
                 >
                   Plan Trifinio

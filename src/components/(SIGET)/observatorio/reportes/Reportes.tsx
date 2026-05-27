@@ -98,6 +98,7 @@ function sortNacionalidadNames(names: string[], totals?: Map<string, number>): s
 }
 
 const tooltipStyle = {
+  backgroundColor: "#ffffff",
   borderRadius: "12px",
   border: "1px solid #e2e8f0",
   boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
@@ -872,6 +873,8 @@ export default function Reportes({ onBack }: ReportesProps) {
                         <Tooltip
                           formatter={(value: any) => fmt(Number(value))}
                           contentStyle={tooltipStyle}
+                          itemStyle={{ color: "#0f172a" }}
+                          labelStyle={{ color: "#0f172a" }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -961,7 +964,7 @@ export default function Reportes({ onBack }: ReportesProps) {
                           if (!active || !payload?.length) return null;
                           const row = payload[0]?.payload as Record<string, number | string>;
                           return (
-                            <div style={tooltipStyle} className="rounded-xl border border-slate-200 p-3 text-xs shadow-md">
+                            <div style={tooltipStyle} className="rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-md">
                               <p className="font-bold text-slate-800 mb-2">{label}</p>
                               <p className="text-slate-600 mb-2">
                                 <span className="font-semibold">Registros:</span>{" "}

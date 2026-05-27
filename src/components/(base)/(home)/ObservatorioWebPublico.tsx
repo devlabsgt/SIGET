@@ -50,7 +50,18 @@ function DonutCard({
                     <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={{ borderRadius: 10, fontSize: 11, fontWeight: 600 }} formatter={(v) => [fmt(Number(v)), ""]} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#ffffff",
+                    color: "#0f172a",
+                    borderRadius: 10,
+                    fontSize: 11,
+                    fontWeight: 600,
+                  }}
+                  itemStyle={{ color: "#0f172a" }}
+                  labelStyle={{ color: "#0f172a" }}
+                  formatter={(v) => [fmt(Number(v)), ""]}
+                />
               </PieChart>
             </ResponsiveContainer>
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">

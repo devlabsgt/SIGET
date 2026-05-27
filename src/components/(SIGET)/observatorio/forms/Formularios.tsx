@@ -311,6 +311,8 @@ function aggregateChartSlices(
 }
 
 const tooltipStyle = {
+  backgroundColor: "#ffffff",
+  color: "#0f172a",
   borderRadius: "12px",
   border: "1px solid #e2e8f0",
   fontWeight: "bold" as const,
@@ -703,6 +705,8 @@ function DonutChartCard({
                   <Tooltip
                     formatter={(value) => formatChartNumber(Number(value))}
                     contentStyle={tooltipStyle}
+                    itemStyle={{ color: "#0f172a" }}
+                    labelStyle={{ color: "#0f172a" }}
                   />
                 </PieChart>
               </ResponsiveContainer>
