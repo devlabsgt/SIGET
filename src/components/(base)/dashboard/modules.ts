@@ -97,7 +97,13 @@ export function getVisibleDashboardModules(effectiveRole: string) {
   const isSuperOrAdmin = ["super", "admin"].includes(effectiveRole);
   return DASHBOARD_MODULES.filter((mod) => {
     if (mod.requiresAdmin && !isSuperOrAdmin) return false;
-    if (mod.allowedRoles && !mod.allowedRoles.includes(effectiveRole)) return false;
+    if (mod.allowedRoles) {
+      const isAllowed =
+        mod.allowedRoles.includes(effectiveRole) ||
+        (mod.allowedRoles.includes("observatorio") &&
+          effectiveRole.includes("observatorio"));
+      if (!isAllowed) return false;
+    }
     return true;
   });
 }

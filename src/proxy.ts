@@ -32,8 +32,9 @@ if (user) {
 
       const metadata = user.user_metadata || {};
       const realRole = (metadata.rol || user.role || "user") as string;
+      const isSuperOrAdmin = realRole.includes("super") || realRole.includes("admin");
 
-      if (["super", "admin"].includes(realRole)) {
+      if (isSuperOrAdmin) {
         const url = request.nextUrl.clone();
         url.pathname = "/siget";
         return NextResponse.redirect(url);
@@ -64,10 +65,11 @@ if (user) {
     if (pathname.startsWith("/siget")) {
       const metadata = user.user_metadata || {};
       const realRole = (metadata.rol || user.role || "user") as string;
+      const isSuperOrAdmin = realRole.includes("super") || realRole.includes("admin");
 
       if (
         pathname.startsWith("/siget/admin") &&
-        !["super", "admin"].includes(realRole)
+        !isSuperOrAdmin
       ) {
         const url = request.nextUrl.clone();
         url.pathname = "/sin-acceso";
@@ -75,13 +77,12 @@ if (user) {
       }
 
       const canAccessObservatorio =
-        realRole === "admin" ||
-        realRole === "super" ||
+        isSuperOrAdmin ||
         realRole.includes("observatorio");
 
-      const canAccessPlantillas = ["admin", "super", "admin-observatorio"].includes(
-        realRole,
-      );
+      const canAccessPlantillas =
+        isSuperOrAdmin ||
+        realRole === "admin-observatorio";
 
       if (pathname.startsWith("/siget/observatorio/plantillas")) {
         if (!canAccessPlantillas) {
@@ -97,7 +98,7 @@ if (user) {
         }
       }
 
-      if (requireAuth && !["super", "admin"].includes(realRole)) {
+      if (requireAuth && !isSuperOrAdmin) {
         const userAgent = request.headers.get("user-agent") || "Desconocido";
 
         const { data: device } = await supabase

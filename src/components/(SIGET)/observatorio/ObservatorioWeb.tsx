@@ -14,8 +14,22 @@ import {
 } from "@/components/(base)/providers/UserProvider";
 import { AuroraText } from "@/components/ui/aurora-text";
 import OrganizacionesLogoCintillo from "./OrganizacionesLogoCintillo";
+import { createClient } from "@/utils/supabase/client";
 
 const ROLES_WITH_PLANTILLAS = ["admin", "super", "admin-observatorio"];
+
+const FRASES_BIENVENIDA = [
+  "¡Qué bueno verte de nuevo! Todo está listo para continuar con la gestión técnica y el análisis regional.",
+  "¡Hola de nuevo! Tienes a tu disposición todas las herramientas estadísticas y datos del Observatorio.",
+  "¡Un saludo! El portal de recolección y análisis de datos está optimizado y listo para tu jornada.",
+  "¡Es un gusto saludarte! Accede a las herramientas clave para actualizar y visualizar el avance de la región.",
+  "¡Qué alegría tu presencia! Tu liderazgo técnico impulsa el desarrollo de la región con datos reales.",
+  "¡Es un placer saludarte de nuevo! Explora, gestiona y analiza libremente la información de movilidad regional.",
+  "¡Es un placer tenerte aquí hoy! Tu trabajo aquí hace más transparente la gestión de datos.",
+  "¡Hola! Que tengas una excelente y productiva jornada gestionando la información del Observatorio.",
+  "¡Excelente día para trabajar con datos! El portal está completamente listo para la actualización y el análisis.",
+  "¡Hola! Gracias por tu valioso aporte técnico al análisis continuo de la movilidad humana regional."
+];
 
 export default function ObservatorioWeb() {
   const router = useRouter();
@@ -24,23 +38,45 @@ export default function ObservatorioWeb() {
   const metadata = user?.user_metadata || {};
 
   const [loading, setLoading] = useState(true);
+  const [genero, setGenero] = useState<string | null>(null);
 
-  const fullText = "Es un gusto verte hoy, desde aquí puedes gestionar el Observatorio Web de Plan Trifinio";
   const [typedText, setTypedText] = useState("");
 
   const canSeePlantillas = ROLES_WITH_PLANTILLAS.includes(effectiveRole);
 
   useEffect(() => {
-    setLoading(false);
-  }, []);
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    const fetchProfile = async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("genero")
+          .eq("id", user.id)
+          .single();
+        if (data && !error) {
+          setGenero(data.genero);
+        }
+      } catch (err) {
+        console.error("Error fetching profile:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, [user]);
 
   useEffect(() => {
+    const fraseAleatoria = FRASES_BIENVENIDA[Math.floor(Math.random() * FRASES_BIENVENIDA.length)];
     let i = 0;
     const timeout = setTimeout(() => {
       const interval = setInterval(() => {
-        setTypedText(fullText.substring(0, i + 1));
+        setTypedText(fraseAleatoria.substring(0, i + 1));
         i++;
-        if (i >= fullText.length) clearInterval(interval);
+        if (i >= fraseAleatoria.length) clearInterval(interval);
       }, 30);
       return () => clearInterval(interval);
     }, 600);
@@ -55,10 +91,17 @@ export default function ObservatorioWeb() {
     );
   }
 
+  const welcomeText =
+    genero === "Femenino"
+      ? "¡Bienvenida, "
+      : genero === "Masculino"
+      ? "¡Bienvenido, "
+      : "¡Bienvenido(a), ";
+
   return (
     <>
       <div className="fixed inset-0 pointer-events-none z-[-1] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
-      <div className="flex-1 w-full px-2 md:px-6 lg:px-12 max-w-[1600px] mx-auto pt-32 md:pt-20">
+      <div className="flex-1 w-full px-2 md:px-6 lg:px-12 max-w-[1600px] mx-auto pt-5 md:pt-8">
 
         <AnimatePresence mode="wait">
           <motion.div
@@ -84,7 +127,7 @@ export default function ObservatorioWeb() {
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight"
               >
-                ¡Bienvenido,{" "}
+                {welcomeText}
                 <AuroraText>
                   {metadata.nombre?.split(' ')[0] || 'Usuario'}
                 </AuroraText>

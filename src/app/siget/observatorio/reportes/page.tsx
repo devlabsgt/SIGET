@@ -6,7 +6,7 @@ import Reportes from "@/components/(SIGET)/observatorio/reportes/Reportes";
 export default function ReportesPage() {
   return (
     <Suspense>
-      <div className="flex-1 w-full min-w-0 max-w-none px-2 md:px-4 lg:px-6 pb-20 pt-32 md:pt-20">
+      <div className="flex-1 w-full min-w-0 max-w-none px-2 md:px-4 lg:px-6 pb-20 pt-5 md:pt-8">
         <Reportes
           onBack={() => {
             if (typeof window !== "undefined") {

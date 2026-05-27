@@ -48,7 +48,7 @@ export default function Header() {
       <div
         aria-hidden
         className={`shrink-0 pointer-events-none transition-[height] duration-200 md:h-16 ${
-          showBreadcrumb ? "h-24" : "h-14"
+          showBreadcrumb ? "h-28" : "h-14"
         }`}
       />
       <header className="w-full fixed left-0 transition-all bg-card border-b border-border/40 z-[100] shadow-sm">
@@ -118,7 +118,7 @@ export default function Header() {
               onClick={() => window.location.reload()}
               className="flex items-center justify-center text-azul-trifinio hover:text-celeste-trifinio dark:text-white dark:hover:text-white/80 cursor-pointer transition-all hover:rotate-180 duration-500 active:scale-95"
             >
-              <RefreshCw className="size-5 md:size-6" />
+              <RefreshCw className="size-6 md:size-6" />
             </button>
             {showLoginButton && (
               <Link
@@ -147,7 +147,7 @@ export default function Header() {
                           exit={{ opacity: 0, rotate: 90, scale: 0.8 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <X className="size-6 md:size-8" />
+                          <X className="size-7 md:size-8" />
                         </motion.div>
                       ) : (
                         <motion.div
@@ -157,7 +157,7 @@ export default function Header() {
                           exit={{ opacity: 0, rotate: -90, scale: 0.8 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <MenuIcon className="size-6 md:size-8" />
+                          <MenuIcon className="size-7 md:size-8" />
                         </motion.div>
                       )}
                     </AnimatePresence>
