@@ -347,7 +347,7 @@ export function Dashboard() {
       />
 
       <div className="flex flex-col md:hidden w-full bg-muted dark:bg-muted">
-        <div className="w-full pt-[6.5rem] pb-0 -mb-[6%] relative z-[2] mt-4">
+        <div className="w-full pt-2 pb-0 -mb-[6%] relative z-[2] mt-4">
           <LogoTrifinioMobile backgroundEffect="blur" />
         </div>
 

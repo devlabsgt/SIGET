@@ -39,7 +39,7 @@ export function PublicHome() {
     };
   }, []);
 
-  const headerOffset = user ? 100 : 0;
+  const headerOffset = 0;
 
   return (
     <div className="relative flex w-full flex-col" style={{ zoom: 0.9 }}>
@@ -77,7 +77,7 @@ export function PublicHome() {
       <section className="relative w-full shrink-0 overflow-hidden rounded-b-2xl bg-background shadow-[0_28px_80px_rgba(10,22,40,0.14)] dark:bg-background md:-mt-15 md:rounded-t-[3rem] md:rounded-b-[3rem]">
         {/* Móvil: imagen completa sin zoom, empieza bajo el header */}
         <div
-          className="relative md:hidden"
+          className="relative md:hidden -mt-0.5"
           style={{ paddingTop: headerOffset }}
         >
           <img

@@ -47,12 +47,9 @@ export default function Header() {
     <>
       <div
         aria-hidden
-        className="md:hidden shrink-0 pointer-events-none transition-[height] duration-200"
-        style={{
-          height: showBreadcrumb
-            ? "calc(var(--mobile-header-height) + var(--mobile-breadcrumb-height))"
-            : "var(--mobile-header-height)",
-        }}
+        className={`shrink-0 pointer-events-none transition-[height] duration-200 md:h-16 ${
+          showBreadcrumb ? "h-24" : "h-14"
+        }`}
       />
       <header className="w-full fixed left-0 transition-all bg-card border-b border-border/40 z-[100] shadow-sm">
         <div className="mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-8 gap-4">
