@@ -243,8 +243,8 @@ function DonutChartCard({
     : isLg
       ? "w-[168px] h-[168px] sm:w-[188px] sm:h-[188px]"
       : "w-[120px] h-[120px]";
-  const innerRadius = compact ? 28 : isLg ? 54 : 38;
-  const outerRadius = compact ? 42 : isLg ? 88 : 56;
+  const innerRadius = compact ? 24 : isLg ? 48 : 34;
+  const outerRadius = compact ? 36 : isLg ? 74 : 50;
   const chartRowMinH = compact ? "min-h-[150px]" : isLg ? "min-h-[240px]" : "min-h-[140px]";
 
   return (
@@ -436,22 +436,47 @@ function CampoDimensionMatrix({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800">
-              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-0 bg-white dark:bg-slate-900/50 min-w-28">
-                {cornerLabel}
+              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-[-1px] bg-white dark:bg-slate-900 z-10 min-w-28 whitespace-normal max-w-[150px]">
+                {(() => {
+                  if (cornerLabel.includes("Indicador")) {
+                    return <span className="whitespace-nowrap">{cornerLabel}</span>;
+                  }
+                  const words = cornerLabel.trim().split(/\s+/);
+                  if (words.length > 2) {
+                    return (
+                      <>
+                        {words.slice(0, 2).join(" ")}
+                        <br />
+                        {words.slice(2).join(" ")}
+                      </>
+                    );
+                  }
+                  return cornerLabel;
+                })()}
               </th>
               {colIds.map((colId, colIdx) => {
                 const fullLabel = getColLabel(colId);
                 return (
                 <th
                   key={colId}
-                  className={`px-3 py-3 text-center text-[10px] font-black text-blue-500 uppercase tracking-wider ${
-                    shortColLabels ? "min-w-14 whitespace-nowrap" : "min-w-20 max-w-32 truncate"
-                  }`}
+                  className={`px-3 py-3 text-center text-[10px] font-black text-blue-500 uppercase tracking-wider whitespace-normal min-w-[120px] max-w-[150px]`}
                 >
                   {shortColLabels ? (
                     <IndRefTooltip index={colIdx} nombre={fullLabel} />
                   ) : (
-                    <span title={fullLabel}>{fullLabel}</span>
+                    (() => {
+                      const words = fullLabel.trim().split(/\s+/);
+                      if (words.length > 2) {
+                        return (
+                          <>
+                            {words.slice(0, 2).join(" ")}
+                            <br />
+                            {words.slice(2).join(" ")}
+                          </>
+                        );
+                      }
+                      return fullLabel;
+                    })()
                   )}
                 </th>
                 );
@@ -466,12 +491,26 @@ function CampoDimensionMatrix({
               return (
                 <tr
                   key={campo.catalogId}
-                  className={`border-b border-slate-50 dark:border-slate-800/50 ${
-                    rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-900/30"
+                  className={`group border-b border-slate-55 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${
+                    rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-55/50 dark:bg-slate-900/30"
                   }`}
                 >
-                  <td className="px-4 py-2.5 font-semibold text-blue-600 dark:text-blue-400 sticky left-0 bg-inherit whitespace-nowrap">
-                    {campo.nombre}
+                  <td className={`px-4 py-2.5 font-semibold text-blue-600 dark:text-blue-400 sticky left-[-1px] z-10 whitespace-normal min-w-[130px] max-w-[160px] transition-colors ${
+                    rIdx % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-[#1e293b]"
+                  } group-hover:bg-slate-100 dark:group-hover:bg-slate-800`}>
+                    {(() => {
+                      const words = campo.nombre.trim().split(/\s+/);
+                      if (words.length > 2) {
+                        return (
+                          <>
+                            {words.slice(0, 2).join(" ")}
+                            <br />
+                            {words.slice(2).join(" ")}
+                          </>
+                        );
+                      }
+                      return campo.nombre;
+                    })()}
                   </td>
                   {colIds.map((colId) => {
                     const val = rowMap.get(colId) || 0;
@@ -492,7 +531,7 @@ function CampoDimensionMatrix({
               );
             })}
             <tr className="bg-blue-50/50 dark:bg-blue-900/10 border-t-2 border-blue-200 dark:border-blue-800">
-              <td className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider sticky left-0 bg-inherit">Σ</td>
+              <td className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider sticky left-[-1px] bg-blue-50 dark:bg-[#1e3a8a] z-10">Σ</td>
               {colIds.map((colId) => {
                 const colSum = campos.reduce((s, c) => s + (grid.get(c.catalogId)?.get(colId) || 0), 0);
                 return (
@@ -530,14 +569,42 @@ function NacPerfilMatrix({ rows }: { rows: ReportRow[] }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800">
-              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-0 bg-white dark:bg-slate-900/50">
-                Nacionalidad ↓ / Perfil →
+              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider sticky left-[-1px] bg-white dark:bg-slate-900 z-10 whitespace-normal max-w-[150px]">
+                {(() => {
+                  const label = "Nacionalidad ↓ / Perfil →";
+                  const words = label.trim().split(/\s+/);
+                  if (words.length > 2) {
+                    return (
+                      <>
+                        {words.slice(0, 2).join(" ")}
+                        <br />
+                        {words.slice(2).join(" ")}
+                      </>
+                    );
+                  }
+                  return label;
+                })()}
               </th>
-              {perfilIds.map((pid) => (
-                <th key={pid} className="px-3 py-3 text-center text-[10px] font-black text-blue-500 uppercase tracking-wider min-w-20">
-                  {perfLabels.get(pid)}
-                </th>
-              ))}
+              {perfilIds.map((pid) => {
+                const label = perfLabels.get(pid) || "";
+                return (
+                  <th key={pid} className="px-3 py-3 text-center text-[10px] font-black text-blue-500 uppercase tracking-wider min-w-[120px] max-w-[150px] whitespace-normal">
+                    {(() => {
+                      const words = label.trim().split(/\s+/);
+                      if (words.length > 2) {
+                        return (
+                          <>
+                            {words.slice(0, 2).join(" ")}
+                            <br />
+                            {words.slice(2).join(" ")}
+                          </>
+                        );
+                      }
+                      return label;
+                    })()}
+                  </th>
+                );
+              })}
               <th className="px-4 py-3 text-right text-[10px] font-black text-blue-500 uppercase tracking-wider">Σ fila</th>
             </tr>
           </thead>
@@ -545,9 +612,24 @@ function NacPerfilMatrix({ rows }: { rows: ReportRow[] }) {
             {nacIds.map((nid, nIdx) => {
               let rowSum = 0;
               return (
-                <tr key={nid} className={`border-b border-slate-50 dark:border-slate-800/50 ${nIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                  <td className="px-4 py-2.5 font-semibold text-amber-600 dark:text-amber-400 sticky left-0 bg-inherit">
-                    {nacLabels.get(nid)}
+                <tr key={nid} className={`group border-b border-slate-50 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors ${nIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
+                  <td className={`px-4 py-2.5 font-semibold text-amber-600 dark:text-amber-400 sticky left-[-1px] z-10 whitespace-normal min-w-[130px] max-w-[160px] transition-colors ${
+                    nIdx % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-[#1e293b]"
+                  } group-hover:bg-slate-100 dark:group-hover:bg-slate-800`}>
+                    {(() => {
+                      const label = nacLabels.get(nid) || "";
+                      const words = label.trim().split(/\s+/);
+                      if (words.length > 2) {
+                        return (
+                          <>
+                            {words.slice(0, 2).join(" ")}
+                            <br />
+                            {words.slice(2).join(" ")}
+                          </>
+                        );
+                      }
+                      return label;
+                    })()}
                   </td>
                   {perfilIds.map((pid) => {
                     const val = totals.get(crossKey(nid, pid)) || 0;
@@ -568,7 +650,7 @@ function NacPerfilMatrix({ rows }: { rows: ReportRow[] }) {
               );
             })}
             <tr className="bg-blue-50/50 dark:bg-blue-900/10 border-t-2 border-blue-200 dark:border-blue-800">
-              <td className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Σ columna</td>
+              <td className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider sticky left-[-1px] bg-blue-50 dark:bg-[#1e3a8a] z-10">Σ columna</td>
               {perfilIds.map((pid) => {
                 const colSum = nacIds.reduce((s, nid) => s + (totals.get(crossKey(nid, pid)) || 0), 0);
                 return (
@@ -596,6 +678,7 @@ export function ReportGlobalCrossSection({
   embedded?: boolean;
 }) {
   const [selectedCampoIds, setSelectedCampoIds] = useState<Set<string>>(new Set());
+  const [isCamposOpen, setIsCamposOpen] = useState(false);
 
   const stats = useMemo(() => computeGlobalCrossStats(rows), [rows]);
   const availableCampos = useMemo(() => getAvailableCampos(rows), [rows]);
@@ -671,7 +754,14 @@ export function ReportGlobalCrossSection({
 
       <div className="flex flex-col gap-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-900/15 border border-blue-100 dark:border-blue-800/50">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Campos</span>
+          <button 
+            type="button" 
+            onClick={() => setIsCamposOpen(!isCamposOpen)}
+            className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest cursor-pointer hover:opacity-80"
+          >
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isCamposOpen ? "rotate-180" : ""}`} />
+            Campos
+          </button>
           <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
@@ -696,42 +786,53 @@ export function ReportGlobalCrossSection({
           </div>
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex flex-wrap gap-2">
-            {availableCampos.map((opt) => {
-              const checked = selectedCampoIds.has(opt.catalogId);
-              return (
-                <button
-                  key={opt.catalogId}
-                  type="button"
-                  role="checkbox"
-                  aria-checked={checked}
-                  onClick={() => toggleCampo(opt.catalogId)}
-                  className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer ${
-                    checked
-                      ? "border-blue-500 bg-white dark:bg-blue-950/50 text-blue-800 dark:text-blue-200"
-                      : "border-blue-100 dark:border-blue-900/60 bg-white/70 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 hover:border-blue-300"
-                  }`}
-                >
-                  <span
-                    className={`w-4 h-4 shrink-0 rounded-[4px] border-2 flex items-center justify-center ${
-                      checked ? "bg-blue-600 border-blue-600" : "border-slate-300 dark:border-slate-600"
-                    }`}
-                  >
-                    {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
-                  </span>
-                  <span className="text-xs font-semibold whitespace-nowrap">{opt.nombre}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <AnimatePresence initial={false}>
+          {isCamposOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="space-y-3 pt-2">
+                <div className="grid grid-cols-1 sm:flex sm:flex-wrap gap-2">
+                  {availableCampos.map((opt) => {
+                    const checked = selectedCampoIds.has(opt.catalogId);
+                    return (
+                      <button
+                        key={opt.catalogId}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={checked}
+                        onClick={() => toggleCampo(opt.catalogId)}
+                        className={`inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all cursor-pointer text-left ${
+                          checked
+                            ? "border-blue-500 bg-white dark:bg-blue-950/50 text-blue-800 dark:text-blue-200"
+                            : "border-blue-100 dark:border-blue-900/60 bg-white/70 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400 hover:border-blue-300"
+                        }`}
+                      >
+                        <span
+                          className={`w-4 h-4 shrink-0 rounded-[4px] border-2 flex items-center justify-center ${
+                            checked ? "bg-blue-600 border-blue-600" : "border-slate-300 dark:border-slate-600"
+                          }`}
+                        >
+                          {checked && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                        </span>
+                        <span className="text-xs font-semibold whitespace-normal sm:whitespace-nowrap leading-tight">{opt.nombre}</span>
+                      </button>
+                    );
+                  })}
+                </div>
 
-        <p className="text-[11px] text-slate-500 dark:text-slate-400">
-          {selectedCampoIds.size === 0
-            ? "Marca al menos un campo para ver las gráficas."
-            : "Suma los campos marcados en todos los indicadores (p. ej. todas las «Mujeres»). Para ver un indicador en detalle, usa la sección «Detalle por indicador»."}
-        </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-snug">
+                  {selectedCampoIds.size === 0
+                    ? "Marca al menos un campo para ver las gráficas."
+                    : "Suma los campos marcados en todos los indicadores (p. ej. todas las «Mujeres»). Para ver un indicador en detalle, usa la sección «Detalle por indicador»."}
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

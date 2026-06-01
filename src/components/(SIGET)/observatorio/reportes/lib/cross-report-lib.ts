@@ -191,11 +191,27 @@ export function buildReportCampoDimensionCross(
     row.set(dimId, (row.get(dimId) || 0) + r.cantidad);
   }
 
+  const colTotals = new Map<string, number>();
+  for (const row of grid.values()) {
+    for (const [colId, val] of row.entries()) {
+      colTotals.set(colId, (colTotals.get(colId) || 0) + val);
+    }
+  }
+
   const colIds = [
     ...new Set(Array.from(grid.values()).flatMap((row) => [...row.keys()])),
   ].sort((a, b) => {
-    if (dimension !== "indicador") return 0;
-    return (colLabels.get(a) || "").localeCompare(colLabels.get(b) || "", "es");
+    const labelA = colLabels.get(a) || "";
+    const labelB = colLabels.get(b) || "";
+    const isUnspecifiedA = labelA.toLowerCase().includes("sin especificar");
+    const isUnspecifiedB = labelB.toLowerCase().includes("sin especificar");
+
+    if (isUnspecifiedA && !isUnspecifiedB) return 1;
+    if (!isUnspecifiedA && isUnspecifiedB) return -1;
+
+    const totalA = colTotals.get(a) || 0;
+    const totalB = colTotals.get(b) || 0;
+    return totalB - totalA;
   });
 
   return {
@@ -245,11 +261,11 @@ export function buildNacTotalsMap(rows: ReportRow[]) {
 }
 
 export function nacPerfilMatrixFromRows(rows: ReportRow[]) {
-  const nacIds = [...new Set(rows.map((r) => r.nacionalidadId || "__none__"))];
-  const perfilIds = [...new Set(rows.map((r) => r.perfilId || "__none__"))];
   const totals = new Map<string, number>();
   const nacLabels = new Map<string, string>();
   const perfLabels = new Map<string, string>();
+  const nacTotals = new Map<string, number>();
+  const perfTotals = new Map<string, number>();
 
   for (const r of rows) {
     const nacId = r.nacionalidadId || "__none__";
@@ -258,11 +274,37 @@ export function nacPerfilMatrixFromRows(rows: ReportRow[]) {
     perfLabels.set(perfId, r.perfilNombre || "Sin especificar");
     const key = crossKey(nacId, perfId);
     totals.set(key, (totals.get(key) || 0) + r.cantidad);
+    nacTotals.set(nacId, (nacTotals.get(nacId) || 0) + r.cantidad);
+    perfTotals.set(perfId, (perfTotals.get(perfId) || 0) + r.cantidad);
   }
 
   const values = Array.from(totals.values());
   const maxCell = Math.max(...values, 1);
   const grandTotal = values.reduce((a, b) => a + b, 0);
+
+  const nacIds = [...new Set(rows.map((r) => r.nacionalidadId || "__none__"))].sort((a, b) => {
+    const labelA = nacLabels.get(a) || "";
+    const labelB = nacLabels.get(b) || "";
+    const isUnspecifiedA = labelA.toLowerCase().includes("sin especificar");
+    const isUnspecifiedB = labelB.toLowerCase().includes("sin especificar");
+
+    if (isUnspecifiedA && !isUnspecifiedB) return 1;
+    if (!isUnspecifiedA && isUnspecifiedB) return -1;
+
+    return (nacTotals.get(b) || 0) - (nacTotals.get(a) || 0);
+  });
+
+  const perfilIds = [...new Set(rows.map((r) => r.perfilId || "__none__"))].sort((a, b) => {
+    const labelA = perfLabels.get(a) || "";
+    const labelB = perfLabels.get(b) || "";
+    const isUnspecifiedA = labelA.toLowerCase().includes("sin especificar");
+    const isUnspecifiedB = labelB.toLowerCase().includes("sin especificar");
+
+    if (isUnspecifiedA && !isUnspecifiedB) return 1;
+    if (!isUnspecifiedA && isUnspecifiedB) return -1;
+
+    return (perfTotals.get(b) || 0) - (perfTotals.get(a) || 0);
+  });
 
   return { nacIds, perfilIds, totals, maxCell, grandTotal, nacLabels, perfLabels, crossKey };
 }

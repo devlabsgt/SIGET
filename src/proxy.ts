@@ -21,7 +21,49 @@ if (user) {
       .limit(1)
       .maybeSingle();
 
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("ultimo_cambio_password")
+      .eq("id", user.id)
+      .maybeSingle();
+
     const requireAuth = settings?.require_device_authorization ?? false;
+
+    // Verificar si el usuario es super administrador
+    const metadata = user.user_metadata || {};
+    const realRole = (metadata.rol || user.role || "user") as string;
+    const isSuper = realRole.includes("super");
+    const isSuperOrAdmin = isSuper || realRole.includes("admin");
+
+    // Verificación de cambio de contraseña (NO aplica para SUPER)
+    let needsPasswordChange = false;
+    
+    if (!isSuper) {
+      if (!profile?.ultimo_cambio_password) {
+        needsPasswordChange = true;
+      } else {
+        const lastChange = new Date(profile.ultimo_cambio_password);
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        if (lastChange < threeMonthsAgo) {
+          needsPasswordChange = true;
+        }
+      }
+    }
+
+    if (needsPasswordChange) {
+      if (pathname !== "/siget/cambiar-password" && !pathname.startsWith("/api/auth")) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/siget/cambiar-password";
+        return NextResponse.redirect(url);
+      }
+    } else {
+      if (pathname === "/siget/cambiar-password" || pathname === "/login") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/siget";
+        return NextResponse.redirect(url);
+      }
+    }
 
     if (pathname === "/esperando-acceso") {
       if (!requireAuth) {
@@ -29,10 +71,6 @@ if (user) {
         url.pathname = "/siget ";
         return NextResponse.redirect(url);
       }
-
-      const metadata = user.user_metadata || {};
-      const realRole = (metadata.rol || user.role || "user") as string;
-      const isSuperOrAdmin = realRole.includes("super") || realRole.includes("admin");
 
       if (isSuperOrAdmin) {
         const url = request.nextUrl.clone();
@@ -56,16 +94,7 @@ if (user) {
       }
     }
 
-    if (pathname === "/login") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/siget";
-      return NextResponse.redirect(url);
-    }
-
     if (pathname.startsWith("/siget")) {
-      const metadata = user.user_metadata || {};
-      const realRole = (metadata.rol || user.role || "user") as string;
-      const isSuperOrAdmin = realRole.includes("super") || realRole.includes("admin");
 
       if (
         pathname.startsWith("/siget/admin") &&

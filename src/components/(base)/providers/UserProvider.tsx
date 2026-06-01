@@ -1,8 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { User } from "@supabase/supabase-js";
-import { createClient } from "@/utils/supabase/client"; // Asegúrate de tener este cliente
+import { createClient } from "@/utils/supabase/client";
+
+/** Intervalo de refresco automático de sesión (ms) */
+const REFRESH_INTERVAL_MS = 60_000;
 
 interface UserContextValue {
   user: User | null;
@@ -30,11 +33,22 @@ export function UserProvider({
   const [user, setUser] = useState<User | null>(initialUser);
   const [simulatedRole, setSimulatedRole] = useState<string | null>(null);
   const supabase = createClient();
+  const lastRoleRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     setUser(initialUser);
   }, [initialUser]);
 
+  // ----- Refresco de sesión para obtener user_metadata actualizado -----
+  const refreshUser = useCallback(async () => {
+    // refreshSession() fuerza obtener un JWT nuevo del servidor con user_metadata actualizado
+    const { data, error } = await supabase.auth.refreshSession();
+    if (!error && data.user) {
+      setUser(data.user);
+    }
+  }, [supabase]);
+
+  // Escuchar cambios de auth (login, logout, token refresh)
   useEffect(() => {
     const {
       data: { subscription },
@@ -51,9 +65,41 @@ export function UserProvider({
     };
   }, [supabase]);
 
+  // Refrescar al volver a la pestaña (visibilitychange)
+  useEffect(() => {
+    if (!user) return;
+
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshUser();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [user, refreshUser]);
+
+  // Refresco periódico cada 60s para detectar cambios de rol sin recargar
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(refreshUser, REFRESH_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, [user, refreshUser]);
+
   const metadata = user?.user_metadata || {};
   const realRole = metadata.rol || user?.role || "user";
   const effectiveRole = simulatedRole || realRole;
+
+  // Log en dev cuando cambia el rol para facilitar depuración
+  useEffect(() => {
+    if (lastRoleRef.current !== undefined && lastRoleRef.current !== realRole) {
+      console.info(
+        `[UserProvider] Rol actualizado: ${lastRoleRef.current} → ${realRole}`,
+      );
+    }
+    lastRoleRef.current = realRole;
+  }, [realRole]);
 
   return (
     <UserContext.Provider value={{ user, simulatedRole, setSimulatedRole, effectiveRole, realRole }}>

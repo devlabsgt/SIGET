@@ -17,6 +17,7 @@ import {
   FileSpreadsheet,
   FileText,
   Image as ImageIcon,
+  RotateCcw,
 } from "lucide-react";
 import {
   Dialog,
@@ -192,13 +193,17 @@ export default function Reportes({ onBack }: ReportesProps) {
   const [selectedOrgIds, setSelectedOrgIds] = useState<string[]>([]);
   const [selectedPoliticaIds, setSelectedPoliticaIds] = useState<string[]>([]);
   const [openFilterModal, setOpenFilterModal] = useState<FilterModalKind | null>(null);
-  const [dateMode, setDateMode] = useState<"Todo" | "Mes" | "Rango">("Mes");
+  const [dateMode, setDateMode] = useState<"Año" | "Mes" | "Rango" | "Todo">("Año");
+  const [selectedYear, setSelectedYear] = useState<number>(() => new Date().getFullYear());
   const [singleMonth, setSingleMonth] = useState(currentMonthInputValue);
   const [startMonth, setStartMonth] = useState("");
   const [endMonth, setEndMonth] = useState("");
 
   // ── Chart tab state ──
-  const [activeChartTab, setActiveChartTab] = useState<"campos" | "nacionalidad" | "perfil">("campos");
+  const [activeChartTab, setActiveChartTab] = useState<"campos" | "nacionalidad" | "perfil" | "todo">("campos");
+
+  // ── Estado animación reset ──
+  const [isResetting, setIsResetting] = useState(false);
 
   // ── Refs para captura (PDF / JPEG) ──
   const reportContentRef = useRef<HTMLDivElement>(null);
@@ -285,6 +290,20 @@ export default function Reportes({ onBack }: ReportesProps) {
     [filteredOrgs]
   );
 
+  // ── Available years from data ──
+  const availableYears = useMemo(() => {
+    const yearSet = new Set<number>();
+    for (const r of allRows) yearSet.add(r.anio);
+    return Array.from(yearSet).sort((a, b) => b - a);
+  }, [allRows]);
+
+  // Auto-select most recent year when data loads
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears]);
+
   // ── Apply all filters ──
   const filteredRows = useMemo(() => {
     let rows = allRows;
@@ -299,7 +318,9 @@ export default function Reportes({ onBack }: ReportesProps) {
       rows = rows.filter((r) => selectedPoliticaIds.includes(r.politicaId));
     }
 
-    if (dateMode === "Mes" && singleMonth) {
+    if (dateMode === "Año") {
+      rows = rows.filter(r => r.anio === selectedYear);
+    } else if (dateMode === "Mes" && singleMonth) {
       const [y, m] = singleMonth.split("-").map(Number);
       rows = rows.filter(r => r.anio === y && r.mes === m);
     } else if (dateMode === "Rango" && startMonth && endMonth) {
@@ -314,7 +335,7 @@ export default function Reportes({ onBack }: ReportesProps) {
     }
 
     return rows;
-  }, [allRows, selectedSectorIds, selectedOrgIds, selectedPoliticaIds, dateMode, singleMonth, startMonth, endMonth]);
+  }, [allRows, selectedSectorIds, selectedOrgIds, selectedPoliticaIds, dateMode, selectedYear, singleMonth, startMonth, endMonth]);
 
   // ── KPIs ──
   const kpis = useMemo(() => {
@@ -473,7 +494,13 @@ export default function Reportes({ onBack }: ReportesProps) {
       }
     }
 
-    const rows = Array.from(map.values()).sort((a, b) => b.total - a.total);
+    const rows = Array.from(map.values()).sort((a, b) => {
+      const isUnspecifiedA = a.sectorNombre.toLowerCase().includes("sin especificar") || a.orgNombre.toLowerCase().includes("sin especificar");
+      const isUnspecifiedB = b.sectorNombre.toLowerCase().includes("sin especificar") || b.orgNombre.toLowerCase().includes("sin especificar");
+      if (isUnspecifiedA && !isUnspecifiedB) return 1;
+      if (!isUnspecifiedA && isUnspecifiedB) return -1;
+      return b.total - a.total;
+    });
     return { rows, campoNames: campoNamesOrdered };
   }, [filteredRows]);
 
@@ -497,6 +524,7 @@ export default function Reportes({ onBack }: ReportesProps) {
   );
 
   const dateFilterLabel = useMemo(() => {
+    if (dateMode === "Año") return `${selectedYear}`;
     if (dateMode === "Mes" && singleMonth) {
       const [y, m] = singleMonth.split("-").map(Number);
       return `${MONTH_FULL[m]} ${y}`;
@@ -507,9 +535,10 @@ export default function Reportes({ onBack }: ReportesProps) {
       return `${MONTH_NAMES[sm]} ${sy} – ${MONTH_NAMES[em]} ${ey}`;
     }
     return null;
-  }, [dateMode, singleMonth, startMonth, endMonth]);
+  }, [dateMode, selectedYear, singleMonth, startMonth, endMonth]);
 
   const exportDateLabel = useMemo(() => {
+    if (dateMode === "Año") return `${selectedYear}`;
     if (dateMode === "Mes" && singleMonth) {
       const [y, m] = singleMonth.split("-").map(Number);
       return `${MONTH_FULL[m]} ${y}`;
@@ -520,7 +549,7 @@ export default function Reportes({ onBack }: ReportesProps) {
       return `${MONTH_FULL[sm]} ${sy} – ${MONTH_FULL[em]} ${ey}`;
     }
     return "Todo el periodo";
-  }, [dateMode, singleMonth, startMonth, endMonth]);
+  }, [dateMode, selectedYear, singleMonth, startMonth, endMonth]);
 
   const modalConfig = useMemo(() => {
     if (openFilterModal === "politica") {
@@ -637,25 +666,22 @@ export default function Reportes({ onBack }: ReportesProps) {
       </div>
 
       {/* ═══ FILTERS ═══ */}
-      <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-4 md:p-6">
+      <div className="bg-card rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm p-3 md:p-4">
 
-        {/* Fila principal: título + switch + selector de fecha */}
+        {/* Fila principal: título + switch + selector de fecha inline */}
         <div className="flex flex-wrap items-center gap-3">
-          {/* Título */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400" />
-            <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">Filtros</h3>
-          </div>
+          {/* Ícono de filtro */}
+          <Filter className="w-4 h-4 text-slate-500 dark:text-slate-400 shrink-0" />
 
           <div className="w-px h-5 bg-border/60 hidden sm:block shrink-0" />
 
-          {/* Switch Todo | Mes | Rango */}
-          <div className="flex bg-muted/70 dark:bg-muted/30 p-1 rounded-xl border border-border/40 shrink-0">
-            {(["Todo", "Mes", "Rango"] as const).map((mode) => (
+          {/* Switch Año | Mes | Rango | Todo | Restablecer */}
+          <div className="flex w-full sm:w-auto bg-muted/70 dark:bg-muted/30 p-1 rounded-xl border border-border/40 shrink-0 items-center">
+            {(["Año", "Mes", "Rango", "Todo"] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setDateMode(mode)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dateMode === mode
                     ? "bg-background text-foreground shadow-sm ring-1 ring-border/60"
                     : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-muted/50"
@@ -664,9 +690,27 @@ export default function Reportes({ onBack }: ReportesProps) {
                 {mode}
               </button>
             ))}
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" />
+            <button
+              onClick={() => {
+                setIsResetting(true);
+                setSingleMonth(currentMonthInputValue);
+                setStartMonth("");
+                setEndMonth("");
+                setSelectedSectorIds([]);
+                setSelectedOrgIds([]);
+                setSelectedPoliticaIds([]);
+                setTimeout(() => setIsResetting(false), 500);
+              }}
+              className="flex-1 sm:flex-none flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-blue-600 hover:text-blue-700 dark:text-blue-500 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all cursor-pointer shrink-0"
+              title="Restablecer filtros"
+            >
+              <RotateCcw className={`w-3 h-3 transition-transform ${isResetting ? "animate-spin" : ""}`} />
+              <span className="text-[8px] font-bold leading-none">Restablecer</span>
+            </button>
           </div>
 
-          {/* Selector de fecha inline */}
+          {/* Selector inline: solo Mes y Rango */}
           <AnimatePresence mode="wait">
             {dateMode === "Mes" && (
               <motion.div key="mes" initial={{ opacity: 0, width: 0 }} animate={{ opacity: 1, width: "auto" }} exit={{ opacity: 0, width: 0 }} className="overflow-hidden shrink-0">
@@ -690,34 +734,34 @@ export default function Reportes({ onBack }: ReportesProps) {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="flex items-center gap-2 shrink-0"
+                className="flex sm:flex-row flex-col items-stretch sm:items-center gap-2 shrink-0 w-full sm:w-auto"
               >
-                <div className="relative flex items-center">
+                <div className="relative flex items-center w-full sm:w-auto">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none z-10" />
                   {!startMonth && <span className="absolute left-8 text-slate-400 text-[10px] font-bold pointer-events-none z-10">Inicio</span>}
                   <input
                     type="month"
                     value={startMonth}
                     onChange={(e) => setStartMonth(e.target.value)}
-                    className={`pl-8 pr-2 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${startMonth ? "text-foreground" : "text-transparent"}`}
+                    className={`w-full sm:w-auto pl-8 pr-2 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${startMonth ? "text-foreground" : "text-transparent"}`}
                   />
                 </div>
-                <span className="text-xs font-bold text-slate-400 shrink-0">al</span>
-                <div className="relative flex items-center">
+                <span className="text-xs font-bold text-slate-400 shrink-0 hidden sm:block">al</span>
+                <div className="relative flex items-center w-full sm:w-auto">
                   <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 pointer-events-none z-10" />
                   {!endMonth && <span className="absolute left-8 text-slate-400 text-[10px] font-bold pointer-events-none z-10">Final</span>}
                   <input
                     type="month"
                     value={endMonth}
                     onChange={(e) => setEndMonth(e.target.value)}
-                    className={`pl-8 pr-2 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${endMonth ? "text-foreground" : "text-transparent"}`}
+                    className={`w-full sm:w-auto pl-8 pr-2 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${endMonth ? "text-foreground" : "text-transparent"}`}
                   />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          {/* Sector / Política / Organización — solo en lg+ en la misma fila */}
+          {/* Sector / Política / Organización — solo en lg+ */}
           <div className="hidden lg:flex items-center gap-2 ml-auto shrink-0">
             <div className="w-px h-5 bg-border/60 shrink-0" />
             <FilterPickerButton
@@ -748,13 +792,33 @@ export default function Reportes({ onBack }: ReportesProps) {
             />
           </div>
 
-          {/* Label resumen de fecha activa — solo cuando no hay botones de sector (< lg) */}
-          {dateFilterLabel && (
-            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 shrink-0 lg:hidden">
-              {dateFilterLabel}
-            </span>
-          )}
         </div>
+
+        {/* Segunda fila: selector de Año (solo cuando dateMode === "Año") */}
+        <AnimatePresence>
+          {dateMode === "Año" && (
+            <motion.div
+              key="year-row"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="mt-3 pt-3 border-t border-border/60 flex items-center gap-2">
+                <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="pl-2 pr-6 py-1.5 rounded-xl border border-border bg-muted/40 dark:bg-background text-xs font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-muted-foreground/30 cursor-pointer appearance-none"
+                >
+                  {availableYears.map((yr) => (
+                    <option key={yr} value={yr}>{yr}</option>
+                  ))}
+                </select>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* En lg+: sector/política/org en la misma fila que fecha. En mobile: nueva fila */}
         <div className="mt-3 lg:hidden border-t border-border/60 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -820,7 +884,7 @@ export default function Reportes({ onBack }: ReportesProps) {
                 </p>
               </div>
               <div className="report-export-hide grid grid-cols-2 gap-1 sm:flex sm:flex-wrap bg-muted/70 dark:bg-muted/30 border border-border/40 p-1 rounded-xl w-full xl:w-auto">
-                {(["campos", "nacionalidad", "perfil"] as const).map((tab) => (
+                {(["campos", "nacionalidad", "perfil", "todo"] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveChartTab(tab)}
@@ -830,14 +894,28 @@ export default function Reportes({ onBack }: ReportesProps) {
                         : "bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 dark:hover:bg-muted/50"
                     }`}
                   >
-                    {tab === "campos" ? "Campos" : tab === "nacionalidad" ? "Nacionalidad" : "Perfil"}
+                    {tab === "campos" ? "Campos" : tab === "nacionalidad" ? "Nacionalidad" : tab === "perfil" ? "Perfil" : "Todo"}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Pantalla: una dimensión a la vez */}
-            <div className="report-export-hide grid grid-cols-1 xl:grid-cols-[10.5rem_minmax(0,1fr)_minmax(0,1.15fr)] gap-4 xl:gap-6 items-stretch xl:items-center">
+            {/* Pantalla: una dimensión a la vez o todas */}
+            {activeChartTab === "todo" ? (
+              <div className="report-export-hide flex flex-col gap-4">
+                <div className="grid grid-cols-3 gap-2 xl:gap-3 mb-2">
+                  <KpiCard compact icon={Users} label="Total Atenciones" value={fmt(kpis.totalAtenciones)} color="blue" />
+                  <KpiCard compact icon={BarChart3} label="Registros" value={fmt(kpis.totalRegistros)} color="sky" />
+                  <KpiCard compact icon={Building2} label="Organizaciones" value={fmt(kpis.totalOrgs)} color="cyan" />
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+                  <DimensionDonutPanel title="Campos" data={campoDonutData} chartId="screen-campos" />
+                  <DimensionDonutPanel title="Nacionalidad" data={nacDonutData} chartId="screen-nac" />
+                  <DimensionDonutPanel title="Perfil" data={perfilDonutData} chartId="screen-perfil" />
+                </div>
+              </div>
+            ) : (
+              <div className="report-export-hide grid grid-cols-1 xl:grid-cols-[10.5rem_minmax(0,1fr)_minmax(0,1.15fr)] gap-4 xl:gap-6 items-stretch xl:items-center">
               <div className="grid grid-cols-3 xl:grid-cols-1 gap-2 xl:gap-3">
                 <KpiCard compact icon={Users} label="Total Atenciones" value={fmt(kpis.totalAtenciones)} color="blue" />
                 <KpiCard compact icon={BarChart3} label="Registros" value={fmt(kpis.totalRegistros)} color="sky" />
@@ -899,7 +977,8 @@ export default function Reportes({ onBack }: ReportesProps) {
                   );
                 })}
               </div>
-            </div>
+              </div>
+            )}
 
             {/* Impresión: KPIs + las 3 dimensiones */}
             <div className="report-export-only hidden">
@@ -1052,18 +1131,48 @@ export default function Reportes({ onBack }: ReportesProps) {
               <table className="w-full text-sm text-left">
                 <thead className="text-xs text-slate-500 uppercase bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="px-4 xl:px-6 py-4 sticky left-0 bg-slate-50 dark:bg-slate-900 z-10">Sector</th>
+                    <th className="px-4 xl:px-6 py-4 sticky left-[-1px] bg-slate-50 dark:bg-slate-900 z-10">Sector</th>
                     <th className="px-4 xl:px-6 py-4">Organización</th>
                     {orgSummaryData.campoNames.map((cn) => (
-                      <th key={cn} className="px-3 py-4 text-right whitespace-nowrap">{cn}</th>
+                      <th key={cn} className="px-3 py-4 text-right whitespace-normal min-w-[120px] max-w-[150px]">
+                        {(() => {
+                          const words = cn.trim().split(/\s+/);
+                          if (words.length > 2) {
+                            return (
+                              <>
+                                {words.slice(0, 2).join(" ")}
+                                <br />
+                                {words.slice(2).join(" ")}
+                              </>
+                            );
+                          }
+                          return cn;
+                        })()}
+                      </th>
                     ))}
                     <th className="px-4 xl:px-6 py-4 text-right font-black text-blue-600">Total</th>
                   </tr>
                 </thead>
                 <tbody>
                   {orgSummaryData.rows.map((row, i) => (
-                    <tr key={i} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors last:border-0">
-                      <td className="px-4 xl:px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 sticky left-0 bg-inherit z-10 whitespace-nowrap">{row.sectorNombre}</td>
+                    <tr key={i} className="group border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors last:border-0">
+                      <td className={`px-4 xl:px-6 py-4 font-semibold text-slate-700 dark:text-slate-300 sticky left-[-1px] z-10 whitespace-normal min-w-[130px] max-w-[160px] transition-colors ${
+                        i % 2 === 0 ? "bg-white dark:bg-slate-900" : "bg-slate-50 dark:bg-[#1e293b]"
+                      } group-hover:bg-slate-100 dark:group-hover:bg-slate-800`}>
+                        {(() => {
+                          const words = row.sectorNombre.trim().split(/\s+/);
+                          if (words.length > 2) {
+                            return (
+                              <>
+                                {words.slice(0, 2).join(" ")}
+                                <br />
+                                {words.slice(2).join(" ")}
+                              </>
+                            );
+                          }
+                          return row.sectorNombre;
+                        })()}
+                      </td>
                       <td className="px-4 xl:px-6 py-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">{row.orgNombre}</td>
                       {orgSummaryData.campoNames.map((cn) => (
                         <td key={cn} className="px-3 py-4 text-right font-mono font-medium text-slate-700 dark:text-slate-300">{fmt(row.campos.get(cn) || 0)}</td>
@@ -1073,7 +1182,7 @@ export default function Reportes({ onBack }: ReportesProps) {
                   ))}
                   {/* Totals */}
                   <tr className="bg-blue-50/50 dark:bg-blue-900/10 border-t-2 border-blue-200 dark:border-blue-800">
-                    <td className="px-4 xl:px-6 py-4 font-black text-xs text-slate-500 uppercase tracking-wider sticky left-0 bg-inherit z-10" colSpan={2}>Total General</td>
+                    <td className="px-4 xl:px-6 py-4 font-black text-xs text-slate-500 uppercase tracking-wider sticky left-[-1px] bg-slate-50 dark:bg-slate-900 z-10" colSpan={2}>Total General</td>
                     {orgSummaryData.campoNames.map((cn) => {
                       const colSum = orgSummaryData.rows.reduce((s, r) => s + (r.campos.get(cn) || 0), 0);
                       return <td key={cn} className="px-3 py-4 text-right font-mono font-black text-slate-800 dark:text-slate-200">{fmt(colSum)}</td>;
@@ -1245,7 +1354,7 @@ function DimensionDonutPanel({
       {data.length === 0 ? (
         <p className="text-xs text-slate-400 font-semibold py-6 text-center">Sin datos</p>
       ) : (
-        <div className="flex flex-row gap-4 items-center">
+        <div className="flex flex-col gap-6 items-center">
           <div className="shrink-0" style={{ width: chartSize, height: chartSize }}>
             <PieChart width={chartSize} height={chartSize}>
               <Pie
@@ -1265,23 +1374,25 @@ function DimensionDonutPanel({
               </Pie>
             </PieChart>
           </div>
-          <div className="flex-1 min-w-0 space-y-1.5">
+          <div className="w-full min-w-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-1 gap-2">
             {data.map((item, index) => {
               const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : "0";
               return (
-                <div key={`${chartId}-leg-${index}`} className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                <div key={`${chartId}-leg-${index}`} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div
-                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      className="w-3 h-3 rounded-full shadow-sm shrink-0"
                       style={{ backgroundColor: item.color }}
                     />
-                    <span className="text-[10px] font-semibold text-slate-700 leading-tight line-clamp-2">
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 truncate">
                       {item.name}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-[9px] font-bold text-slate-400">{pct}%</span>
-                    <span className="text-[10px] font-black text-slate-900 font-mono">{fmt(item.value)}</span>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className="text-xs font-bold text-slate-400">{pct}%</span>
+                    <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
+                      {fmt(item.value)}
+                    </span>
                   </div>
                 </div>
               );
