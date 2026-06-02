@@ -111,23 +111,23 @@ export default function Header() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="flex items-center gap-5 md:gap-4 shrink-0">
             <AnimatedThemeToggler />
             <button
               id="refresh-btn"
               onClick={() => window.location.reload()}
               className="flex items-center justify-center text-azul-trifinio hover:text-celeste-trifinio dark:text-white dark:hover:text-white/80 cursor-pointer transition-all hover:rotate-180 duration-500 active:scale-95"
             >
-              <RefreshCw className="size-6 md:size-6" />
+              <RefreshCw className="size-7 md:size-6" />
             </button>
             {showLoginButton && (
               <Link
                 href="/login"
-                className="group flex items-center gap-1.5 cursor-pointer active:scale-95"
+                className="group flex items-center gap-2 min-h-11 px-1.5 md:min-h-0 md:px-0 cursor-pointer active:scale-95"
                 title="Iniciar Sesión"
               >
-                <LogIn className="size-5 lg:size-6 shrink-0 text-azul-trifinio group-hover:text-celeste-trifinio dark:text-white dark:group-hover:text-celeste-trifinio transition-colors duration-300" />
-                <span className="hidden md:inline text-[10px] md:text-[11px] lg:text-xs font-extrabold text-celeste-trifinio group-hover:text-azul-trifinio dark:text-celeste-trifinio dark:group-hover:text-white tracking-tight transition-colors duration-300">
+                <LogIn className="size-7 md:size-5 lg:size-6 shrink-0 text-azul-trifinio group-hover:text-celeste-trifinio dark:text-white dark:group-hover:text-celeste-trifinio transition-colors duration-300" />
+                <span className="text-xs md:text-[11px] lg:text-xs font-extrabold text-celeste-trifinio group-hover:text-azul-trifinio dark:text-celeste-trifinio dark:group-hover:text-white tracking-tight transition-colors duration-300">
                   SIGET
                 </span>
               </Link>

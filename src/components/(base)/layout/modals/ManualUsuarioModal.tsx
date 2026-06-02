@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Loader2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "react-toastify";
@@ -11,6 +12,32 @@ import {
   getManualUsuarioSignedUrl,
   uploadManualUsuario,
 } from "@/components/(base)/layout/modals/manual-usuario-actions";
+
+const ManualPdfMobileViewer = dynamic(
+  () => import("@/components/(base)/layout/modals/ManualPdfMobileViewer"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loader2 className="size-8 animate-spin text-celeste-trifinio" />
+      </div>
+    ),
+  },
+);
+
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+
+  return isMobile;
+}
 
 interface ManualUsuarioModalProps {
   isOpen: boolean;
@@ -27,6 +54,7 @@ export default function ManualUsuarioModal({
 }: ManualUsuarioModalProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [busy, setBusy] = useState(false);
   const [manualUrl, setManualUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
@@ -200,18 +228,22 @@ export default function ManualUsuarioModal({
           </div>
         </div>
 
-        <div className="relative flex-1 bg-slate-100 dark:bg-zinc-900">
+        <div className="relative min-h-0 flex-1 bg-slate-100 dark:bg-zinc-900">
           {loadingUrl ? (
             <div className="flex h-full w-full items-center justify-center">
               <Loader2 className="size-8 animate-spin text-celeste-trifinio" />
             </div>
           ) : manualUrl ? (
-            <iframe
-              key={manualUrl}
-              src={manualUrl}
-              title="Manual de Usuario"
-              className="h-full w-full"
-            />
+            isMobile ? (
+              <ManualPdfMobileViewer url={manualUrl} />
+            ) : (
+              <iframe
+                key={manualUrl}
+                src={manualUrl}
+                title="Manual de Usuario"
+                className="h-full w-full"
+              />
+            )
           ) : (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
               <BookOpen className="size-12 text-slate-300 dark:text-slate-600" />
