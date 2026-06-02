@@ -194,15 +194,14 @@ export default function ManualUsuarioModal({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={busy}
-                  className="flex items-center gap-1.5 rounded-xl bg-celeste-trifinio px-3 py-1.5 text-xs font-bold text-white transition-colors hover:bg-celeste-trifinio/90 disabled:opacity-40 cursor-pointer"
-                  title={manualPath ? "Reemplazar manual" : "Subir manual"}
+                  className="flex items-center justify-center rounded-xl bg-celeste-trifinio p-2 text-white transition-colors hover:bg-celeste-trifinio/90 disabled:opacity-40 cursor-pointer"
+                  title="Subir manual"
                 >
                   {busy ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-4 animate-spin" />
                   ) : (
-                    <Upload className="size-3.5" />
+                    <Upload className="size-4" />
                   )}
-                  <span>{manualPath ? "Reemplazar" : "Subir"}</span>
                 </button>
                 {manualPath && (
                   <button
@@ -257,14 +256,14 @@ export default function ManualUsuarioModal({
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={busy}
-                  className="mt-2 flex items-center gap-2 rounded-xl bg-celeste-trifinio px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-celeste-trifinio/90 disabled:opacity-40 cursor-pointer"
+                  className="mt-2 flex items-center justify-center rounded-xl bg-celeste-trifinio p-3 text-white transition-colors hover:bg-celeste-trifinio/90 disabled:opacity-40 cursor-pointer"
+                  title="Subir manual (PDF, máx. 10 MB)"
                 >
                   {busy ? (
-                    <Loader2 className="size-3.5 animate-spin" />
+                    <Loader2 className="size-5 animate-spin" />
                   ) : (
-                    <Upload className="size-3.5" />
+                    <Upload className="size-5" />
                   )}
-                  Subir manual (PDF, máx. 10 MB)
                 </button>
               )}
             </div>
