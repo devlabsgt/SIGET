@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getAppSettings, updateAppSettings } from "./actions";
+import { getAppSettings, updateAppSettings, updateManualUsuarioUrl } from "./actions";
 import { AppSettingsUpdate } from "./zod";
 
 export const useAppSettings = () => {
@@ -18,6 +18,19 @@ export const useUpdateAppSettings = () => {
   return useMutation<void, Error, AppSettingsUpdate>({
     mutationFn: async (settings: AppSettingsUpdate) => {
       await updateAppSettings(settings);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["appSettings"] });
+    },
+  });
+};
+
+export const useUpdateManualUsuarioUrl = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, string | null>({
+    mutationFn: async (url: string | null) => {
+      await updateManualUsuarioUrl(url);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["appSettings"] });

@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { Globe, KeyRound, LogIn, LogOut, Settings, ShieldAlert, Smartphone, User, Users } from "lucide-react";
+import { BookOpen, Globe, KeyRound, LogIn, LogOut, Settings, ShieldAlert, Smartphone, User, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -22,6 +22,7 @@ import {
 import { useAppSettings } from "@/components/(base)/(settings)/hooks";
 import VerPerfil from "@/components/(base)/(users)/profile/VerPerfil";
 import PassKeysModal from "@/components/(base)/layout/modals/PassKeysModal";
+import ManualUsuarioModal from "@/components/(base)/layout/modals/ManualUsuarioModal";
 
 const MENU_OPTION_ICONS: Record<string, LucideIcon> = {
   "movilidad-humana": Globe,
@@ -246,6 +247,7 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
   const [openAccordionId, setOpenAccordionId] = useState<MenuAccordionId | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isPasskeysOpen, setIsPasskeysOpen] = useState(false);
+  const [isManualOpen, setIsManualOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -272,6 +274,8 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
   const isObservatorioRoute = pathname.startsWith("/siget/observatorio");
   const passkeysEnabled = appSettings?.enable_passkeys ?? false;
   const perfilMenuOptions = getPerfilMenuOptions(passkeysEnabled);
+  const manualUsuarioPath = appSettings?.manual_usuario_url ?? null;
+  const canManageManual = realRole === "super";
 
   const toggleAccordion = (id: MenuAccordionId) => {
     setOpenAccordionId((current) => (current === id ? null : id));
@@ -348,10 +352,10 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
               <button
                 type="button"
                 onClick={handleLogout}
-                className="group flex items-center justify-center gap-2 text-celeste-trifinio hover:text-red-500 dark:hover:text-red-400 cursor-pointer transition-colors duration-300 active:scale-95"
+                className="group flex items-center justify-center gap-2 text-red-500 dark:text-red-400 cursor-pointer transition-colors duration-300 active:scale-95"
               >
                 <LogOut className="size-4 md:size-6 shrink-0 rotate-180 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:-translate-x-0.5" />
-                <span className="text-sm font-bold transition-transform duration-500 ease-out group-hover:-translate-x-0.5">
+                <span className="text-sm font-bold bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_2px] bg-left-bottom bg-no-repeat transition-[background-size] duration-300 ease-out group-hover:bg-[length:100%_2px]">
                   Cerrar Sesión
                 </span>
               </button>
@@ -385,6 +389,28 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
           </>
         ) : (
           <div className="p-6" />
+        )}
+
+        {user && (
+          <div className="px-6 pt-4">
+            <button
+              type="button"
+              onClick={() => setIsManualOpen(true)}
+              className="group flex w-full items-center gap-3 rounded-xl border border-celeste-trifinio/30 bg-celeste-trifinio/5 px-4 py-3 text-left transition-colors duration-300 hover:bg-celeste-trifinio/10 cursor-pointer active:scale-[0.99]"
+            >
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-celeste-trifinio/15">
+                <BookOpen className="size-5 text-celeste-trifinio" strokeWidth={2.25} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase leading-tight text-foreground">
+                  Manual de Usuario
+                </p>
+                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-1">
+                  Consulta la guía completa del sistema
+                </p>
+              </div>
+            </button>
+          </div>
         )}
 
         <div className="flex flex-col flex-1 py-6 pb-8">
@@ -522,6 +548,12 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
               user={user}
             />
           )}
+          <ManualUsuarioModal
+            isOpen={isManualOpen}
+            onClose={() => setIsManualOpen(false)}
+            manualPath={manualUsuarioPath}
+            canManage={canManageManual}
+          />
         </>
       )}
     </>

@@ -28,7 +28,7 @@ const FRASES_BIENVENIDA = [
   "¡Es un placer tenerte aquí hoy! Tu trabajo aquí hace más transparente la gestión de datos.",
   "¡Hola! Que tengas una excelente y productiva jornada gestionando la información del Observatorio.",
   "¡Excelente día para trabajar con datos! El portal está completamente listo para la actualización y el análisis.",
-  "¡Hola! Gracias por tu valioso aporte técnico al análisis continuo de la movilidad humana regional."
+  "¡Hola! Gracias por tu valioso aporte técnico al análisis continuo de la movilidad humana regional.",
 ];
 
 export default function ObservatorioWeb() {
@@ -70,7 +70,8 @@ export default function ObservatorioWeb() {
   }, [user]);
 
   useEffect(() => {
-    const fraseAleatoria = FRASES_BIENVENIDA[Math.floor(Math.random() * FRASES_BIENVENIDA.length)];
+    const fraseAleatoria =
+      FRASES_BIENVENIDA[Math.floor(Math.random() * FRASES_BIENVENIDA.length)];
     let i = 0;
     const timeout = setTimeout(() => {
       const interval = setInterval(() => {
@@ -95,14 +96,13 @@ export default function ObservatorioWeb() {
     genero === "Femenino"
       ? "¡Bienvenida, "
       : genero === "Masculino"
-      ? "¡Bienvenido, "
-      : "¡Bienvenido(a), ";
+        ? "¡Bienvenido, "
+        : "¡Bienvenid@, ";
 
   return (
     <>
       <div className="fixed inset-0 pointer-events-none z-[-1] bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] bg-size-[24px_24px] dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] opacity-60" />
       <div className="flex-1 w-full px-2 md:px-6 lg:px-12 max-w-[1600px] mx-auto pt-5 md:pt-8">
-
         <AnimatePresence mode="wait">
           <motion.div
             key="menu"
@@ -114,9 +114,16 @@ export default function ObservatorioWeb() {
           >
             {/* Header Centrado */}
             <div className="flex flex-col items-center justify-center text-center w-full gap-4 relative z-10">
-              <div id="observatorio-header-icon" className="group cursor-pointer flex items-center justify-center gap-4 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 pl-2 pr-8 py-2 rounded-full text-xs font-black uppercase tracking-[0.15em] mb-6 border border-blue-100 dark:border-blue-500/20 shadow-sm transition-all hover:shadow-lg hover:bg-blue-100 dark:hover:bg-blue-500/20">
+              <div
+                id="observatorio-header-icon"
+                className="group cursor-pointer flex items-center justify-center gap-4 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 pl-2 pr-8 py-2 rounded-full text-xs font-black uppercase tracking-[0.15em] mb-6 border border-blue-100 dark:border-blue-500/20 shadow-sm transition-all hover:shadow-lg hover:bg-blue-100 dark:hover:bg-blue-500/20"
+              >
                 <div className="shrink-0 flex items-center justify-center w-16 h-16 dark:rounded-full dark:bg-white transition-transform group-hover:scale-105">
-                  <AnimatedIcon iconKey="qqvpjphn" target="#observatorio-header-icon" size={48} />
+                  <AnimatedIcon
+                    iconKey="qqvpjphn"
+                    target="#observatorio-header-icon"
+                    size={48}
+                  />
                 </div>
                 Módulos del Observatorio Web
               </div>
@@ -125,13 +132,10 @@ export default function ObservatorioWeb() {
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
-                className="text-4xl md:text-6xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight"
+                className="text-2xl md:text-4xl font-black tracking-tighter text-slate-900 dark:text-white leading-tight"
               >
                 {welcomeText}
-                <AuroraText>
-                  {metadata.nombre?.split(' ')[0] || 'Usuario'}
-                </AuroraText>
-                !
+                <AuroraText>{metadata.nombre || "Usuario"}</AuroraText>!
               </motion.h2>
 
               <p className="text-base md:text-lg text-slate-500 dark:text-slate-400 font-medium max-w-xl mx-auto leading-relaxed min-h-[56px] md:min-h-[60px]">
@@ -151,20 +155,32 @@ export default function ObservatorioWeb() {
                 canSeePlantillas ? "xl:grid-cols-3" : "max-w-4xl",
               )}
             >
-
               {/* Card Avanzada -> Reportes (Azul) */}
-              <div id="card-reportes" className="bg-card rounded-3xl border border-blue-500/30 dark:border-blue-500/20 shadow-xl p-0 flex flex-col justify-between relative overflow-hidden ring-1 ring-blue-500/20 cursor-pointer group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300" onClick={() => router.push("/siget/observatorio/reportes")}>
+              <div
+                id="card-reportes"
+                className="bg-card rounded-3xl border border-blue-500/30 dark:border-blue-500/20 shadow-xl p-0 flex flex-col justify-between relative overflow-hidden ring-1 ring-blue-500/20 cursor-pointer group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                onClick={() => router.push("/siget/observatorio/reportes")}
+              >
                 <div className="bg-blue-600 text-white text-center py-2 text-[10px] font-black tracking-widest uppercase">
                   Análisis de Datos
                 </div>
                 <div className="p-8 flex flex-col h-full">
                   <div className="flex items-start gap-5 mb-8">
                     <div className="flex shrink-0 items-center justify-center w-20 h-20 dark:rounded-2xl dark:bg-white group-hover:scale-110 transition-transform">
-                      <AnimatedIcon iconKey="mbhqzvjk" target="#card-reportes" size={48} />
+                      <AnimatedIcon
+                        iconKey="mbhqzvjk"
+                        target="#card-reportes"
+                        size={48}
+                      />
                     </div>
                     <div className="flex flex-col pt-1">
-                      <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2">Reportes</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-snug">Generación de reportes y cruce de variables de los indicadores recolectados.</p>
+                      <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2">
+                        Reportes
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-snug">
+                        Generación de reportes y cruce de variables de los
+                        indicadores recolectados.
+                      </p>
                     </div>
                   </div>
                   <button className="w-full text-center py-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md transition-colors mb-8 cursor-pointer pointer-events-none">
@@ -174,11 +190,24 @@ export default function ObservatorioWeb() {
                     {[
                       "Descarga de datos en PDF/Excel",
                       "Gráficos interactivos dinámicos",
-                      "Análisis avanzado y filtros"
+                      "Análisis avanzado y filtros",
                     ].map((feature, i) => (
-                      <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
-                        <svg className="w-5 h-5 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      <li
+                        key={i}
+                        className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"
+                      >
+                        <svg
+                          className="w-5 h-5 text-blue-500 shrink-0"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                         {feature}
                       </li>
@@ -188,18 +217,31 @@ export default function ObservatorioWeb() {
               </div>
 
               {/* Card Básica -> Formularios (Morado) */}
-              <div id="card-formularios" className="bg-card rounded-3xl border border-purple-500/30 dark:border-purple-500/20 shadow-xl p-0 flex flex-col justify-between relative overflow-hidden ring-1 ring-purple-500/20 cursor-pointer group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300" onClick={() => router.push("/siget/observatorio/formularios")}>
+              <div
+                id="card-formularios"
+                className="bg-card rounded-3xl border border-purple-500/30 dark:border-purple-500/20 shadow-xl p-0 flex flex-col justify-between relative overflow-hidden ring-1 ring-purple-500/20 cursor-pointer group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                onClick={() => router.push("/siget/observatorio/formularios")}
+              >
                 <div className="bg-purple-600 text-white text-center py-2 text-[10px] font-black tracking-widest uppercase">
                   Recolección de Datos
                 </div>
                 <div className="p-8 flex flex-col h-full">
                   <div className="flex items-start gap-5 mb-8">
                     <div className="flex shrink-0 items-center justify-center w-20 h-20 dark:rounded-2xl dark:bg-white group-hover:scale-110 transition-transform">
-                      <AnimatedIcon iconKey="uwkcewhk" target="#card-formularios" size={48} />
+                      <AnimatedIcon
+                        iconKey="uwkcewhk"
+                        target="#card-formularios"
+                        size={48}
+                      />
                     </div>
                     <div className="flex flex-col pt-1">
-                      <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2">Formularios</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-snug">Gestión de recolección de datos mediante formularios interactivos.</p>
+                      <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2">
+                        Formularios
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-snug">
+                        Gestión de recolección de datos mediante formularios
+                        interactivos.
+                      </p>
                     </div>
                   </div>
                   <button className="w-full text-center py-3.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md transition-colors mb-8 cursor-pointer pointer-events-none">
@@ -209,11 +251,24 @@ export default function ObservatorioWeb() {
                     {[
                       "Creación y llenado de registros",
                       "Edición de datos en tiempo real",
-                      "Historial de envíos por usuario"
+                      "Historial de envíos por usuario",
                     ].map((feature, i) => (
-                      <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
-                        <svg className="w-5 h-5 text-purple-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      <li
+                        key={i}
+                        className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"
+                      >
+                        <svg
+                          className="w-5 h-5 text-purple-500 shrink-0"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={3}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M5 13l4 4L19 7"
+                          />
                         </svg>
                         {feature}
                       </li>
@@ -224,45 +279,68 @@ export default function ObservatorioWeb() {
 
               {/* Card Constructor -> (Verde) - solo admin/super */}
               {canSeePlantillas && (
-              <div id="card-constructor" className="bg-card rounded-3xl border border-emerald-500/30 dark:border-emerald-500/20 shadow-xl p-0 flex flex-col justify-between relative overflow-hidden ring-1 ring-emerald-500/20 cursor-pointer group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 md:col-span-2 xl:col-span-1" onClick={() => router.push("/siget/observatorio/plantillas")}>
-                <div className="bg-emerald-600 text-white text-center py-2 text-[10px] font-black tracking-widest uppercase">
-                  Configuración
-                </div>
-                <div className="p-8 flex flex-col h-full">
-                  <div className="flex items-start gap-5 mb-8">
-                    <div className="flex shrink-0 items-center justify-center w-20 h-20 dark:rounded-2xl dark:bg-white group-hover:scale-110 transition-transform">
-                      <AnimatedIcon iconKey="cdxxgczv" target="#card-constructor" size={48} />
-                    </div>
-                    <div className="flex flex-col pt-1">
-                      <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2">Plantillas</h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-snug">Cree y configure formularios dinámicos por sector.</p>
-                    </div>
+                <div
+                  id="card-constructor"
+                  className="bg-card rounded-3xl border border-emerald-500/30 dark:border-emerald-500/20 shadow-xl p-0 flex flex-col justify-between relative overflow-hidden ring-1 ring-emerald-500/20 cursor-pointer group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 md:col-span-2 xl:col-span-1"
+                  onClick={() => router.push("/siget/observatorio/plantillas")}
+                >
+                  <div className="bg-emerald-600 text-white text-center py-2 text-[10px] font-black tracking-widest uppercase">
+                    Configuración
                   </div>
-                  <button className="w-full text-center py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors mb-8 cursor-pointer pointer-events-none">
-                    Ir al Constructor
-                  </button>
-                  <ul className="space-y-4 mt-auto">
-                    {[
-                      "Crear nuevos formularios",
-                      "Gestión de indicadores dinámicos",
-                      "Asignación por sector"
-                    ].map((feature, i) => (
-                      <li key={i} className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300">
-                        <svg className="w-5 h-5 text-emerald-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
+                  <div className="p-8 flex flex-col h-full">
+                    <div className="flex items-start gap-5 mb-8">
+                      <div className="flex shrink-0 items-center justify-center w-20 h-20 dark:rounded-2xl dark:bg-white group-hover:scale-110 transition-transform">
+                        <AnimatedIcon
+                          iconKey="cdxxgczv"
+                          target="#card-constructor"
+                          size={48}
+                        />
+                      </div>
+                      <div className="flex flex-col pt-1">
+                        <h3 className="text-3xl font-black text-slate-900 dark:text-white leading-none mb-2">
+                          Plantillas
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-snug">
+                          Cree y configure formularios dinámicos por sector.
+                        </p>
+                      </div>
+                    </div>
+                    <button className="w-full text-center py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-colors mb-8 cursor-pointer pointer-events-none">
+                      Ir al Constructor
+                    </button>
+                    <ul className="space-y-4 mt-auto">
+                      {[
+                        "Crear nuevos formularios",
+                        "Gestión de indicadores dinámicos",
+                        "Asignación por sector",
+                      ].map((feature, i) => (
+                        <li
+                          key={i}
+                          className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"
+                        >
+                          <svg
+                            className="w-5 h-5 text-emerald-500 shrink-0"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={3}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 </div>
-              </div>
               )}
-
             </div>
           </motion.div>
         </AnimatePresence>
-
       </div>
 
       <OrganizacionesLogoCintillo />

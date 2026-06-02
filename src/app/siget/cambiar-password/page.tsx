@@ -3,10 +3,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Shield, Eye, EyeOff, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Shield, Eye, EyeOff, CheckCircle2, XCircle, Loader2, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Swal from "sweetalert2";
 import { useTheme } from "next-themes";
+import { generateStrongPassword } from "@/utils/general/password-generator";
+import { AuroraText } from "@/components/ui/aurora-text";
 
 export default function CambiarPasswordPage() {
   const router = useRouter();
@@ -128,12 +130,26 @@ export default function CambiarPasswordPage() {
 
         <div className="space-y-4">
           <div className="space-y-1">
-            <div className="flex justify-end px-1">
-               {lastChange !== undefined && (
+            <div className="flex items-center justify-between gap-2 px-1">
+               {lastChange !== undefined ? (
                  <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">
                    Último cambio de contraseña: <span className="text-orange-500">{formatLastChange(lastChange)}</span>
                  </span>
+               ) : (
+                 <span />
                )}
+               <button
+                 type="button"
+                 onClick={() => {
+                   const p = generateStrongPassword();
+                   setFormData({ newPassword: p, confirmPassword: p });
+                   setShowPass(true);
+                 }}
+                 className="text-sm flex items-center gap-1.5 font-bold hover:underline text-primary cursor-pointer transition-opacity shrink-0"
+               >
+                 <AuroraText>Generar Contraseña</AuroraText>
+                 <Wand2 size={14} className="rotate-[15deg]" />
+               </button>
             </div>
             
             <div className="relative">

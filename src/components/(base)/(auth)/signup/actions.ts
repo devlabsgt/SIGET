@@ -69,6 +69,7 @@ export async function signup(
     email_confirm: true,
     user_metadata: {
       name,
+      nombre: name,
       username,
       rol,
       organizacion_id: organizacion_id ?? null,

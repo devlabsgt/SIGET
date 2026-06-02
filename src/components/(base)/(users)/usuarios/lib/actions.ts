@@ -126,7 +126,15 @@ export async function updateUserCredentials(
   if (username) {
     authUpdates.email = `${username}@app.com`;
     authUpdates.email_confirm = true;
+
+    // Preservamos el resto de metadata (name, rol, organizacion_id, etc.)
+    // para que no se borre al cambiar el usuario.
+    const { data: existing } = await supabaseAdmin.auth.admin.getUserById(
+      userId,
+    );
+
     authUpdates.user_metadata = {
+      ...(existing?.user?.user_metadata ?? {}),
       username: username,
     };
   }
