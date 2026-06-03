@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useQueryClient } from "@tanstack/react-query";
 import { BookOpen, Loader2, Trash2, Upload, X } from "lucide-react";
-import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { cn } from "@/lib/utils";
 import {
@@ -12,6 +11,11 @@ import {
   getManualUsuarioSignedUrl,
   uploadManualUsuario,
 } from "@/components/(base)/layout/modals/manual-usuario-actions";
+import {
+  parseManualActionError,
+  showManualToastError,
+  showManualToastSuccess,
+} from "@/components/(base)/layout/modals/manual-toast";
 
 const ManualPdfMobileViewer = dynamic(
   () => import("@/components/(base)/layout/modals/ManualPdfMobileViewer"),
@@ -39,6 +43,11 @@ function useIsMobile() {
   return isMobile;
 }
 
+function isPdfFile(file: File): boolean {
+  if (file.type === "application/pdf") return true;
+  return file.name.toLowerCase().endsWith(".pdf");
+}
+
 interface ManualUsuarioModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,6 +67,28 @@ export default function ManualUsuarioModal({
   const [busy, setBusy] = useState(false);
   const [manualUrl, setManualUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const loadManualUrl = useCallback(async (path: string) => {
+    setLoadingUrl(true);
+    setLoadError(null);
+    try {
+      const url = await getManualUsuarioSignedUrl(path);
+      if (!url) {
+        setManualUrl(null);
+        setLoadError("No se pudo obtener la URL del manual.");
+        return;
+      }
+      setManualUrl(url);
+    } catch (err: unknown) {
+      setManualUrl(null);
+      const message =
+        err instanceof Error ? err.message : "Error al cargar el manual.";
+      setLoadError(message);
+    } finally {
+      setLoadingUrl(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -71,29 +102,21 @@ export default function ManualUsuarioModal({
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen || !manualPath) {
+    if (!isOpen) {
       setManualUrl(null);
+      setLoadError(null);
       return;
     }
 
-    let cancelled = false;
-    setLoadingUrl(true);
+    if (!manualPath) {
+      setManualUrl(null);
+      setLoadError(null);
+      setLoadingUrl(false);
+      return;
+    }
 
-    getManualUsuarioSignedUrl(manualPath)
-      .then((url) => {
-        if (!cancelled) setManualUrl(url);
-      })
-      .catch(() => {
-        if (!cancelled) setManualUrl(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingUrl(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, manualPath]);
+    loadManualUrl(manualPath);
+  }, [isOpen, manualPath, loadManualUrl]);
 
   if (!isOpen) return null;
 
@@ -102,12 +125,12 @@ export default function ManualUsuarioModal({
     e.target.value = "";
     if (!file) return;
 
-    if (file.type !== "application/pdf") {
-      toast.error("Solo se permiten archivos PDF.");
+    if (!isPdfFile(file)) {
+      showManualToastError("Solo se permiten archivos PDF.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("El PDF no debe superar los 10 MB.");
+      showManualToastError("El PDF no debe superar los 10 MB.");
       return;
     }
 
@@ -115,13 +138,12 @@ export default function ManualUsuarioModal({
     try {
       const formData = new FormData();
       formData.append("file", file);
-      await uploadManualUsuario(formData);
-      await queryClient.invalidateQueries({ queryKey: ["appSettings"] });
-      toast.success("Manual de usuario actualizado.");
+      const newPath = await uploadManualUsuario(formData);
+      await queryClient.refetchQueries({ queryKey: ["appSettings"] });
+      await loadManualUrl(newPath);
+      showManualToastSuccess("Manual de usuario actualizado.");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Error al subir el manual.";
-      toast.error(message);
+      showManualToastError(parseManualActionError(err));
     } finally {
       setBusy(false);
     }
@@ -147,16 +169,18 @@ export default function ManualUsuarioModal({
     setBusy(true);
     try {
       await deleteManualUsuario();
-      await queryClient.invalidateQueries({ queryKey: ["appSettings"] });
-      toast.success("Manual de usuario eliminado.");
+      setManualUrl(null);
+      setLoadError(null);
+      await queryClient.refetchQueries({ queryKey: ["appSettings"] });
+      showManualToastSuccess("Manual de usuario eliminado.");
     } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Error al eliminar el manual.";
-      toast.error(message);
+      showManualToastError(parseManualActionError(err));
     } finally {
       setBusy(false);
     }
   };
+
+  const showEmptyState = !manualPath || (!loadingUrl && !manualUrl);
 
   return (
     <div
@@ -174,7 +198,7 @@ export default function ManualUsuarioModal({
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,.pdf"
           className="hidden"
           onChange={handleFileChange}
           disabled={busy}
@@ -188,33 +212,16 @@ export default function ManualUsuarioModal({
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
-            {canManage && (
-              <>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={busy}
-                  className="flex items-center justify-center rounded-xl bg-celeste-trifinio p-2 text-white transition-colors hover:bg-celeste-trifinio/90 disabled:opacity-40 cursor-pointer"
-                  title="Subir manual"
-                >
-                  {busy ? (
-                    <Loader2 className="size-4 animate-spin" />
-                  ) : (
-                    <Upload className="size-4" />
-                  )}
-                </button>
-                {manualPath && (
-                  <button
-                    type="button"
-                    onClick={handleDelete}
-                    disabled={busy}
-                    className="flex items-center justify-center rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-2 text-red-600 dark:text-red-400 transition-colors hover:bg-red-100/80 dark:hover:bg-red-900/30 disabled:opacity-40 cursor-pointer"
-                    title="Eliminar manual"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
-                )}
-              </>
+            {canManage && manualPath && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={busy}
+                className="flex items-center justify-center rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 p-2 text-red-600 dark:text-red-400 transition-colors hover:bg-red-100/80 dark:hover:bg-red-900/30 disabled:opacity-40 cursor-pointer"
+                title="Eliminar manual"
+              >
+                <Trash2 className="size-4" />
+              </button>
             )}
             <button
               type="button"
@@ -234,7 +241,13 @@ export default function ManualUsuarioModal({
             </div>
           ) : manualUrl ? (
             isMobile ? (
-              <ManualPdfMobileViewer url={manualUrl} />
+              <ManualPdfMobileViewer
+                url={manualUrl}
+                onLoadError={(message) => {
+                  setManualUrl(null);
+                  setLoadError(message);
+                }}
+              />
             ) : (
               <iframe
                 key={manualUrl}
@@ -243,15 +256,16 @@ export default function ManualUsuarioModal({
                 className="h-full w-full"
               />
             )
-          ) : (
+          ) : showEmptyState ? (
             <div className="flex h-full w-full flex-col items-center justify-center gap-3 px-6 text-center">
               <BookOpen className="size-12 text-slate-300 dark:text-slate-600" />
               <p className="text-sm font-bold text-slate-500 dark:text-slate-400">
-                {manualPath
-                  ? "No se pudo cargar el manual."
-                  : "Aún no hay un manual de usuario disponible."}
+                {loadError ??
+                  (manualPath
+                    ? "No se pudo cargar el manual."
+                    : "Aún no hay un manual de usuario disponible.")}
               </p>
-              {canManage && (
+              {canManage && !manualPath && (
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -267,7 +281,7 @@ export default function ManualUsuarioModal({
                 </button>
               )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

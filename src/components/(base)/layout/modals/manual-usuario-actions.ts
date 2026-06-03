@@ -2,10 +2,21 @@
 
 import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
-import { updateManualUsuarioUrl } from "@/components/(base)/(settings)/actions";
 
 const MANUAL_BUCKET = "documentos";
 const MANUAL_MAX_BYTES = 10 * 1024 * 1024; // 10 MB — límite del bucket
+
+function isPdfFile(file: { type: string; name: string }): boolean {
+  if (file.type === "application/pdf") return true;
+  return file.name.toLowerCase().endsWith(".pdf");
+}
+
+function getFormDataFile(formData: FormData): File | null {
+  const file = formData.get("file");
+  if (!file || typeof file === "string") return null;
+  if (!("arrayBuffer" in file) || typeof file.arrayBuffer !== "function") return null;
+  return file as File;
+}
 
 async function assertSuperUser() {
   const supabase = await createClient();
@@ -33,6 +44,34 @@ async function assertAuthenticatedUser() {
   return user;
 }
 
+async function saveManualPath(path: string | null): Promise<void> {
+  const admin = createAdminClient();
+
+  const { data: existing, error: selectError } = await admin
+    .from("app_settings")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+
+  if (selectError) throw new Error(selectError.message);
+
+  if (existing?.id) {
+    const { error } = await admin
+      .from("app_settings")
+      .update({
+        manual_usuario_url: path,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
+
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await admin.from("app_settings").insert({ manual_usuario_url: path });
+
+    if (error) throw new Error(error.message);
+  }
+}
+
 export async function getManualUsuarioSignedUrl(
   path: string | null,
 ): Promise<string | null> {
@@ -45,22 +84,22 @@ export async function getManualUsuarioSignedUrl(
     .from(MANUAL_BUCKET)
     .createSignedUrl(path, 60 * 60);
 
-  if (error || !data?.signedUrl) {
+  if (error) {
     console.error("[getManualUsuarioSignedUrl]", error);
-    return null;
+    throw new Error(error.message);
   }
 
-  return data.signedUrl;
+  return data?.signedUrl ?? null;
 }
 
-export async function uploadManualUsuario(formData: FormData): Promise<void> {
+export async function uploadManualUsuario(formData: FormData): Promise<string> {
   await assertSuperUser();
 
-  const file = formData.get("file");
-  if (!file || !(file instanceof File)) {
+  const file = getFormDataFile(formData);
+  if (!file) {
     throw new Error("Archivo no válido");
   }
-  if (file.type !== "application/pdf") {
+  if (!isPdfFile(file)) {
     throw new Error("Solo se permiten archivos PDF.");
   }
   if (file.size > MANUAL_MAX_BYTES) {
@@ -88,7 +127,9 @@ export async function uploadManualUsuario(formData: FormData): Promise<void> {
     await admin.storage.from(MANUAL_BUCKET).remove([settings.manual_usuario_url]);
   }
 
-  await updateManualUsuarioUrl(path);
+  await saveManualPath(path);
+
+  return path;
 }
 
 export async function deleteManualUsuario(): Promise<void> {
@@ -108,5 +149,5 @@ export async function deleteManualUsuario(): Promise<void> {
   const { error } = await admin.storage.from(MANUAL_BUCKET).remove([currentPath]);
   if (error) throw new Error(error.message);
 
-  await updateManualUsuarioUrl(null);
+  await saveManualPath(null);
 }

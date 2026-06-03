@@ -12,7 +12,6 @@ import { createSector } from "./lib/actions";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 import { useQueryClient } from "@tanstack/react-query";
-import ObsToastContainer from "./ObsToastContainer";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
 
 const ROLES_WITH_PLANTILLAS = ["admin", "super", "admin-observatorio"];
@@ -399,7 +398,6 @@ export default function PlantillasList() {
           </motion.div>
         </AnimatePresence>
       </main>
-      <ObsToastContainer />
     </div>
   );
 }

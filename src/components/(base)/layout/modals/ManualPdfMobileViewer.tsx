@@ -5,13 +5,14 @@ import { Document, Page, pdfjs } from "react-pdf";
 import { Loader2 } from "lucide-react";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
 
 interface ManualPdfMobileViewerProps {
   url: string;
+  onLoadError?: (message: string) => void;
 }
 
 function getTouchDistance(touches: TouchList) {
@@ -29,7 +30,10 @@ function getTouchCenter(touches: TouchList) {
   };
 }
 
-export default function ManualPdfMobileViewer({ url }: ManualPdfMobileViewerProps) {
+export default function ManualPdfMobileViewer({
+  url,
+  onLoadError,
+}: ManualPdfMobileViewerProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const sizerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -74,11 +78,6 @@ export default function ManualPdfMobileViewer({ url }: ManualPdfMobileViewerProp
     [syncSizer],
   );
 
-  const updateWidth = useCallback(() => {
-    if (scrollRef.current) {
-      setPageWidth(scrollRef.current.clientWidth);
-    }
-  }, []);
 
   useEffect(() => {
     baseWidthRef.current = baseWidth;
@@ -92,10 +91,24 @@ export default function ManualPdfMobileViewer({ url }: ManualPdfMobileViewerProp
   }, [numPages, syncSizer]);
 
   useEffect(() => {
-    updateWidth();
-    window.addEventListener("resize", updateWidth);
-    return () => window.removeEventListener("resize", updateWidth);
-  }, [updateWidth]);
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const update = () => {
+      const w = el.clientWidth;
+      if (w > 0) setPageWidth(w);
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    window.addEventListener("resize", update);
+
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, []);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -183,6 +196,12 @@ export default function ManualPdfMobileViewer({ url }: ManualPdfMobileViewerProp
           <Document
             file={url}
             onLoadSuccess={({ numPages: total }) => setNumPages(total)}
+            onLoadError={(error) => {
+              const message =
+                error?.message ??
+                "No se pudo renderizar el PDF en este dispositivo.";
+              onLoadError?.(message);
+            }}
             onItemClick={({ pageNumber }) => {
               if (!isPinching.current) scrollToPage(pageNumber);
             }}

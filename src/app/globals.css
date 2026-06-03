@@ -170,6 +170,7 @@
   width: 95% !important;
   max-width: 520px !important;
   margin-top: 0.5rem !important;
+  z-index: 10000 !important;
 }
 
 .obs-toast {

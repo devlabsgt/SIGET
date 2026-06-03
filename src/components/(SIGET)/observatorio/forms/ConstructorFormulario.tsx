@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronDown, ChevronUp, Save, Trash2, X, Loader2, LayoutTemplate, Plus, ArrowUp, ArrowDown, Settings2 } from "lucide-react";
 import { useConstructorFormulario } from "./lib/hooks";
-import ObsToastContainer from "./ObsToastContainer";
 
 interface ConstructorProps {
   onBack: () => void;
@@ -428,7 +427,6 @@ export default function ConstructorFormulario({ onBack, initialData }: Construct
           </AnimatePresence>
         </div>
       )}
-      <ObsToastContainer />
     </motion.div>
   );
 }
