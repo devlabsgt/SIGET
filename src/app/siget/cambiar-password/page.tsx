@@ -53,8 +53,38 @@ export default function CambiarPasswordPage() {
   const isPasswordValid =
     formData.newPassword.length >= 8 &&
     /[A-Z]/.test(formData.newPassword) &&
+    /[a-z]/.test(formData.newPassword) &&
     /[0-9]/.test(formData.newPassword) &&
     /[^A-Za-z0-9]/.test(formData.newPassword);
+
+  const passwordRequirements = [
+    {
+      label: "Una minúscula",
+      met: /[a-z]/.test(formData.newPassword),
+    },
+    {
+      label: "Una mayúscula",
+      met: /[A-Z]/.test(formData.newPassword),
+    },
+    {
+      label: "Un número",
+      met: /[0-9]/.test(formData.newPassword),
+    },
+    {
+      label: "Un símbolo",
+      met: /[^A-Za-z0-9]/.test(formData.newPassword),
+    },
+    {
+      label: "Mín. 8 caracteres",
+      met: formData.newPassword.length >= 8,
+    },
+    {
+      label: "Las contraseñas coinciden",
+      met:
+        formData.confirmPassword.length > 0 &&
+        formData.newPassword === formData.confirmPassword,
+    },
+  ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -195,35 +225,17 @@ export default function CambiarPasswordPage() {
             />
           </div>
 
-          {/* MENSAJE DE COINCIDENCIA DE CONTRASEÑA */}
-          {formData.confirmPassword.length > 0 && (
-            <div className="flex items-center gap-1.5 px-1 pt-1">
-              {formData.newPassword === formData.confirmPassword ? (
-                <span className="text-xs font-medium text-green-600 dark:text-green-500 flex items-center gap-1.5">
-                  <CheckCircle2 size={14} /> Las contraseñas coinciden
-                </span>
-              ) : (
-                <span className="text-xs font-medium text-red-500 dark:text-red-400 flex items-center gap-1.5">
-                  <XCircle size={14} /> Las contraseñas no coinciden
-                </span>
-              )}
-            </div>
-          )}
-
           {/* REQUISITOS DE CONTRASEÑA */}
           {formData.newPassword.length > 0 && (
             <div className="grid grid-cols-2 gap-x-2 gap-y-2 mt-4 px-2 border-t border-border/50 pt-4">
-              {[
-                { label: "Mín. 8 caracteres", met: formData.newPassword.length >= 8 },
-                { label: "Una mayúscula", met: /[A-Z]/.test(formData.newPassword) },
-                { label: "Un número", met: /[0-9]/.test(formData.newPassword) },
-                { label: "Un símbolo( ej. / * % - +)", met: /[^A-Za-z0-9]/.test(formData.newPassword) },
-              ].map((req, idx) => (
+              {passwordRequirements.map((req) => (
                 <div
-                  key={idx}
+                  key={req.label}
                   className={cn(
                     "flex items-center gap-1.5 text-xs font-medium transition-colors",
-                    req.met ? "text-green-600 dark:text-green-500" : "text-red-500 dark:text-red-400",
+                    req.met
+                      ? "text-green-600 dark:text-green-500"
+                      : "text-red-500 dark:text-red-400",
                   )}
                 >
                   {req.met ? <CheckCircle2 size={14} /> : <XCircle size={14} />}

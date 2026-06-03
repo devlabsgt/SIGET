@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { getOrganizaciones } from "./actions";
 import { MagicCard } from "@/components/ui/magic-card";
 import {
@@ -11,7 +12,6 @@ import {
   Loader2,
   UserPlus,
   ClipboardCopy,
-  Check,
   MessageCircle,
   ArrowLeft,
 } from "lucide-react";
@@ -25,6 +25,8 @@ import { useUser } from "@/components/(base)/providers/UserProvider";
 interface SignUpProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void;
+  presentation?: "modal" | "panel" | "fullscreen";
 }
 
 const Label = ({
@@ -85,7 +87,12 @@ const Select = ({
   </div>
 );
 
-export default function SignUp({ isOpen, onClose }: SignUpProps) {
+export default function SignUp({
+  isOpen,
+  onClose,
+  onSuccess,
+  presentation = "modal",
+}: SignUpProps) {
   const logic = useSignupLogic();
   const currentUser = useUser();
   const currentUserRole = currentUser?.user_metadata?.rol || "user";
@@ -152,12 +159,21 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
   }, [isOpen]);
 
   useEffect(() => {
+    if (!isOpen || presentation !== "fullscreen") return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen, presentation]);
+
+  useEffect(() => {
     if (logic.state?.success && !hasMovedToStep2.current) {
       setSavedData({ user: logic.username, pass: logic.passwordValue });
       hasMovedToStep2.current = true;
       setStep(2);
+      onSuccess?.();
     }
-  }, [logic.state?.success, logic.username, logic.passwordValue]);
+  }, [logic.state?.success, logic.username, logic.passwordValue, onSuccess]);
   const handleCopy = () => {
     const textToCopy = `*CREDENCIALES DE ACCESO*\n\n*Usuario:* ${savedData.user}\n*Contraseña:* ${savedData.pass}\n\n_Por seguridad, cambie su clave al ingresar_`;
 
@@ -197,38 +213,48 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
 
   if (!isOpen) return null;
 
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.95 }}
-          className="w-full max-w-md relative"
-        >
-          <MagicCard className="rounded-3xl border border-border/50 bg-card shadow-none overflow-hidden">
-            <div className="flex items-center justify-between p-6 border-b border-border/50 bg-muted/5">
-              <div className="flex items-center gap-4">
-                <UserPlus size={30} className="text-primary" />
-                <div>
-                  <h3 className="text-xl font-bold tracking-tight text-foreground">
-                    Nuevo Usuario
-                  </h3>
-                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-                    Configuración de acceso
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-2 rounded-full hover:bg-muted/50 transition-colors cursor-pointer"
-              >
-                <X size={20} className="text-muted-foreground" />
-              </button>
-            </div>
+  const panelCardClass =
+    "rounded-2xl shadow-sm max-h-[calc(100dvh-2rem)] w-full flex flex-col overflow-hidden";
 
-            <div className="p-6 overflow-hidden min-h-105">
+  const card = (
+    <MagicCard
+      className={cn(
+        "border border-border/50 bg-card shadow-none overflow-hidden flex flex-col w-full",
+        (presentation === "panel" || presentation === "fullscreen") &&
+          panelCardClass,
+        presentation === "modal" && "rounded-3xl",
+      )}
+    >
+      <div className="flex items-center justify-between p-4 md:p-6 border-b border-border/50 bg-muted/5 shrink-0">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <UserPlus size={26} className="text-primary shrink-0" />
+          <div className="min-w-0">
+            <h3 className="text-lg md:text-xl font-bold tracking-tight text-foreground truncate">
+              Nuevo Usuario
+            </h3>
+            <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
+              Configuración de acceso
+            </p>
+          </div>
+        </div>
+        {presentation !== "panel" && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-muted/50 transition-colors cursor-pointer shrink-0"
+            aria-label="Cerrar"
+          >
+            <X size={20} className="text-muted-foreground" />
+          </button>
+        )}
+      </div>
+
+      <div
+        className={cn(
+          "p-4 md:p-6 overflow-y-auto min-h-0",
+          presentation === "modal" ? "min-h-105" : "flex-1",
+        )}
+      >
               <AnimatePresence mode="wait">
                 {step === 1 ? (
                   <motion.form
@@ -365,9 +391,10 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                           name="password"
                           type={logic.showPassword ? "text" : "password"}
                           value={logic.passwordValue}
-                          onChange={(e) => logic.setPasswordValue(e.target.value)}
+                          readOnly
+                          tabIndex={-1}
                           className={cn(
-                            "pr-10 bg-muted/20 font-mono border-dashed transition-all",
+                            "pr-10 bg-muted/20 font-mono border-dashed transition-all cursor-default focus-visible:ring-0",
                             !logic.showPassword && "tracking-[0.15em]",
                           )}
                         />
@@ -521,8 +548,59 @@ export default function SignUp({ isOpen, onClose }: SignUpProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
-          </MagicCard>
+      </div>
+    </MagicCard>
+  );
+
+  if (presentation === "panel") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, x: 24 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, x: 24 }}
+        className="w-full sticky top-5"
+      >
+        {card}
+      </motion.div>
+    );
+  }
+
+  if (presentation === "fullscreen") {
+    const fullscreen = (
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[110] flex items-center justify-center p-4 h-dvh w-full bg-background/60 backdrop-blur-sm"
+        style={{
+          paddingTop: "max(1rem, env(safe-area-inset-top))",
+          paddingBottom: "max(1rem, env(safe-area-inset-bottom))",
+        }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="w-full max-w-md relative"
+        >
+          {card}
+        </motion.div>
+      </motion.div>
+    );
+
+    return createPortal(fullscreen, document.body);
+  }
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/60 backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="w-full max-w-md relative"
+        >
+          {card}
         </motion.div>
       </div>
     </AnimatePresence>

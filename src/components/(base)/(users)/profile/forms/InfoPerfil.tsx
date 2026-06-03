@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "next-themes";
 import {
   User,
@@ -9,7 +9,6 @@ import {
   Fingerprint,
   Calendar,
   Heart,
-  Save,
   Loader2,
   ChevronLeft,
   ChevronRight,
@@ -20,7 +19,8 @@ import { updateProfile } from "../lib/actions";
 import { useProfile } from "../lib/hooks";
 import { getOrganizaciones } from "@/components/(base)/(auth)/signup/actions";
 import { cn } from "@/lib/utils";
-import { Building2 } from "lucide-react";
+import { Building2, Shield } from "lucide-react";
+import { InfoUser, type InfoUserRef } from "./InfoUser";
 
 const Label = ({
   className,
@@ -83,15 +83,18 @@ const Select = ({
 interface InfoPerfilProps {
   userId: string;
   canEdit: boolean;
+  onClose: () => void;
 }
 
-export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
+export const InfoPerfil = ({ userId, canEdit, onClose }: InfoPerfilProps) => {
   const { theme } = useTheme();
   const queryClient = useQueryClient();
+  const accesoRef = useRef<InfoUserRef>(null);
   const { profile: perfilData } = useProfile(userId, true);
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState<any>({});
   const [hasChanges, setHasChanges] = useState(false);
+  const [credentialChanges, setCredentialChanges] = useState(false);
   const [saving, setSaving] = useState(false);
   const [organizaciones, setOrganizaciones] = useState<
     { id: string; nombre: string }[]
@@ -130,14 +133,28 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
     };
 
     try {
-      await updateProfile(userId, formData);
-      await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
-      setHasChanges(false);
-      Swal.fire({
-        ...swalConfig,
-        icon: "success",
-        title: "Guardado",
-      });
+      let didSave = false;
+
+      if (accesoRef.current?.hasCredentialChanges()) {
+        const credentialsSaved = await accesoRef.current.saveCredentials();
+        if (!credentialsSaved) return;
+        didSave = true;
+      }
+
+      if (hasChanges) {
+        await updateProfile(userId, formData);
+        await queryClient.invalidateQueries({ queryKey: ["profile", userId] });
+        setHasChanges(false);
+        didSave = true;
+      }
+
+      if (didSave) {
+        Swal.fire({
+          ...swalConfig,
+          icon: "success",
+          title: "Guardado",
+        });
+      }
     } catch (e: any) {
       Swal.fire({
         ...swalConfig,
@@ -251,7 +268,7 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
   );
 
   const SectionContacto = (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-4">
       <div className="flex items-center justify-between pb-2 border-b border-border/40">
         <div className="flex items-center gap-2">
           <MapPin size={25} className="text-green-700" />
@@ -319,7 +336,7 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
   );
 
   const SectionEmergencia = (
-    <div className="space-y-6">
+    <div className="space-y-6 lg:space-y-4">
       <div className="flex items-center justify-between pb-2 border-b border-border/40">
         <div className="flex items-center gap-2">
           <Heart size={25} className="text-red-500" />
@@ -354,9 +371,34 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
     </div>
   );
 
+  const SectionAcceso = (
+    <div className="space-y-6 lg:space-y-4">
+      <div className="flex items-center pb-2 border-b border-border/40">
+        <div className="flex items-center gap-2">
+          <Shield size={25} className="text-purple-700 dark:text-purple-500" />
+          <h3 className="text-md font-bold uppercase tracking-tight">Acceso</h3>
+        </div>
+      </div>
+      <InfoUser
+        ref={accesoRef}
+        userId={userId}
+        canEdit={canEdit}
+        embedded
+        onCredentialChanges={setCredentialChanges}
+      />
+    </div>
+  );
+
   return (
     <div className="w-full flex flex-col h-full animate-in fade-in duration-300 ">
-      <div className="hidden md:grid md:grid-cols-3 md:mx-20 gap-10 pb-6">
+      <div className="hidden lg:grid lg:grid-cols-4 lg:items-start gap-6 xl:gap-8">
+        {SectionAcceso}
+        {SectionPersonal}
+        {SectionContacto}
+        {SectionEmergencia}
+      </div>
+
+      <div className="hidden md:grid lg:hidden md:grid-cols-3 gap-6 lg:gap-8 pb-6">
         {SectionPersonal}
         {SectionContacto}
         {SectionEmergencia}
@@ -382,24 +424,32 @@ export const InfoPerfil = ({ userId, canEdit }: InfoPerfilProps) => {
         </div>
       </div>
 
-      {canEdit && (
-        <div className="mt-8 pt-6 border-t border-border/60 flex justify-end">
+      <div
+        className={cn(
+          "grid gap-3 border-t border-border/60 shrink-0",
+          "mt-4 pt-4 lg:mt-2 lg:pt-4",
+          canEdit ? "grid-cols-2" : "grid-cols-1",
+        )}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors cursor-pointer text-left"
+        >
+          Volver
+        </button>
+        {canEdit && (
           <button
+            type="button"
             onClick={handleSave}
-            disabled={!hasChanges || saving}
-            className={cn(
-              "flex items-center justify-center gap-2 h-12 md:h-10 px-8 bg-primary text-primary-foreground rounded-xl font-bold shadow-lg transition-all active:scale-95 disabled:opacity-40 disabled:grayscale w-full md:w-auto",
-            )}
+            disabled={(!hasChanges && !credentialChanges) || saving}
+            className="text-sm font-medium text-primary underline underline-offset-4 disabled:opacity-40 disabled:no-underline disabled:cursor-not-allowed transition-colors cursor-pointer text-right flex items-center justify-end gap-1.5"
           >
-            {saving ? (
-              <Loader2 size={18} className="animate-spin" />
-            ) : (
-              <Save size={18} />
-            )}
-            GUARDAR CAMBIOS
+            {saving && <Loader2 size={14} className="animate-spin" />}
+            Guardar
           </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

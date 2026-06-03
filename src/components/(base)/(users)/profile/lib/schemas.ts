@@ -66,6 +66,10 @@ export const profileObjectSchema = baseFields.extend({
     }, "Debe contener una mayúscula")
     .refine((val) => {
       if (!val) return true;
+      return /[a-z]/.test(val);
+    }, "Debe contener una minúscula")
+    .refine((val) => {
+      if (!val) return true;
       return /[0-9]/.test(val);
     }, "Debe contener un número")
     .refine((val) => {
