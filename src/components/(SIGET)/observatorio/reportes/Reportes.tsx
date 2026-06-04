@@ -1425,7 +1425,7 @@ function ActiveDimensionDonutChart({
             ))}
           </Pie>
           <Tooltip
-            formatter={(value: number | string) => fmt(Number(value))}
+            formatter={(value) => fmt(Number(value ?? 0))}
             contentStyle={tooltipStyle}
             itemStyle={{ color: "#0f172a" }}
             labelStyle={{ color: "#0f172a" }}
