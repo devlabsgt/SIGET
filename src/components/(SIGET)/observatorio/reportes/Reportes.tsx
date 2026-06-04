@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   ChevronLeft,
   Calendar,
@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import {
   BarChart,
   Bar,
@@ -449,7 +450,16 @@ export default function Reportes({ onBack }: ReportesProps) {
       (a, b) => Number(a.sortVal) - Number(b.sortVal)
     );
 
-    return { data, nacNames };
+    const indicatorTotals: Record<string, number> = { registros: 0 };
+    for (const n of nacNames) indicatorTotals[n] = 0;
+    for (const row of data) {
+      indicatorTotals.registros += Number(row.registros ?? 0);
+      for (const n of nacNames) {
+        indicatorTotals[n] += Number(row[n] ?? 0);
+      }
+    }
+
+    return { data, nacNames, indicatorTotals };
   }, [filteredRows]);
 
   const monthlyNacColors = useMemo(() => {
@@ -924,39 +934,12 @@ export default function Reportes({ onBack }: ReportesProps) {
 
               <div className="h-[260px] xl:h-[300px] w-full min-w-0">
                 <AnimatePresence mode="wait">
-                  <motion.div
+                  <ActiveDimensionDonutChart
                     key={activeChartTab}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ duration: 0.3 }}
-                    className="h-full w-full"
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={activeDonutData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={70}
-                          outerRadius={110}
-                          paddingAngle={activeDonutData.length > 1 ? 4 : 0}
-                          dataKey="value"
-                          stroke="none"
-                        >
-                          {activeDonutData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={entry.color} />
-                          ))}
-                        </Pie>
-                        <Tooltip
-                          formatter={(value: any) => fmt(Number(value))}
-                          contentStyle={tooltipStyle}
-                          itemStyle={{ color: "#0f172a" }}
-                          labelStyle={{ color: "#0f172a" }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </motion.div>
+                    data={activeDonutData}
+                    total={activeDonutTotal}
+                    chartKey={activeChartTab}
+                  />
                 </AnimatePresence>
               </div>
 
@@ -1019,7 +1002,7 @@ export default function Reportes({ onBack }: ReportesProps) {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={monthlyStackChart.data}
-                      margin={{ left: 4, right: 12, top: 12, bottom: 4 }}
+                      margin={{ left: 4, right: 12, top: 12, bottom: 8 }}
                       barCategoryGap="28%"
                       barGap={2}
                     >
@@ -1041,24 +1024,41 @@ export default function Reportes({ onBack }: ReportesProps) {
                       <Tooltip
                         content={({ active, payload, label }) => {
                           if (!active || !payload?.length) return null;
-                          const row = payload[0]?.payload as Record<string, number | string>;
+
+                          const nacEntries = payload
+                            .filter(
+                              (entry) =>
+                                entry.name !== "registros" &&
+                                Number(entry.value) > 0,
+                            )
+                            .sort((a, b) => {
+                              const an = String(a.name);
+                              const bn = String(b.name);
+                              if (an === SIN_ESPECIFICAR_LABEL) return -1;
+                              if (bn === SIN_ESPECIFICAR_LABEL) return 1;
+                              return 0;
+                            });
+
+                          const registrosEntry = payload.find(
+                            (entry) =>
+                              entry.name === "registros" &&
+                              Number(entry.value) > 0,
+                          );
+
+                          if (!registrosEntry && nacEntries.length === 0) {
+                            return null;
+                          }
+
                           return (
                             <div style={tooltipStyle} className="rounded-xl border border-slate-200 bg-white p-3 text-xs shadow-md">
                               <p className="font-bold text-slate-800 mb-2">{label}</p>
-                              <p className="text-slate-600 mb-2">
-                                <span className="font-semibold">Registros:</span>{" "}
-                                {fmt(Number(row?.registros ?? 0))}
-                              </p>
-                              {payload
-                                .filter((entry) => entry.name !== "registros")
-                                .sort((a, b) => {
-                                  const an = String(a.name);
-                                  const bn = String(b.name);
-                                  if (an === SIN_ESPECIFICAR_LABEL) return -1;
-                                  if (bn === SIN_ESPECIFICAR_LABEL) return 1;
-                                  return 0;
-                                })
-                                .map((entry) => (
+                              {registrosEntry && (
+                                <p className="text-slate-600 mb-2">
+                                  <span className="font-semibold">Registros:</span>{" "}
+                                  {fmt(Number(registrosEntry.value))}
+                                </p>
+                              )}
+                              {nacEntries.map((entry) => (
                                 <p key={String(entry.name)} className="text-slate-700">
                                   <span style={{ color: entry.color }}>●</span>{" "}
                                   {entry.name}: {fmt(Number(entry.value))}
@@ -1069,10 +1069,40 @@ export default function Reportes({ onBack }: ReportesProps) {
                         }}
                       />
                       <Legend
-                        wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
-                        formatter={(value) =>
-                          value === "registros" ? "Registros" : String(value)
-                        }
+                        content={() => (
+                          <div className="flex flex-wrap justify-center gap-x-5 gap-y-3 pt-3">
+                            {monthlyStackChart.nacNames.map((nac, i) => (
+                              <div
+                                key={nac}
+                                className="flex flex-col items-center gap-0.5 min-w-[4.5rem] max-w-[7rem]"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span
+                                    className="size-2.5 shrink-0 rounded-full"
+                                    style={{ backgroundColor: monthlyNacColors[i] }}
+                                  />
+                                  <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 truncate">
+                                    {nac}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] font-black font-mono text-slate-800 dark:text-slate-200 tabular-nums">
+                                  {fmt(monthlyStackChart.indicatorTotals[nac] ?? 0)}
+                                </span>
+                              </div>
+                            ))}
+                            <div className="flex flex-col items-center gap-0.5 min-w-[4.5rem]">
+                              <div className="flex items-center gap-1.5">
+                                <span className="size-2.5 shrink-0 rounded-full bg-slate-700" />
+                                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">
+                                  Registros
+                                </span>
+                              </div>
+                              <span className="text-[10px] font-black font-mono text-slate-800 dark:text-slate-200 tabular-nums">
+                                {fmt(monthlyStackChart.indicatorTotals.registros ?? 0)}
+                              </span>
+                            </div>
+                          </div>
+                        )}
                       />
                       <Bar
                         dataKey="registros"
@@ -1289,6 +1319,30 @@ function buildDownloadOptions({
 
 type DonutSlice = { name: string; value: number; color: string };
 
+function DonutCenterTotal({
+  value,
+  active,
+  runId,
+}: {
+  value: number;
+  active: boolean;
+  runId: string | number;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+      <AnimatedNumber
+        value={value}
+        active={active}
+        runId={runId}
+        className="text-lg font-black leading-none font-mono text-slate-900 dark:text-white"
+      />
+      <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+        total
+      </span>
+    </div>
+  );
+}
+
 function OrgBarChartList({ data }: { data: { org: string; total: number }[] }) {
   const max = Math.max(...data.map((d) => d.total), 1);
   const twoColumns = data.length > 6;
@@ -1333,6 +1387,56 @@ function OrgBarChartList({ data }: { data: { org: string; total: number }[] }) {
   );
 }
 
+function ActiveDimensionDonutChart({
+  data,
+  total,
+  chartKey,
+}: {
+  data: DonutSlice[];
+  total: number;
+  chartKey: string;
+}) {
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInView = useInView(chartRef, { once: true, margin: "-20px" });
+
+  return (
+    <motion.div
+      ref={chartRef}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ duration: 0.3 }}
+      className="relative h-full w-full"
+    >
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={70}
+            outerRadius={110}
+            paddingAngle={data.length > 1 ? 4 : 0}
+            dataKey="value"
+            stroke="none"
+          >
+            {data.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          <Tooltip
+            formatter={(value: number | string) => fmt(Number(value))}
+            contentStyle={tooltipStyle}
+            itemStyle={{ color: "#0f172a" }}
+            labelStyle={{ color: "#0f172a" }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <DonutCenterTotal value={total} active={chartInView} runId={chartKey} />
+    </motion.div>
+  );
+}
+
 function DimensionDonutPanel({
   title,
   data,
@@ -1345,6 +1449,8 @@ function DimensionDonutPanel({
   const total = data.reduce((s, d) => s + d.value, 0);
   const chartSize = 210;
   const chartCenter = chartSize / 2;
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInView = useInView(chartRef, { once: true, margin: "-20px" });
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
@@ -1355,7 +1461,11 @@ function DimensionDonutPanel({
         <p className="text-xs text-slate-400 font-semibold py-6 text-center">Sin datos</p>
       ) : (
         <div className="flex flex-col gap-6 items-center">
-          <div className="shrink-0" style={{ width: chartSize, height: chartSize }}>
+          <div
+            ref={chartRef}
+            className="relative shrink-0"
+            style={{ width: chartSize, height: chartSize }}
+          >
             <PieChart width={chartSize} height={chartSize}>
               <Pie
                 data={data}
@@ -1373,6 +1483,11 @@ function DimensionDonutPanel({
                 ))}
               </Pie>
             </PieChart>
+            <DonutCenterTotal
+              value={total}
+              active={chartInView}
+              runId={chartId}
+            />
           </div>
           <div className="w-full min-w-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-1 gap-2">
             {data.map((item, index) => {

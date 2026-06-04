@@ -23,6 +23,7 @@ import {
 } from "@/app/obs-public-actions";
 import { softBarColor } from "@/components/(SIGET)/observatorio/reportes/lib/chart-colors";
 import { TrifinioDottedMapSection } from "@/components/(base)/(home)/TrifinioDottedMapSection";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 import OrganizacionesLogoCintillo from "@/components/(SIGET)/observatorio/OrganizacionesLogoCintillo";
 
 function fmt(n: number) {
@@ -30,37 +31,6 @@ function fmt(n: number) {
 }
 
 /* ─── count-up 0 → n (reinicia al entrar en pantalla) ─── */
-
-function useCountUp(target: number, active: boolean, duration = 2000, runId = 0) {
-  const [value, setValue] = useState(0);
-
-  useEffect(() => {
-    if (!active) {
-      setValue(0);
-      return;
-    }
-    if (target === 0) {
-      setValue(0);
-      return;
-    }
-
-    setValue(0);
-    const start = performance.now();
-    let frame = 0;
-
-    const tick = (now: number) => {
-      const progress = Math.min((now - start) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 4);
-      setValue(Math.round(eased * target));
-      if (progress < 1) frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target, active, duration, runId]);
-
-  return value;
-}
 
 function playLordIcons(container: HTMLElement | null) {
   if (!container) return;
@@ -75,27 +45,6 @@ function playLordIcons(container: HTMLElement | null) {
 }
 
 const WHY_CARD_HOVER_TARGET = ".why-card-hover-zone";
-
-function AnimatedNumber({
-  value,
-  active,
-  loading,
-  className,
-  runId = 0,
-}: {
-  value: number;
-  active: boolean;
-  loading?: boolean;
-  className?: string;
-  runId?: number;
-}) {
-  const displayed = useCountUp(value, active && !loading, 2000, runId);
-  return (
-    <span className={cn("tabular-nums", className)}>
-      {loading ? "—" : fmt(displayed)}
-    </span>
-  );
-}
 
 const MONTH_NAMES = [
   "",
@@ -671,15 +620,66 @@ const DONUT_COLORS = [
   "#bae6fd",
 ];
 
-const CAMPO_TOOLTIP_STYLE = {
-  borderRadius: "12px",
-  border: "1px solid #e2e8f0",
-  background: "#ffffff",
-  color: "#0f172a",
-  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
-  fontSize: 11,
-  fontWeight: 600,
-};
+function DonutTooltipContent({
+  active,
+  payload,
+}: {
+  active?: boolean;
+  payload?: Array<{
+    name?: string;
+    value?: number;
+    payload?: { nombre?: string; name?: string };
+  }>;
+}) {
+  if (!active || !payload?.length) return null;
+
+  const item = payload[0];
+  const label =
+    item.payload?.nombre ?? item.payload?.name ?? item.name ?? "";
+  const value = fmt(Number(item.value ?? 0));
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-1.5 shadow-md">
+      <p className="max-w-[10rem] text-[11px] font-semibold leading-snug text-black whitespace-normal break-words">
+        {label}: {value}
+      </p>
+    </div>
+  );
+}
+
+function DonutCenterTotal({
+  value,
+  inView,
+  loading,
+  isDark,
+}: {
+  value: number;
+  inView: boolean;
+  loading: boolean;
+  isDark: boolean;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+      <AnimatedNumber
+        value={value}
+        active={inView}
+        loading={loading}
+        className={cn(
+          "text-lg font-black leading-none",
+          isDark ? "text-white" : "text-foreground",
+        )}
+      />
+      <span
+        className={cn(
+          "text-[9px] font-bold uppercase tracking-wider",
+          isDark ? "text-white/60" : "text-muted-foreground",
+        )}
+      >
+        total
+      </span>
+    </div>
+  );
+}
 
 function DonutLegendItem({
   nombre,
@@ -720,40 +720,6 @@ function DonutLegendItem({
         )}
       />
     </li>
-  );
-}
-
-function DonutCenterTotal({
-  value,
-  inView,
-  loading,
-  isDark,
-}: {
-  value: number;
-  inView: boolean;
-  loading: boolean;
-  isDark: boolean;
-}) {
-  return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-      <AnimatedNumber
-        value={value}
-        active={inView}
-        loading={loading}
-        className={cn(
-          "text-lg font-black leading-none",
-          isDark ? "text-white" : "text-foreground",
-        )}
-      />
-      <span
-        className={cn(
-          "text-[9px] font-bold uppercase tracking-wider",
-          isDark ? "text-white/60" : "text-muted-foreground",
-        )}
-      >
-        total
-      </span>
-    </div>
   );
 }
 
@@ -868,25 +834,9 @@ function DonutChart({
                     />
                   ))}
                 </Pie>
-                <Tooltip
-                  contentStyle={
-                    isDark
-                      ? CAMPO_TOOLTIP_STYLE
-                      : {
-                          borderRadius: 10,
-                          fontSize: 11,
-                          fontWeight: 600,
-                        }
-                  }
-                  itemStyle={isDark ? { color: "#0f172a" } : undefined}
-                  labelStyle={
-                    isDark ? { color: "#0f172a", fontWeight: 700 } : undefined
-                  }
-                  formatter={(v) => [fmt(Number(v)), ""]}
-                />
+                <Tooltip content={<DonutTooltipContent />} />
               </PieChart>
             </ResponsiveContainer>
-            {/* total en el centro */}
             <DonutCenterTotal
               value={total}
               inView={inView}
@@ -962,12 +912,7 @@ function CampoBreakdownPanel({
                     <Cell key={`campo-cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip
-                  formatter={(value) => fmt(Number(value))}
-                  contentStyle={CAMPO_TOOLTIP_STYLE}
-                  itemStyle={{ color: "#0f172a" }}
-                  labelStyle={{ color: "#0f172a", fontWeight: 700 }}
-                />
+                <Tooltip content={<DonutTooltipContent />} />
               </PieChart>
             </ResponsiveContainer>
             <DonutCenterTotal

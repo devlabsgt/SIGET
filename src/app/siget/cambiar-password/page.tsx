@@ -3,12 +3,16 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
-import { Shield, Eye, EyeOff, CheckCircle2, XCircle, Loader2, Wand2 } from "lucide-react";
+import { Shield, Eye, EyeOff, Loader2, Wand2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Swal from "sweetalert2";
 import { useTheme } from "next-themes";
 import { generateStrongPassword } from "@/utils/general/password-generator";
 import { AuroraText } from "@/components/ui/aurora-text";
+import {
+  isPasswordStrong,
+  PasswordRequirements,
+} from "@/components/ui/password-requirements";
 
 export default function CambiarPasswordPage() {
   const router = useRouter();
@@ -50,41 +54,7 @@ export default function CambiarPasswordPage() {
     });
   }, [supabase]);
 
-  const isPasswordValid =
-    formData.newPassword.length >= 8 &&
-    /[A-Z]/.test(formData.newPassword) &&
-    /[a-z]/.test(formData.newPassword) &&
-    /[0-9]/.test(formData.newPassword) &&
-    /[^A-Za-z0-9]/.test(formData.newPassword);
-
-  const passwordRequirements = [
-    {
-      label: "Una minúscula",
-      met: /[a-z]/.test(formData.newPassword),
-    },
-    {
-      label: "Una mayúscula",
-      met: /[A-Z]/.test(formData.newPassword),
-    },
-    {
-      label: "Un número",
-      met: /[0-9]/.test(formData.newPassword),
-    },
-    {
-      label: "Un símbolo",
-      met: /[^A-Za-z0-9]/.test(formData.newPassword),
-    },
-    {
-      label: "Mín. 8 caracteres",
-      met: formData.newPassword.length >= 8,
-    },
-    {
-      label: "Las contraseñas coinciden",
-      met:
-        formData.confirmPassword.length > 0 &&
-        formData.newPassword === formData.confirmPassword,
-    },
-  ];
+  const isPasswordValid = isPasswordStrong(formData.newPassword);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -225,25 +195,12 @@ export default function CambiarPasswordPage() {
             />
           </div>
 
-          {/* REQUISITOS DE CONTRASEÑA */}
-          {formData.newPassword.length > 0 && (
-            <div className="grid grid-cols-2 gap-x-2 gap-y-2 mt-4 px-2 border-t border-border/50 pt-4">
-              {passwordRequirements.map((req) => (
-                <div
-                  key={req.label}
-                  className={cn(
-                    "flex items-center gap-1.5 text-xs font-medium transition-colors",
-                    req.met
-                      ? "text-green-600 dark:text-green-500"
-                      : "text-red-500 dark:text-red-400",
-                  )}
-                >
-                  {req.met ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
-                  <span>{req.label}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <PasswordRequirements
+            newPassword={formData.newPassword}
+            confirmPassword={formData.confirmPassword}
+            className="mt-4 px-2 border-t border-border/50 pt-4 gap-y-2"
+            iconSize={14}
+          />
 
           <button
             type="button"

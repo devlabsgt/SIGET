@@ -1,22 +1,30 @@
 import { createClient } from "@/utils/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+import { getManageableRoles } from "./permissions";
 
-export function useUsers(userRole?: string) {
+export function useUsers(actorRole?: string) {
   const supabase = createClient();
 
   return useQuery({
-    queryKey: ["users-list", userRole],
+    queryKey: ["users-list", actorRole],
     queryFn: async () => {
+      if (!actorRole || getManageableRoles(actorRole).length === 0) {
+        return [];
+      }
+
       let query = supabase
         .from("profiles")
         .select("id, nombre, rol")
         .order("nombre", { ascending: true });
 
-      if (userRole === "super") {
-      } else if (userRole === "admin") {
+      if (actorRole === "super") {
+        // todos
+      } else if (actorRole === "admin") {
         query = query.neq("rol", "super");
+      } else if (actorRole === "admin-observatorio") {
+        query = query.in("rol", getManageableRoles(actorRole));
       } else {
-        query = query.eq("rol", "user");
+        return [];
       }
 
       const { data, error } = await query;
@@ -28,6 +36,6 @@ export function useUsers(userRole?: string) {
     staleTime: 1000 * 60 * 5,
     refetchOnWindowFocus: false,
     refetchOnMount: false,
-    enabled: !!userRole,
+    enabled: !!actorRole && getManageableRoles(actorRole).length > 0,
   });
 }

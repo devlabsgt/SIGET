@@ -20,7 +20,11 @@ import { useSignupLogic } from "./hooks";
 import { AnimatePresence, motion } from "framer-motion";
 import { generateStrongPassword } from "@/utils/general/password-generator";
 import { AuroraText } from "@/components/ui/aurora-text";
-import { useUser } from "@/components/(base)/providers/UserProvider";
+import { useUser, useUserContext } from "@/components/(base)/providers/UserProvider";
+import {
+  getManageableRoles,
+  ROLE_LABELS,
+} from "@/components/(base)/(users)/usuarios/lib/permissions";
 
 interface SignUpProps {
   isOpen: boolean;
@@ -94,8 +98,11 @@ export default function SignUp({
   presentation = "modal",
 }: SignUpProps) {
   const logic = useSignupLogic();
-  const currentUser = useUser();
-  const currentUserRole = currentUser?.user_metadata?.rol || "user";
+  const { effectiveRole } = useUserContext();
+  const creatableRoles = useMemo(
+    () => getManageableRoles(effectiveRole),
+    [effectiveRole],
+  );
   const [step, setStep] = useState(1);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [copied, setCopied] = useState(false);
@@ -111,6 +118,12 @@ export default function SignUp({
       getOrganizaciones().then(setOrganizaciones).catch(() => setOrganizaciones([]));
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen && creatableRoles.length > 0 && !creatableRoles.includes(logic.rol)) {
+      logic.setRol(creatableRoles[0]);
+    }
+  }, [isOpen, creatableRoles, logic.rol, logic.setRol]);
 
   const suggestedUsername = useMemo(() => {
     if (logic.name.trim().length > 3) {
@@ -139,7 +152,7 @@ export default function SignUp({
     logic.setName("");
     logic.setUsername("");
     logic.setPasswordValue(pass);
-    logic.setRol("user");
+    logic.setRol(creatableRoles[0] || "user");
     logic.setOrganizacionId("");
     logic.setShowPassword(false);
     setPhoneNumber("");
@@ -340,13 +353,11 @@ export default function SignUp({
                         value={logic.rol}
                         onChange={(e) => logic.setRol(e.target.value)}
                       >
-                        <option value="user">Usuario (Estándar)</option>
-                        <option value="observatorio">Observatorio</option>
-                        <option value="admin-observatorio">Admin Observatorio</option>
-                        <option value="admin">Administrador</option>
-                        {currentUserRole === "super" && (
-                          <option value="super">Super Admin</option>
-                        )}
+                        {creatableRoles.map((role) => (
+                          <option key={role} value={role}>
+                            {ROLE_LABELS[role] || role}
+                          </option>
+                        ))}
                       </Select>
                     </div>
 

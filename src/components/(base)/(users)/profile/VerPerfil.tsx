@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  User,
-  Loader2,
-  Shield,
-} from "lucide-react";
+import { User, Loader2, Shield } from "lucide-react";
 import { MagicCard } from "@/components/ui/magic-card";
 import { useProfile } from "./lib/hooks";
-import { useUser } from "@/components/(base)/providers/UserProvider";
+import {
+  useUser,
+  useUserContext,
+} from "@/components/(base)/providers/UserProvider";
+import {
+  canManageUsers,
+  isUserVisibleToActor,
+} from "@/components/(base)/(users)/usuarios/lib/permissions";
 import { InfoPerfil } from "./forms/InfoPerfil";
 import { InfoUser } from "./forms/InfoUser";
 import { cn } from "@/lib/utils";
@@ -21,16 +24,19 @@ interface VerPerfilProps {
 
 export default function VerPerfil({ isOpen, onClose, userId }: VerPerfilProps) {
   const sessionUser = useUser();
+  const { effectiveRole } = useUserContext();
   const [view, setView] = useState<"perfil" | "usuario">("perfil");
 
   const targetId = userId || sessionUser?.id || "";
-  const sessionRole = sessionUser?.user_metadata?.rol || "user";
-
-  const canEdit =
-    ["admin", "super"].includes(sessionRole) ||
-    sessionUser?.id === targetId;
+  const isSelf = sessionUser?.id === targetId;
 
   const { profile, loading } = useProfile(targetId, isOpen);
+
+  const canEdit =
+    isSelf ||
+    (!!profile?.rol &&
+      canManageUsers(effectiveRole) &&
+      isUserVisibleToActor(profile.rol, effectiveRole));
 
   useEffect(() => {
     if (isOpen) {
@@ -71,7 +77,7 @@ export default function VerPerfil({ isOpen, onClose, userId }: VerPerfilProps) {
                 )}
               >
                 <Shield size={12} />
-                Acceso
+                Accesos
               </button>
               <button
                 type="button"
@@ -104,7 +110,9 @@ export default function VerPerfil({ isOpen, onClose, userId }: VerPerfilProps) {
                     onClose={onClose}
                   />
                 </div>
-                <div className={cn(view === "usuario" ? "lg:hidden" : "hidden")}>
+                <div
+                  className={cn(view === "usuario" ? "lg:hidden" : "hidden")}
+                >
                   <InfoUser
                     userId={targetId}
                     canEdit={canEdit}

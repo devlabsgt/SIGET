@@ -391,11 +391,21 @@ export const InfoPerfil = ({ userId, canEdit, onClose }: InfoPerfilProps) => {
 
   return (
     <div className="w-full flex flex-col h-full animate-in fade-in duration-300 ">
-      <div className="hidden lg:grid lg:grid-cols-4 lg:items-start gap-6 xl:gap-8">
-        {SectionAcceso}
-        {SectionPersonal}
-        {SectionContacto}
-        {SectionEmergencia}
+      <div className="hidden lg:grid lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,3fr)] lg:items-start">
+        <div className="mr-5 xl:mr-6 rounded-2xl border border-border/70 bg-muted/35 dark:border-border/80 dark:bg-muted/20 p-4 xl:p-5 shadow-sm shadow-black/5 dark:shadow-none">
+          {SectionAcceso}
+        </div>
+
+        <div
+          className="w-px shrink-0 self-stretch bg-linear-to-b from-transparent via-border to-transparent dark:via-border/80"
+          aria-hidden
+        />
+
+        <div className="grid min-w-0 grid-cols-3 gap-6 pl-5 xl:gap-8 xl:pl-6">
+          {SectionPersonal}
+          {SectionContacto}
+          {SectionEmergencia}
+        </div>
       </div>
 
       <div className="hidden md:grid lg:hidden md:grid-cols-3 gap-6 lg:gap-8 pb-6">

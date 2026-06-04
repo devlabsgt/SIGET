@@ -3,6 +3,7 @@
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
 import { authSchema } from "./schemas";
+import { canAssignRole } from "@/components/(base)/(users)/usuarios/lib/permissions";
 
 export async function getOrganizaciones() {
   const supabase = await createClient();
@@ -59,6 +60,21 @@ export async function signup(
   }
 
   const { name, username, password, rol, organizacion_id } = validated.data;
+
+  const supabase = await createClient();
+  const {
+    data: { user: actor },
+  } = await supabase.auth.getUser();
+  const actorRole = actor?.user_metadata?.rol || "user";
+
+  if (!canAssignRole(actorRole, rol)) {
+    return {
+      errors: {
+        rol: ["No tienes permisos para asignar este rol."],
+      },
+    };
+  }
+
   const fakeEmail = `${username}@app.com`;
 
   const supabaseAdmin = getAdminClient();

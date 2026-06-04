@@ -1,3 +1,5 @@
+import { canManageUsers } from "@/components/(base)/(users)/usuarios/lib/permissions";
+
 export type DashboardModule = {
   id: string;
   title: string;
@@ -93,9 +95,24 @@ export const ADMIN_MENU_OPTIONS = [
   },
 ] as const;
 
+export function isSuperOrAdminRole(role: string): boolean {
+  return role === "super" || role === "admin";
+}
+
+export function getVisibleAdminOptions<T extends { id: string }>(
+  options: readonly T[],
+  role: string,
+): T[] {
+  if (isSuperOrAdminRole(role)) return [...options];
+  return options.filter((opt) => opt.id === "usuarios");
+}
+
 export function getVisibleDashboardModules(effectiveRole: string) {
-  const isSuperOrAdmin = ["super", "admin"].includes(effectiveRole);
+  const isSuperOrAdmin = isSuperOrAdminRole(effectiveRole);
   return DASHBOARD_MODULES.filter((mod) => {
+    if (mod.id === "admin") {
+      return canManageUsers(effectiveRole);
+    }
     if (mod.requiresAdmin && !isSuperOrAdmin) return false;
     if (mod.allowedRoles) {
       const isAllowed =

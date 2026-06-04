@@ -14,7 +14,6 @@ import {
   Eye,
   EyeOff,
   CheckCircle2,
-  XCircle,
   ClipboardCopy,
   MessageCircle,
   ArrowLeft,
@@ -28,10 +27,24 @@ import {
   useProfile,
 } from "../lib/hooks";
 import { toggleUserStatus, updateProfile } from "../lib/actions";
-import { useUser } from "@/components/(base)/providers/UserProvider";
+import {
+  useUser,
+  useUserContext,
+} from "@/components/(base)/providers/UserProvider";
+import {
+  canAssignRole,
+  canManageUsers,
+  getManageableRoles,
+  isUserVisibleToActor,
+  ROLE_LABELS,
+} from "@/components/(base)/(users)/usuarios/lib/permissions";
 import { cn } from "@/lib/utils";
 import { generateStrongPassword } from "@/utils/general/password-generator";
 import { AuroraText } from "@/components/ui/aurora-text";
+import {
+  isPasswordStrong,
+  PasswordRequirements,
+} from "@/components/ui/password-requirements";
 import { AnimatePresence, motion } from "framer-motion";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -81,9 +94,7 @@ const UserStatusToggle = ({
   const [isLoading, setIsLoading] = useState(false);
   const [showSelfHint, setShowSelfHint] = useState(false);
 
-  const currentUserRole = user?.user_metadata?.rol;
   const isSelf = user?.id === userId;
-  const hasPermission = ["super", "admin"].includes(currentUserRole || "");
 
   const revealSelfHint = () => {
     if (!isSelf) return;
@@ -99,8 +110,6 @@ const UserStatusToggle = ({
     revealSelfHint();
     window.setTimeout(hideSelfHint, 2500);
   };
-
-  if (!hasPermission) return null;
 
   const handleToggle = async (shouldBan: boolean) => {
     if (isLoading || isSelf || !canEdit) return;
@@ -173,14 +182,6 @@ export type InfoUserRef = {
   saveCredentials: () => Promise<boolean>;
 };
 
-const roleLabels: Record<string, string> = {
-  user: "Usuario (Estándar)",
-  observatorio: "Observatorio",
-  "admin-observatorio": "Admin Observatorio",
-  admin: "Administrador",
-  super: "Super Admin",
-};
-
 export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
   function InfoUser(
     {
@@ -194,30 +195,20 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
     ref,
   ) {
     const { theme } = useTheme();
-    const sessionUser = useUser();
+    const { effectiveRole } = useUserContext();
     const queryClient = useQueryClient();
     const { profile, refetch: refetchProfile } = useProfile(userId, true);
     const { credentials, loading, refetch } = useUserCredentials(userId);
     const mutation = useCredentialsMutation();
 
-    const sessionRole = sessionUser?.user_metadata?.rol || "user";
-    let roleOptions: string[] = [];
-    if (sessionRole === "super") {
-      roleOptions = [
-        "super",
-        "admin",
-        "admin-observatorio",
-        "observatorio",
-        "user",
-      ];
-    } else if (sessionRole === "admin") {
-      roleOptions = ["admin", "admin-observatorio", "observatorio", "user"];
-    }
-
-    const targetIsSuper = profile?.rol === "super";
+    const targetRole = profile?.rol || "user";
+    const roleOptions = getManageableRoles(effectiveRole);
+    const canManageTarget = isUserVisibleToActor(targetRole, effectiveRole);
     const canChangeRole =
-      roleOptions.length > 0 && !(sessionRole === "admin" && targetIsSuper);
-    const canManageStatus = ["super", "admin"].includes(sessionRole);
+      canManageTarget &&
+      roleOptions.length > 0 &&
+      !(effectiveRole === "admin" && targetRole === "super");
+    const canManageStatus = canManageUsers(effectiveRole) && canManageTarget;
 
     const [step, setStep] = useState(1);
     const [selectedRole, setSelectedRole] = useState("user");
@@ -236,6 +227,16 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
         setSelectedRole(profile.rol);
       }
     }, [profile?.rol]);
+
+    useEffect(() => {
+      if (
+        roleOptions.length > 0 &&
+        selectedRole &&
+        !roleOptions.includes(selectedRole)
+      ) {
+        setSelectedRole(profile?.rol || roleOptions[0]);
+      }
+    }, [roleOptions, profile?.rol, selectedRole]);
 
     useEffect(() => {
       if (credentials) {
@@ -329,6 +330,17 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
         }
 
         if (roleChanged) {
+          if (!canAssignRole(effectiveRole, selectedRole)) {
+            Swal.fire({
+              icon: "error",
+              title: "Sin permiso",
+              text: "No tienes permiso para asignar este rol.",
+              background: theme === "dark" ? "#18181b" : "#fff",
+              color: theme === "dark" ? "#fff" : "#000",
+            });
+            return false;
+          }
+
           await updateProfile(userId, { rol: selectedRole as never });
           await queryClient.invalidateQueries({
             queryKey: ["profile", userId],
@@ -350,6 +362,7 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
       }
     }, [
       credentials?.username,
+      effectiveRole,
       embedded,
       formData,
       mutation,
@@ -371,41 +384,7 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
     );
 
     // --- LÓGICA DE VALIDACIÓN ---
-    const isPasswordValid =
-      formData.newPassword.length >= 8 &&
-      /[A-Z]/.test(formData.newPassword) &&
-      /[a-z]/.test(formData.newPassword) &&
-      /[0-9]/.test(formData.newPassword) &&
-      /[^A-Za-z0-9]/.test(formData.newPassword);
-
-    const passwordRequirements = [
-      {
-        label: "Una minúscula",
-        met: /[a-z]/.test(formData.newPassword),
-      },
-      {
-        label: "Una mayúscula",
-        met: /[A-Z]/.test(formData.newPassword),
-      },
-      {
-        label: "Un número",
-        met: /[0-9]/.test(formData.newPassword),
-      },
-      {
-        label: "Un símbolo",
-        met: /[^A-Za-z0-9]/.test(formData.newPassword),
-      },
-      {
-        label: "Mín. 8 caracteres",
-        met: formData.newPassword.length >= 8,
-      },
-      {
-        label: "Las contraseñas coinciden",
-        met:
-          formData.confirmPassword.length > 0 &&
-          formData.newPassword === formData.confirmPassword,
-      },
-    ];
+    const isPasswordValid = isPasswordStrong(formData.newPassword);
 
     if (loading)
       return (
@@ -457,12 +436,12 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
                 {canChangeRole ? (
                   roleOptions.map((role) => (
                     <option key={role} value={role}>
-                      {roleLabels[role] || role}
+                      {ROLE_LABELS[role] || role}
                     </option>
                   ))
                 ) : (
                   <option value={selectedRole}>
-                    {roleLabels[selectedRole] || selectedRole || "Usuario"}
+                    {ROLE_LABELS[selectedRole] || selectedRole || "Usuario"}
                   </option>
                 )}
               </select>
@@ -549,29 +528,10 @@ export const InfoUser = forwardRef<InfoUserRef, InfoUserProps>(
             )}
           />
 
-          {formData.newPassword.length > 0 && (
-            <div
-              className={cn(
-                "grid gap-x-2 gap-y-1 mt-1",
-                embedded ? "grid-cols-1" : "grid-cols-2",
-              )}
-            >
-              {passwordRequirements.map((req) => (
-                <div
-                  key={req.label}
-                  className={cn(
-                    "flex items-center gap-1.5 text-xs font-medium transition-colors",
-                    req.met
-                      ? "text-green-600 dark:text-green-500"
-                      : "text-red-500 dark:text-red-400",
-                  )}
-                >
-                  {req.met ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                  <span>{req.label}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <PasswordRequirements
+            newPassword={formData.newPassword}
+            confirmPassword={formData.confirmPassword}
+          />
         </div>
       </div>
     );

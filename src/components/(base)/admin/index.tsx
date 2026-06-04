@@ -2,6 +2,8 @@ import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import AnimatedIcon from "@/components/ui/AnimatedIcon";
 import { getPendingDevicesCount } from "@/components/(SIGET)/admin/lib/actions";
+import { canManageUsers } from "@/components/(base)/(users)/usuarios/lib/permissions";
+import { isSuperOrAdminRole } from "@/components/(base)/dashboard/modules";
 import { AdminCards } from "./AdminCards";
 
 export async function AdminPanel() {
@@ -15,11 +17,14 @@ export async function AdminPanel() {
   const metadata = user.user_metadata || {};
   const role = metadata.rol || user.role || "user";
 
-  if (!["super", "admin"].includes(role)) {
+  if (!canManageUsers(role)) {
     redirect("/siget");
   }
 
-  const pendingDevices = (await getPendingDevicesCount()) ?? 0;
+  const isSuperOrAdmin = isSuperOrAdminRole(role);
+  const pendingDevices = isSuperOrAdmin
+    ? ((await getPendingDevicesCount()) ?? 0)
+    : 0;
 
   return (
     <div className="relative w-full min-h-[calc(100vh-4rem)] px-4 md:px-8 lg:px-12 pt-4 md:pt-28 pb-16">
@@ -36,11 +41,13 @@ export async function AdminPanel() {
             </h1>
           </div>
           <p className="text-sm md:text-base text-muted-foreground max-w-2xl pl-0.5">
-            Gestione dispositivos, usuarios y configuraciones del sistema SIGET desde un solo lugar.
+            {isSuperOrAdmin
+              ? "Gestione dispositivos, usuarios y configuraciones del sistema SIGET desde un solo lugar."
+              : "Gestione usuarios del sistema SIGET."}
           </p>
         </div>
 
-        {pendingDevices > 0 && (
+        {isSuperOrAdmin && pendingDevices > 0 && (
           <div className="flex items-start gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/8 dark:bg-amber-500/10 px-5 py-4 shadow-sm">
             <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-amber-500/25 bg-amber-500/15">
               <AnimatedIcon iconKey="qvyppzqz" size={28} speed={1.5} />
@@ -59,7 +66,7 @@ export async function AdminPanel() {
           </div>
         )}
 
-        <AdminCards pendingDevices={pendingDevices} />
+        <AdminCards pendingDevices={pendingDevices} role={role} />
       </div>
     </div>
   );

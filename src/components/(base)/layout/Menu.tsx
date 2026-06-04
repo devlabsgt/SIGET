@@ -16,6 +16,7 @@ import {
   ADMIN_MENU_OPTIONS,
   OBSERVATORIO_MENU_OPTIONS,
   getPerfilMenuOptions,
+  getVisibleAdminOptions,
   getVisibleDashboardModules,
   type DashboardModule,
 } from "@/components/(base)/dashboard/modules";
@@ -464,7 +465,7 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
                       title={adminModule.title}
                       subtitle={adminModule.subtitle}
                       desc={adminModule.desc}
-                      options={ADMIN_MENU_OPTIONS}
+                      options={getVisibleAdminOptions(ADMIN_MENU_OPTIONS, effectiveRole)}
                       pathname={pathname}
                       open={openAccordionId === "admin"}
                       onToggle={() => toggleAccordion("admin")}

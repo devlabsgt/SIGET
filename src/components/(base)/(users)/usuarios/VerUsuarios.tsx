@@ -2,7 +2,15 @@
 
 import { useState, useMemo, Fragment, useEffect } from "react";
 import { useUsers } from "./lib/hooks";
-import { useUser } from "@/components/(base)/providers/UserProvider";
+import { useUserContext } from "@/components/(base)/providers/UserProvider";
+import {
+  canCreateUsers,
+  canManageUsers,
+  getManageableRoles,
+  isUserVisibleToActor,
+  orderRoles,
+  ROLE_LABELS,
+} from "./lib/permissions";
 import {
   Loader2,
   UserX,
@@ -15,11 +23,21 @@ import VerPerfil from "@/components/(base)/(users)/profile/VerPerfil";
 import SignUp from "@/components/(base)/(auth)/signup/SignUp";
 import { cn } from "@/lib/utils";
 
-export function VerUsuarios() {
-  const user = useUser();
-  const userRole = user?.user_metadata?.rol || "user";
+type UserItem = {
+  id: string;
+  nombre: string | null;
+  rol: string | null;
+};
 
-  const { data: users, isLoading, isError, refetch } = useUsers(userRole);
+export function VerUsuarios() {
+  const { effectiveRole } = useUserContext();
+
+  const { data: users, isLoading, isError, refetch } = useUsers(effectiveRole);
+
+  const manageableRoles = useMemo(
+    () => getManageableRoles(effectiveRole),
+    [effectiveRole],
+  );
 
   const [searchQuery, setSearchQuery] = useState("");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -43,6 +61,12 @@ export function VerUsuarios() {
     return () => mq.removeEventListener("change", update);
   }, []);
 
+  useEffect(() => {
+    if (roleFilter !== "all" && !manageableRoles.includes(roleFilter)) {
+      setRoleFilter("all");
+    }
+  }, [effectiveRole, roleFilter, manageableRoles]);
+
   const handleUserClick = (id: string) => {
     setSelectedUserId(id);
     setIsProfileOpen(true);
@@ -53,39 +77,70 @@ export function VerUsuarios() {
     refetch();
   };
 
-  const roleLabels: Record<string, string> = {
-    user: "Usuario (Estándar)",
-    observatorio: "Observatorio",
-    "admin-observatorio": "Admin Observatorio",
-    admin: "Administrador",
-    super: "Super Admin",
-  };
+  const roleLabels = ROLE_LABELS;
 
   const availableRoles = useMemo(() => {
-    if (!users) return [];
-    const roles = Array.from(new Set(users.map((u) => u.rol))).filter(Boolean);
-    return roles;
-  }, [users]);
+    if (!users) return manageableRoles;
+    const fromData = Array.from(new Set(users.map((u) => u.rol))).filter(
+      Boolean,
+    ) as string[];
+    return orderRoles(
+      fromData.filter((role) => manageableRoles.includes(role)),
+    );
+  }, [users, manageableRoles]);
+
+  const sortUsers = (list: UserItem[]) =>
+    [...list].sort((a, b) => {
+      const nameA = a.nombre || "";
+      const nameB = b.nombre || "";
+      return sortOrder === "asc"
+        ? nameA.localeCompare(nameB, "es", { sensitivity: "base" })
+        : nameB.localeCompare(nameA, "es", { sensitivity: "base" });
+    });
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
 
-    return users
-      .filter((u) => {
+    return sortUsers(
+      users.filter((u) => {
         const matchesSearch = (u.nombre || "")
           .toLowerCase()
           .includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === "all" || u.rol === roleFilter;
-        return matchesSearch && matchesRole;
-      })
-      .sort((a, b) => {
-        const nameA = a.nombre || "";
-        const nameB = b.nombre || "";
-        return sortOrder === "asc"
-          ? nameA.localeCompare(nameB, "es", { sensitivity: "base" })
-          : nameB.localeCompare(nameA, "es", { sensitivity: "base" });
-      });
-  }, [users, searchQuery, sortOrder, roleFilter]);
+        const matchesRole =
+          isLargeScreen ||
+          roleFilter === "all" ||
+          (u.rol || "user") === roleFilter;
+        return (
+          matchesSearch &&
+          matchesRole &&
+          isUserVisibleToActor(u.rol, effectiveRole)
+        );
+      }),
+    );
+  }, [users, searchQuery, sortOrder, roleFilter, isLargeScreen, effectiveRole]);
+
+  const usersByRole = useMemo(() => {
+    if (!isLargeScreen) return [];
+
+    const groups = new Map<string, UserItem[]>();
+    for (const userItem of filteredUsers) {
+      const role = userItem.rol || "sin-rol";
+      const list = groups.get(role) || [];
+      list.push(userItem);
+      groups.set(role, list);
+    }
+
+    const orderedRoles = orderRoles(
+      Array.from(groups.keys()).filter((role) =>
+        manageableRoles.includes(role),
+      ),
+    );
+
+    return orderedRoles.map((role) => ({
+      role,
+      users: groups.get(role) || [],
+    }));
+  }, [filteredUsers, isLargeScreen, manageableRoles]);
 
   const totalUsers = filteredUsers.length;
   const isAll = pageSize === "all";
@@ -102,6 +157,15 @@ export function VerUsuarios() {
     setPageSize(val === "all" ? "all" : Number(val));
     setCurrentPage(1);
   };
+
+  if (!canManageUsers(effectiveRole)) {
+    return (
+      <div className="flex h-40 w-full flex-col items-center justify-center gap-2 text-muted-foreground px-4 text-center">
+        <UserX className="h-8 w-8" />
+        <p className="text-sm">No tienes permisos para gestionar usuarios.</p>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -120,8 +184,10 @@ export function VerUsuarios() {
     );
   }
 
+  const canCreateUser = canCreateUsers(effectiveRole);
+
   const paginationControls = (
-    <div className="flex items-center gap-2 shrink-0">
+    <div className="flex items-center gap-2 shrink-0 lg:hidden">
       {!isAll && (
         <>
           <button
@@ -157,126 +223,174 @@ export function VerUsuarios() {
     </div>
   );
 
-  const canCreateUser = userRole === "admin" || userRole === "super";
-  const showDesktopPanel = canCreateUser && isLargeScreen;
+  const desktopSortControl = (
+    <select
+      value={sortOrder}
+      onChange={(e) => setSortOrder(e.target.value as "asc" | "desc")}
+      className="hidden lg:block h-9 rounded-md border border-border bg-card px-3 text-xs font-semibold uppercase tracking-wide focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shrink-0"
+    >
+      <option value="asc">Ordenar (A-Z)</option>
+      <option value="desc">Ordenar (Z-A)</option>
+    </select>
+  );
+
+  const renderMobileUserRows = () =>
+    paginatedUsers.map((userItem, index) => {
+      const firstLetter = (userItem.nombre || "#").charAt(0).toUpperCase();
+      const prevFirstLetter =
+        index > 0
+          ? (paginatedUsers[index - 1].nombre || "#").charAt(0).toUpperCase()
+          : null;
+      const showSeparator = firstLetter !== prevFirstLetter;
+
+      return (
+        <Fragment key={userItem.id}>
+          {showSeparator && (
+            <tr>
+              <td
+                colSpan={2}
+                className="bg-muted/30 px-4 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-y border-border/50"
+              >
+                {firstLetter}
+              </td>
+            </tr>
+          )}
+          <tr
+            onClick={() => handleUserClick(userItem.id)}
+            className="group hover:bg-muted/40 transition-colors cursor-pointer"
+          >
+            <td className="px-4 py-2.5 font-medium group-hover:text-primary transition-colors border-b border-border/40 align-top">
+              <span className="block break-words">
+                {userItem.nombre || "Sin Nombre"}
+              </span>
+            </td>
+            <td className="px-4 py-2.5 border-b border-border/40 text-right align-top">
+              <span className="inline-block capitalize text-[10px] font-bold bg-primary/5 px-2 py-0.5 rounded border border-primary/10 whitespace-nowrap">
+                {userItem.rol
+                  ? roleLabels[userItem.rol] || userItem.rol
+                  : "Sin Rol"}
+              </span>
+            </td>
+          </tr>
+        </Fragment>
+      );
+    });
 
   return (
     <>
-      <div
-        className={cn(
-          "w-full mx-auto pt-5 pb-10",
-          showDesktopPanel ? "max-w-6xl px-4" : "max-w-3xl",
-        )}
-      >
-        <div
-          className={cn(
-            "flex gap-5 lg:gap-6",
-            showDesktopPanel
-              ? "flex-col lg:flex-row lg:items-start"
-              : "flex-col",
-          )}
-        >
-          <div className="flex flex-col flex-1 min-w-0">
-            <div className="flex flex-col gap-4 mb-4 px-4">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-sm xl:text-xl font-bold tracking-tight text-foreground">
-                    Gestión de Usuarios
-                  </h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Rol Actual:{" "}
-                    <span className="text-[10px] underline font-bold uppercase text-foreground">
-                      {roleLabels[userRole] || userRole}
-                    </span>
-                  </p>
-                </div>
-                {canCreateUser && !isLargeScreen && !isSignUpOpen && (
-                  <button
-                    onClick={() => setIsSignUpOpen(true)}
-                    className="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 cursor-pointer shrink-0"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Nuevo Usuario
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3">
-                <div className="relative flex-1 min-w-0">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Buscar por nombre..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-foreground h-9"
-                  />
-                </div>
-                {paginationControls}
-              </div>
+      <div className="w-full mx-auto max-w-3xl lg:max-w-7xl pt-5 pb-10 px-4">
+        <div className="flex flex-col gap-4 mb-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-sm xl:text-xl font-bold tracking-tight text-foreground">
+                Gestión de Usuarios
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Rol Actual:{" "}
+                <span className="text-[10px] underline font-bold uppercase text-foreground">
+                  {roleLabels[effectiveRole] || effectiveRole}
+                </span>
+              </p>
             </div>
+            {canCreateUser && !isSignUpOpen && (
+              <button
+                onClick={() => setIsSignUpOpen(true)}
+                className="inline-flex items-center justify-center rounded-lg text-sm font-medium transition-colors bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 cursor-pointer shrink-0"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">Nuevo Usuario</span>
+                <span className="sm:hidden">Nuevo</span>
+              </button>
+            )}
+          </div>
 
-            <div className="px-4">
-              <div className="border border-border rounded-xl bg-card overflow-hidden">
-            <table className="w-full text-sm text-left border-separate border-spacing-0 table-fixed">
-              <thead className="bg-muted/60">
-                {/* Móvil: filtros apilados para evitar desbordamiento */}
-                <tr className="md:hidden">
-                  <th colSpan={2} className="px-2 py-2 border-b border-border">
-                    <div className="flex flex-col gap-2">
-                      <select
-                        value={sortOrder}
-                        onChange={(e) =>
-                          setSortOrder(e.target.value as "asc" | "desc")
-                        }
-                        className="w-full bg-transparent font-semibold text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors uppercase text-[10px] tracking-wide"
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 min-w-0">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar por nombre..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-foreground h-9"
+              />
+            </div>
+            {desktopSortControl}
+            {paginationControls}
+          </div>
+        </div>
+
+        {/* Desktop: una tabla por rol */}
+        <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-3 gap-4">
+          {usersByRole.length === 0 ? (
+            <div className="col-span-full border border-border rounded-xl bg-card p-12 text-center text-muted-foreground text-xs uppercase font-medium">
+              {searchQuery
+                ? "No se encontraron coincidencias."
+                : "No hay usuarios disponibles."}
+            </div>
+          ) : (
+            usersByRole.map(({ role, users: roleUsers }) => (
+              <div
+                key={role}
+                className="border border-border rounded-xl bg-card overflow-hidden flex flex-col min-w-0"
+              >
+                <div className="bg-muted/60 px-4 py-2.5 border-b border-border flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wide text-foreground truncate">
+                    {roleLabels[role] || role}
+                  </span>
+                  <span className="text-[10px] font-semibold text-muted-foreground shrink-0">
+                    {roleUsers.length}
+                  </span>
+                </div>
+                <table className="w-full text-sm text-left">
+                  <tbody>
+                    {roleUsers.map((userItem) => (
+                      <tr
+                        key={userItem.id}
+                        onClick={() => handleUserClick(userItem.id)}
+                        className="group hover:bg-muted/40 transition-colors cursor-pointer"
                       >
-                        <option value="asc">Ordenar (A-Z)</option>
-                        <option value="desc">Ordenar (Z-A)</option>
-                      </select>
-                      <select
-                        value={roleFilter}
-                        onChange={(e) => {
-                          setRoleFilter(e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full bg-transparent text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors text-[10px] font-medium"
-                      >
-                        <option value="all">Rol: Todos</option>
-                        {availableRoles.map((role) => (
-                          <option key={role} value={role}>
-                            {roleLabels[role] || role}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </th>
-                </tr>
-                {/* Desktop */}
-                <tr className="hidden md:table-row">
-                  <th className="w-[65%] px-5 py-2.5 border-b border-border">
+                        <td className="px-4 py-2.5 font-medium group-hover:text-primary transition-colors border-b border-border/40 last:border-b-0 align-top">
+                          <span className="block line-clamp-2 leading-snug break-words">
+                            {userItem.nombre || "Sin Nombre"}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Móvil: tabla única agrupada por letra */}
+        <div className="lg:hidden border border-border rounded-xl bg-card overflow-hidden">
+          <table className="w-full text-sm text-left border-separate border-spacing-0 table-fixed">
+            <thead className="bg-muted/60">
+              <tr>
+                <th colSpan={2} className="px-2 py-2 border-b border-border">
+                  <div className="flex flex-col gap-2">
                     <select
                       value={sortOrder}
                       onChange={(e) =>
                         setSortOrder(e.target.value as "asc" | "desc")
                       }
-                      className="bg-transparent font-semibold text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors uppercase text-xs tracking-wide"
+                      className="w-full bg-transparent font-semibold text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors uppercase text-[10px] tracking-wide"
                     >
                       <option value="asc">Ordenar (A-Z)</option>
                       <option value="desc">Ordenar (Z-A)</option>
                     </select>
-                  </th>
-                  <th className="w-[35%] px-5 py-2.5 border-b border-border text-right">
                     <select
                       value={roleFilter}
                       onChange={(e) => {
                         setRoleFilter(e.target.value);
                         setCurrentPage(1);
                       }}
-                      className="bg-transparent text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors text-xs font-medium text-right ml-auto max-w-full"
+                      className="w-full bg-transparent text-foreground focus:outline-none cursor-pointer hover:text-primary transition-colors text-[10px] font-medium"
                     >
                       <option value="all">Rol: Todos</option>
                       {availableRoles.map((role) => (
@@ -285,76 +399,20 @@ export function VerUsuarios() {
                         </option>
                       ))}
                     </select>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedUsers.map((userItem, index) => {
-                  const firstLetter = (userItem.nombre || "#")
-                    .charAt(0)
-                    .toUpperCase();
-                  const prevFirstLetter =
-                    index > 0
-                      ? (paginatedUsers[index - 1].nombre || "#")
-                          .charAt(0)
-                          .toUpperCase()
-                      : null;
-                  const showSeparator = firstLetter !== prevFirstLetter;
+                  </div>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {renderMobileUserRows()}
+            </tbody>
+          </table>
 
-                  return (
-                    <Fragment key={userItem.id}>
-                      {showSeparator && (
-                        <tr>
-                          <td
-                            colSpan={2}
-                            className="bg-muted/30 px-4 md:px-5 py-1 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-y border-border/50"
-                          >
-                            {firstLetter}
-                          </td>
-                        </tr>
-                      )}
-                      <tr
-                        onClick={() => handleUserClick(userItem.id)}
-                        className="group hover:bg-muted/40 transition-colors cursor-pointer"
-                      >
-                        <td className="px-4 md:px-5 py-2.5 font-medium group-hover:text-primary transition-colors border-b border-border/40 align-top">
-                          <span className="block md:line-clamp-2 md:leading-snug break-words">
-                            {userItem.nombre || "Sin Nombre"}
-                          </span>
-                        </td>
-                        <td className="px-4 md:px-5 py-2.5 border-b border-border/40 text-right align-top">
-                          <span className="inline-block capitalize text-[10px] font-bold bg-primary/5 px-2 py-0.5 rounded border border-primary/10 whitespace-nowrap">
-                            {userItem.rol
-                              ? roleLabels[userItem.rol] || userItem.rol
-                              : "Sin Rol"}
-                          </span>
-                        </td>
-                      </tr>
-                    </Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-
-            {filteredUsers.length === 0 && (
-              <div className="p-12 text-center text-muted-foreground text-xs uppercase font-medium">
-                {searchQuery
-                  ? "No se encontraron coincidencias."
-                  : "No hay usuarios disponibles con estos filtros."}
-              </div>
-            )}
-              </div>
-            </div>
-          </div>
-
-          {showDesktopPanel && (
-            <div className="w-[360px] xl:w-[400px] shrink-0">
-              <SignUp
-                isOpen
-                onClose={() => {}}
-                onSuccess={() => refetch()}
-                presentation="panel"
-              />
+          {filteredUsers.length === 0 && (
+            <div className="p-12 text-center text-muted-foreground text-xs uppercase font-medium">
+              {searchQuery
+                ? "No se encontraron coincidencias."
+                : "No hay usuarios disponibles con estos filtros."}
             </div>
           )}
         </div>
@@ -366,11 +424,12 @@ export function VerUsuarios() {
         userId={selectedUserId}
       />
 
-      {isSignUpOpen && canCreateUser && !isLargeScreen && (
+      {isSignUpOpen && canCreateUser && (
         <SignUp
           isOpen
           onClose={handleCloseSignUp}
-          presentation="fullscreen"
+          onSuccess={() => refetch()}
+          presentation={isLargeScreen ? "modal" : "fullscreen"}
         />
       )}
     </>

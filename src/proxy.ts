@@ -32,8 +32,12 @@ if (user) {
     // Verificar si el usuario es super administrador
     const metadata = user.user_metadata || {};
     const realRole = (metadata.rol || user.role || "user") as string;
-    const isSuper = realRole.includes("super");
-    const isSuperOrAdmin = isSuper || realRole.includes("admin");
+    const isSuper = realRole === "super";
+    const isExactAdmin = realRole === "admin";
+    const hasAdminInRole = realRole.includes("admin");
+    const isSuperOrAdmin = isSuper || isExactAdmin;
+    const canAccessAdminPanel = isSuper || hasAdminInRole;
+    const hasFullAdminAccess = isSuperOrAdmin;
 
     // Verificación de cambio de contraseña (NO aplica para SUPER)
     let needsPasswordChange = false;
@@ -96,13 +100,22 @@ if (user) {
 
     if (pathname.startsWith("/siget")) {
 
-      if (
-        pathname.startsWith("/siget/admin") &&
-        !isSuperOrAdmin
-      ) {
-        const url = request.nextUrl.clone();
-        url.pathname = "/sin-acceso";
-        return NextResponse.redirect(url);
+      if (pathname.startsWith("/siget/admin")) {
+        if (!canAccessAdminPanel) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/sin-acceso";
+          return NextResponse.redirect(url);
+        }
+
+        if (
+          !hasFullAdminAccess &&
+          pathname !== "/siget/admin" &&
+          !pathname.startsWith("/siget/admin/usuarios")
+        ) {
+          const url = request.nextUrl.clone();
+          url.pathname = "/sin-acceso";
+          return NextResponse.redirect(url);
+        }
       }
 
       const canAccessObservatorio =

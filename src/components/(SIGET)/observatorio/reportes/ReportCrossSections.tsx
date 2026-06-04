@@ -10,7 +10,7 @@ import {
   downloadSingleSheet,
   safeFilename,
 } from "./lib/reportes-excel";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useInView } from "framer-motion";
 import {
   Users,
   PieChart as PieChartIcon,
@@ -54,6 +54,7 @@ import {
   type ReportCampoOption,
 } from "./lib/cross-report-lib";
 import { HEATMAP_RGB, GUATEMALTECO_CELESTE, isGuatemalteco, nationalityColor, nacPerfilBarColor, softBarColor } from "./lib/chart-colors";
+import { AnimatedNumber } from "@/components/ui/animated-number";
 
 const LEGEND_ACCORDION_MIN_LEN = 42;
 
@@ -68,6 +69,38 @@ const tooltipStyle = {
 
 function formatChartNumber(value: number) {
   return new Intl.NumberFormat("es-GT").format(value);
+}
+
+function DonutCenterTotal({
+  value,
+  compact = false,
+  isLg = false,
+  active,
+  runId,
+}: {
+  value: number;
+  compact?: boolean;
+  isLg?: boolean;
+  active: boolean;
+  runId: string | number;
+}) {
+  return (
+    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-0.5 text-center">
+      <AnimatedNumber
+        value={value}
+        active={active}
+        runId={runId}
+        className={`font-black leading-none font-mono text-slate-900 dark:text-white ${
+          compact ? "text-[10px]" : isLg ? "text-xl" : "text-sm"
+        }`}
+      />
+      {!compact && (
+        <span className="mt-0.5 text-[8px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+          total
+        </span>
+      )}
+    </div>
+  );
 }
 
 function ProgressBarList({
@@ -158,6 +191,8 @@ function ChartLegendRow({
   expanded,
   onToggle,
   useAccordion,
+  active,
+  runId,
 }: {
   item: { name: string; value: number; color: string };
   total: number;
@@ -165,6 +200,8 @@ function ChartLegendRow({
   expanded: boolean;
   onToggle: (index: number) => void;
   useAccordion: boolean;
+  active: boolean;
+  runId: string | number;
 }) {
   const pct = total > 0 ? `${((item.value / total) * 100).toFixed(0)}%` : "0%";
   if (!useAccordion) {
@@ -174,7 +211,15 @@ function ChartLegendRow({
           <div className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: item.color }} />
           <span className="font-semibold text-slate-600 dark:text-slate-400 leading-snug">{item.name}</span>
         </div>
-        <span className="font-black text-slate-800 dark:text-slate-200 font-mono shrink-0">{pct}</span>
+        <div className="flex flex-col items-end shrink-0 leading-tight">
+          <AnimatedNumber
+            value={item.value}
+            active={active}
+            runId={`${runId}-${index}`}
+            className="font-black text-slate-800 dark:text-slate-200 font-mono"
+          />
+          <span className="font-bold text-slate-400 dark:text-slate-500 tabular-nums">{pct}</span>
+        </div>
       </div>
     );
   }
@@ -197,7 +242,15 @@ function ChartLegendRow({
           </p>
         </div>
         <ChevronDown className={`w-3.5 h-3.5 shrink-0 text-slate-400 transition-transform mt-0.5 ${expanded ? "rotate-180" : ""}`} />
-        <span className="font-black text-slate-800 dark:text-slate-200 font-mono shrink-0 text-[10px]">{pct}</span>
+        <div className="flex flex-col items-end shrink-0 leading-tight">
+          <AnimatedNumber
+            value={item.value}
+            active={active}
+            runId={`${runId}-${index}`}
+            className="font-black text-slate-800 dark:text-slate-200 font-mono text-[10px]"
+          />
+          <span className="font-bold text-slate-400 dark:text-slate-500 tabular-nums text-[10px]">{pct}</span>
+        </div>
       </button>
     </div>
   );
@@ -223,6 +276,8 @@ function DonutChartCard({
   size?: "default" | "lg";
 }) {
   const [expandedLegendIndex, setExpandedLegendIndex] = useState<number | null>(null);
+  const chartRef = useRef<HTMLDivElement>(null);
+  const chartInView = useInView(chartRef, { once: true, margin: "-20px" });
   const total = data.reduce((s, d) => s + d.value, 0);
   const isLg = size === "lg";
 
@@ -266,14 +321,13 @@ function DonutChartCard({
             <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest">{title}</h5>
           </>
         )}
-        <span className="text-xs font-black text-blue-600 dark:text-blue-400 ml-auto font-mono">{formatChartNumber(total)}</span>
       </div>
       <div
         className={`flex gap-3 sm:gap-4 items-center flex-1 min-h-0 ${chartRowMinH} ${
           isLg ? "justify-center" : ""
         }`}
       >
-        <div className={`shrink-0 ${chartBoxClass}`}>
+        <div ref={chartRef} className={`relative shrink-0 ${chartBoxClass}`}>
           <AnimatePresence mode="wait">
             <motion.div
               key={chartKey}
@@ -309,6 +363,13 @@ function DonutChartCard({
               </ResponsiveContainer>
             </motion.div>
           </AnimatePresence>
+          <DonutCenterTotal
+            value={total}
+            compact={compact}
+            isLg={isLg}
+            active={chartInView}
+            runId={chartKey}
+          />
         </div>
         <div className={`flex-1 min-w-0 space-y-1.5 pr-0.5 ${isLg ? "max-w-56" : "max-h-[200px] overflow-y-auto"}`}>
           {data.map((item, idx) => (
@@ -320,6 +381,8 @@ function DonutChartCard({
               expanded={expandedLegendIndex === idx}
               onToggle={(i) => setExpandedLegendIndex((prev) => (prev === i ? null : i))}
               useAccordion={legendAccordion || item.name.length > LEGEND_ACCORDION_MIN_LEN}
+              active={chartInView}
+              runId={chartKey}
             />
           ))}
         </div>

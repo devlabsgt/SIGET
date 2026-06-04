@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AnimatedIcon from "@/components/ui/AnimatedIcon";
+import { getVisibleAdminOptions } from "@/components/(base)/dashboard/modules";
 
 const ADMIN_ICON_PLATE_CLASS = "dark:rounded-2xl dark:bg-white p-2.5 md:p-3";
 
@@ -47,9 +48,16 @@ const adminOptions = [
   },
 ] as const;
 
-export function AdminCards({ pendingDevices }: { pendingDevices: number }) {
+export function AdminCards({
+  pendingDevices,
+  role,
+}: {
+  pendingDevices: number;
+  role: string;
+}) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const visibleOptions = getVisibleAdminOptions(adminOptions, role);
 
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
@@ -76,7 +84,7 @@ export function AdminCards({ pendingDevices }: { pendingDevices: number }) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 lg:gap-6">
-      {adminOptions.map((opt) => {
+      {visibleOptions.map((opt) => {
         const showBadge = opt.id === "dispositivos" && pendingDevices > 0;
         const isActive = isMobile && activeId === opt.id;
 
