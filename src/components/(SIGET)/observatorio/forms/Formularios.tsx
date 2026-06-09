@@ -4,7 +4,12 @@ import { useRef, useMemo, useState, useLayoutEffect, useEffect, type ReactNode }
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, Save, AlertCircle, CheckCircle2, Calendar, Loader2, Plus, Trash2, BarChart3, Table2, Users, ChevronDown, Wand2, PieChart as PieChartIcon, Check, ArrowRight } from "lucide-react";
 import { Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import { useFormulario, SIN_ESPECIFICAR, type RegistroEntradaLocal } from "./lib/hooks";
+import {
+  useFormulario,
+  SIN_ESPECIFICAR,
+  indicadorOmiteNacPerfil,
+  type RegistroEntradaLocal,
+} from "./lib/hooks";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
 
 import { ObsOrganizacion, ObsPolitica } from "./lib/actions";
@@ -228,6 +233,16 @@ type CrosstabRow = {
 
 function crossKey(nacionalidadId: string, perfilId: string) {
   return `${nacionalidadId}::${perfilId}`;
+}
+
+function filterRegistrosConNacPerfil(
+  regs: RegistroEntradaLocal[],
+  indicadores: import("./lib/actions").ObsIndicador[],
+) {
+  return regs.filter((r) => {
+    const ind = indicadores.find((i) => i.id === r.indicadorId);
+    return !indicadorOmiteNacPerfil(ind);
+  });
 }
 
 function aggregateByNacPerfil(regs: RegistroEntradaLocal[], campoIds: string[]): CrosstabRow[] {
@@ -808,13 +823,37 @@ function GlobalCrossSection({
     [indicadores, selectedCatalogCampoIds]
   );
 
+  const registrosNacPerfil = useMemo(
+    () => filterRegistrosConNacPerfil(registrosFiltrados, indicadores),
+    [registrosFiltrados, indicadores],
+  );
+  const showNacPerfilCharts = registrosNacPerfil.length > 0;
+
   const nacData = useMemo(
-    () => aggregateChartSlices(registrosFiltrados, indicadores, selectedCatalogCampoIds, "nacionalidad", getNacionalidadNombre),
-    [registrosFiltrados, indicadores, selectedCatalogCampoIds, getNacionalidadNombre]
+    () =>
+      showNacPerfilCharts
+        ? aggregateChartSlices(
+            registrosNacPerfil,
+            indicadores,
+            selectedCatalogCampoIds,
+            "nacionalidad",
+            getNacionalidadNombre,
+          )
+        : [],
+    [showNacPerfilCharts, registrosNacPerfil, indicadores, selectedCatalogCampoIds, getNacionalidadNombre],
   );
   const perfilData = useMemo(
-    () => aggregateChartSlices(registrosFiltrados, indicadores, selectedCatalogCampoIds, "perfil", getPerfilNombre),
-    [registrosFiltrados, indicadores, selectedCatalogCampoIds, getPerfilNombre]
+    () =>
+      showNacPerfilCharts
+        ? aggregateChartSlices(
+            registrosNacPerfil,
+            indicadores,
+            selectedCatalogCampoIds,
+            "perfil",
+            getPerfilNombre,
+          )
+        : [],
+    [showNacPerfilCharts, registrosNacPerfil, indicadores, selectedCatalogCampoIds, getPerfilNombre],
   );
   const indicadorData = useMemo(
     () => aggregateChartSlices(registrosFiltrados, indicadores, selectedCatalogCampoIds, "indicador", getIndicadorNombre),
@@ -822,7 +861,8 @@ function GlobalCrossSection({
   );
 
   const comboProgressItems = useMemo(() => {
-    const totals = buildNacPerfilTotals(registrosFiltrados, getValue);
+    if (!showNacPerfilCharts) return [];
+    const totals = buildNacPerfilTotals(registrosNacPerfil, getValue);
     return Array.from(totals.entries())
       .map(([key, value]) => {
         const [nacId, perfilId] = key.split("::");
@@ -835,7 +875,7 @@ function GlobalCrossSection({
       })
       .filter((d) => d.value > 0)
       .sort((a, b) => b.value - a.value);
-  }, [registrosFiltrados, getValue, getNacionalidadNombre, getPerfilNombre]);
+  }, [showNacPerfilCharts, registrosNacPerfil, getValue, getNacionalidadNombre, getPerfilNombre]);
 
   const campoProgressItems = useMemo(() => {
     const totals = new Map<string, { catalogId: string; nombre: string; orden: number; value: number }>();
@@ -868,12 +908,18 @@ function GlobalCrossSection({
   );
 
   const crossCampoNac = useMemo(
-    () => buildCampoDimensionCross(registrosFiltrados, indicadores, camposSeleccionados, "nacionalidad"),
-    [registrosFiltrados, indicadores, camposSeleccionados]
+    () =>
+      showNacPerfilCharts
+        ? buildCampoDimensionCross(registrosNacPerfil, indicadores, camposSeleccionados, "nacionalidad")
+        : { campos: [], colIds: [], grid: new Map() },
+    [showNacPerfilCharts, registrosNacPerfil, indicadores, camposSeleccionados],
   );
   const crossCampoPerfil = useMemo(
-    () => buildCampoDimensionCross(registrosFiltrados, indicadores, camposSeleccionados, "perfil"),
-    [registrosFiltrados, indicadores, camposSeleccionados]
+    () =>
+      showNacPerfilCharts
+        ? buildCampoDimensionCross(registrosNacPerfil, indicadores, camposSeleccionados, "perfil")
+        : { campos: [], colIds: [], grid: new Map() },
+    [showNacPerfilCharts, registrosNacPerfil, indicadores, camposSeleccionados],
   );
   const crossCampoInd = useMemo(
     () => buildCampoDimensionCross(registrosFiltrados, indicadores, camposSeleccionados, "indicador"),
@@ -891,14 +937,16 @@ function GlobalCrossSection({
           <h4 className="text-base font-black text-foreground uppercase tracking-tight">
             Cruce global
           </h4>
-          <span className="text-xs font-bold text-slate-400 ml-auto sm:ml-2 shrink-0">
-            {globalCrossStats.comboCount} combinaciones
-            {globalCrossStats.mergedCount > 0 && (
-              <span className="text-purple-600 dark:text-purple-400 ml-2">
-                ({globalCrossStats.mergedCount} agrupados)
-              </span>
-            )}
-          </span>
+          {showNacPerfilCharts && (
+            <span className="text-xs font-bold text-slate-400 ml-auto sm:ml-2 shrink-0">
+              {globalCrossStats.comboCount} combinaciones
+              {globalCrossStats.mergedCount > 0 && (
+                <span className="text-purple-600 dark:text-purple-400 ml-2">
+                  ({globalCrossStats.mergedCount} agrupados)
+                </span>
+              )}
+            </span>
+          )}
         </div>
       </div>
 
@@ -988,21 +1036,29 @@ function GlobalCrossSection({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DonutChartCard
-          title="Por Nacionalidad"
-          icon={Users}
-          iconClass="text-amber-500"
-          data={nacData}
-          chartKey={`nac-${filterKey}`}
-        />
-        <DonutChartCard
-          title="Por Perfil"
-          icon={Users}
-          iconClass="text-purple-500"
-          data={perfilData}
-          chartKey={`perfil-${filterKey}`}
-        />
+      <div
+        className={`grid grid-cols-1 gap-4 ${
+          showNacPerfilCharts ? "md:grid-cols-3" : "max-w-md mx-auto w-full"
+        }`}
+      >
+        {showNacPerfilCharts && (
+          <>
+            <DonutChartCard
+              title="Por Nacionalidad"
+              icon={Users}
+              iconClass="text-amber-500"
+              data={nacData}
+              chartKey={`nac-${filterKey}`}
+            />
+            <DonutChartCard
+              title="Por Perfil"
+              icon={Users}
+              iconClass="text-purple-500"
+              data={perfilData}
+              chartKey={`perfil-${filterKey}`}
+            />
+          </>
+        )}
         <DonutChartCard
           title="Por Indicador"
           icon={PieChartIcon}
@@ -1013,22 +1069,28 @@ function GlobalCrossSection({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-4">
-          <ProgressBarChartCard
-            title="Combinaciones Nac. × Perfil"
-            icon={BarChart3}
-            iconClass="text-purple-500"
-          >
-            <AnimatePresence mode="wait">
-              <motion.div key={`combo-${filterKey}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <ProgressBarList items={comboProgressItems} />
-              </motion.div>
-            </AnimatePresence>
-          </ProgressBarChartCard>
-        </div>
+      <div
+        className={`grid grid-cols-1 gap-6 items-stretch ${
+          showNacPerfilCharts ? "lg:grid-cols-12" : ""
+        }`}
+      >
+        {showNacPerfilCharts && (
+          <div className="lg:col-span-4">
+            <ProgressBarChartCard
+              title="Combinaciones Nac. × Perfil"
+              icon={BarChart3}
+              iconClass="text-purple-500"
+            >
+              <AnimatePresence mode="wait">
+                <motion.div key={`combo-${filterKey}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <ProgressBarList items={comboProgressItems} />
+                </motion.div>
+              </AnimatePresence>
+            </ProgressBarChartCard>
+          </div>
+        )}
 
-        <div className="lg:col-span-8">
+        <div className={showNacPerfilCharts ? "lg:col-span-8" : "w-full"}>
           <ProgressBarChartCard title="Por Campo" icon={BarChart3} iconClass="text-purple-500" contentAutoHeight>
             <AnimatePresence mode="wait">
               <motion.div key={`campos-${filterKey}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -1047,24 +1109,28 @@ function GlobalCrossSection({
 
       {selectedCatalogCampoIds.size > 0 && (
         <div className="space-y-6 w-full">
-          <CampoDimensionMatrix
-            title="Campos × Nacionalidad"
-            cornerLabel="Campo ↓ / Nacionalidad →"
-            campos={crossCampoNac.campos}
-            colIds={crossCampoNac.colIds}
-            grid={crossCampoNac.grid}
-            getColLabel={getNacionalidadNombre}
-            accentClass="text-amber-600 dark:text-amber-400"
-          />
-          <CampoDimensionMatrix
-            title="Campos × Perfil"
-            cornerLabel="Campo ↓ / Perfil →"
-            campos={crossCampoPerfil.campos}
-            colIds={crossCampoPerfil.colIds}
-            grid={crossCampoPerfil.grid}
-            getColLabel={getPerfilNombre}
-            accentClass="text-purple-600 dark:text-purple-400"
-          />
+          {showNacPerfilCharts && (
+            <>
+              <CampoDimensionMatrix
+                title="Campos × Nacionalidad"
+                cornerLabel="Campo ↓ / Nacionalidad →"
+                campos={crossCampoNac.campos}
+                colIds={crossCampoNac.colIds}
+                grid={crossCampoNac.grid}
+                getColLabel={getNacionalidadNombre}
+                accentClass="text-amber-600 dark:text-amber-400"
+              />
+              <CampoDimensionMatrix
+                title="Campos × Perfil"
+                cornerLabel="Campo ↓ / Perfil →"
+                campos={crossCampoPerfil.campos}
+                colIds={crossCampoPerfil.colIds}
+                grid={crossCampoPerfil.grid}
+                getColLabel={getPerfilNombre}
+                accentClass="text-purple-600 dark:text-purple-400"
+              />
+            </>
+          )}
           <CampoDimensionMatrix
             title="Campos × Indicador"
             cornerLabel="Campo ↓ / Indicador →"
@@ -1281,6 +1347,8 @@ export default function Formularios({
     indicadores.find(i => i.id === currentEntry.indicadorId) || null
   , [indicadores, currentEntry.indicadorId]);
 
+  const omitNacPerfil = indicadorOmiteNacPerfil(selectedIndicador);
+
   // Helper to resolve names
   const getIndicadorNombre = (id: string) => indicadores.find(i => i.id === id)?.nombre || "—";
   const getNacionalidadNombre = (id: string) =>
@@ -1303,11 +1371,19 @@ export default function Formularios({
     return grouped;
   }, [registros]);
 
+  const registrosConNacPerfil = useMemo(
+    () => filterRegistrosConNacPerfil(registros, indicadores),
+    [registros, indicadores],
+  );
+  const hayRegistrosNacPerfil = registrosConNacPerfil.length > 0;
+
   const globalCrossStats = useMemo(() => {
-    const combos = new Set(registros.map((r) => crossKey(r.nacionalidadId, r.perfilId)));
-    const rawCount = registros.length;
+    const combos = new Set(
+      registrosConNacPerfil.map((r) => crossKey(r.nacionalidadId, r.perfilId)),
+    );
+    const rawCount = registrosConNacPerfil.length;
     return { comboCount: combos.size, rawCount, mergedCount: rawCount - combos.size };
-  }, [registros]);
+  }, [registrosConNacPerfil]);
 
   return (
     <motion.div
@@ -1345,7 +1421,7 @@ export default function Formularios({
               {step === 1 ? "Seleccione el período y sector a reportar." :
                step === 2 ? (initialPolitica ? "Seleccione el mes/año que reporta y la organización responsable." : "Seleccione la organización correspondiente al sector.") :
                step === 3 ? "¿Sobre qué política migratoria desea realizar el reporte?" :
-               step === 4 ? "Seleccione indicador, nacionalidad y perfil para agregar registros." :
+               step === 4 ? "Seleccione indicador y complete los campos para agregar registros." :
                "Revise la información antes del guardado definitivo."}
             </p>
           </div>
@@ -1695,7 +1771,18 @@ export default function Formularios({
                               <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Indicador</label>
                               <select
                                 value={currentEntry.indicadorId}
-                                onChange={(e) => setCurrentEntry({ ...currentEntry, indicadorId: e.target.value, valores: {} })}
+                                onChange={(e) => {
+                                  const indicadorId = e.target.value;
+                                  const ind = indicadores.find((i) => i.id === indicadorId);
+                                  const omit = indicadorOmiteNacPerfil(ind);
+                                  setCurrentEntry({
+                                    ...currentEntry,
+                                    indicadorId,
+                                    valores: {},
+                                    nacionalidadId: omit ? SIN_ESPECIFICAR : currentEntry.nacionalidadId,
+                                    perfilId: omit ? SIN_ESPECIFICAR : currentEntry.perfilId,
+                                  });
+                                }}
                                 className="w-full px-4 py-3.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-card dark:bg-background text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
                               >
                                 <option value="">Seleccionar indicador...</option>
@@ -1705,38 +1792,37 @@ export default function Formularios({
                               </select>
                             </div>
 
-                            {/* Nacionalidad & Perfil Selector (2nd line) */}
-                            <div className="grid grid-cols-2 gap-4">
-                              {/* Nacionalidad Selector */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nacionalidad</label>
-                                <select
-                                  value={currentEntry.nacionalidadId}
-                                  onChange={(e) => setCurrentEntry({ ...currentEntry, nacionalidadId: e.target.value })}
-                                  className="w-full px-4 py-3.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-card dark:bg-background text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
-                                >
-                                  <option value={SIN_ESPECIFICAR}>Sin especificar</option>
-                                  {nacionalidades.map((nac) => (
-                                    <option key={nac.id} value={nac.id}>{nac.nombre}</option>
-                                  ))}
-                                </select>
-                              </div>
+                            {!omitNacPerfil && (
+                              <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Nacionalidad</label>
+                                  <select
+                                    value={currentEntry.nacionalidadId}
+                                    onChange={(e) => setCurrentEntry({ ...currentEntry, nacionalidadId: e.target.value })}
+                                    className="w-full px-4 py-3.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-card dark:bg-background text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+                                  >
+                                    <option value={SIN_ESPECIFICAR}>Sin especificar</option>
+                                    {nacionalidades.map((nac) => (
+                                      <option key={nac.id} value={nac.id}>{nac.nombre}</option>
+                                    ))}
+                                  </select>
+                                </div>
 
-                              {/* Perfil Selector */}
-                              <div className="space-y-2">
-                                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Perfil</label>
-                                <select
-                                  value={currentEntry.perfilId}
-                                  onChange={(e) => setCurrentEntry({ ...currentEntry, perfilId: e.target.value })}
-                                  className="w-full px-4 py-3.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-card dark:bg-background text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
-                                >
-                                  <option value={SIN_ESPECIFICAR}>Sin especificar</option>
-                                  {perfiles.map((perf) => (
-                                    <option key={perf.id} value={perf.id}>{perf.nombre}</option>
-                                  ))}
-                                </select>
+                                <div className="space-y-2">
+                                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Perfil</label>
+                                  <select
+                                    value={currentEntry.perfilId}
+                                    onChange={(e) => setCurrentEntry({ ...currentEntry, perfilId: e.target.value })}
+                                    className="w-full px-4 py-3.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-card dark:bg-background text-foreground font-semibold focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none transition-all appearance-none cursor-pointer"
+                                  >
+                                    <option value={SIN_ESPECIFICAR}>Sin especificar</option>
+                                    {perfiles.map((perf) => (
+                                      <option key={perf.id} value={perf.id}>{perf.nombre}</option>
+                                    ))}
+                                  </select>
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
 
                           {/* Fields for selected indicator */}
@@ -1814,13 +1900,15 @@ export default function Formularios({
                             <div className="text-center py-10 bg-purple-50/30 dark:bg-purple-900/10 rounded-2xl border border-purple-100 dark:border-purple-900/40 h-[300px] flex flex-col items-center justify-center">
                               <Users className="w-10 h-10 text-purple-300 dark:text-purple-700 mx-auto mb-3" />
                               <p className="text-sm text-slate-400 dark:text-slate-600 font-medium">Aún no hay registros agregados.</p>
-                              <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Seleccione indicador, nacionalidad y perfil para comenzar.</p>
+                              <p className="text-xs text-slate-400 dark:text-slate-600 mt-1">Seleccione un indicador para comenzar.</p>
                             </div>
                           ) : (
                             <div className="space-y-3">
                               {registros.map((reg, idx) => {
                                 const totalValores = Object.values(reg.valores).reduce((sum, v) => sum + parseInt(v || "0", 10), 0);
                                 const isEditing = editingRegistroId === reg.id;
+                                const regIndicador = indicadores.find((i) => i.id === reg.indicadorId);
+                                const regOmiteNacPerfil = indicadorOmiteNacPerfil(regIndicador);
                                 return (
                                   <motion.div
                                     key={reg.id}
@@ -1854,16 +1942,18 @@ export default function Formularios({
                                         <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Indicador</p>
                                         <p className="text-sm font-bold text-foreground line-clamp-2 leading-tight">{getIndicadorNombre(reg.indicadorId)}</p>
                                       </div>
-                                      <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-accent/50 p-2 rounded-xl border border-border">
-                                        <div className="min-w-0">
-                                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Nacionalidad</p>
-                                          <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 truncate">{getNacionalidadNombre(reg.nacionalidadId)}</p>
+                                      {!regOmiteNacPerfil && (
+                                        <div className="grid grid-cols-2 gap-2 bg-slate-50 dark:bg-accent/50 p-2 rounded-xl border border-border">
+                                          <div className="min-w-0">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Nacionalidad</p>
+                                            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 truncate">{getNacionalidadNombre(reg.nacionalidadId)}</p>
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Perfil</p>
+                                            <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 truncate">{getPerfilNombre(reg.perfilId)}</p>
+                                          </div>
                                         </div>
-                                        <div className="min-w-0">
-                                          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Perfil</p>
-                                          <p className="text-xs font-semibold text-purple-600 dark:text-purple-400 truncate">{getPerfilNombre(reg.perfilId)}</p>
-                                        </div>
-                                      </div>
+                                      )}
                                       <div className="flex justify-between items-center pt-1 border-t border-border">
                                           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Elementos</p>
                                           <p className="text-sm font-black text-purple-600 dark:text-purple-400">{totalValores}</p>
@@ -1946,10 +2036,12 @@ export default function Formularios({
                             <span className="text-sm text-slate-500">Registros capturados:</span>
                             <span className="text-sm font-bold text-foreground">{registros.length}</span>
                           </div>
-                          <div className="flex justify-between items-center pt-2 border-t border-border">
-                            <span className="text-sm font-bold text-slate-500">Combinaciones (Nac. × Perfil):</span>
-                            <span className="text-lg font-black text-purple-600">{globalCrossStats.comboCount}</span>
-                          </div>
+                          {hayRegistrosNacPerfil && (
+                            <div className="flex justify-between items-center pt-2 border-t border-border">
+                              <span className="text-sm font-bold text-slate-500">Combinaciones (Nac. × Perfil):</span>
+                              <span className="text-lg font-black text-purple-600">{globalCrossStats.comboCount}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -1963,14 +2055,22 @@ export default function Formularios({
                             <span className="text-sm text-slate-500">Indicadores usados:</span>
                             <span className="text-sm font-bold text-foreground">{summaryByIndicador.size}</span>
                           </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-slate-500">Nacionalidades:</span>
-                            <span className="text-sm font-bold text-amber-600">{new Set(registros.map(r => r.nacionalidadId)).size}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-sm text-slate-500">Perfiles:</span>
-                            <span className="text-sm font-bold text-purple-600">{new Set(registros.map(r => r.perfilId)).size}</span>
-                          </div>
+                          {hayRegistrosNacPerfil && (
+                            <>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-500">Nacionalidades:</span>
+                                <span className="text-sm font-bold text-amber-600">
+                                  {new Set(registrosConNacPerfil.map((r) => r.nacionalidadId)).size}
+                                </span>
+                              </div>
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm text-slate-500">Perfiles:</span>
+                                <span className="text-sm font-bold text-purple-600">
+                                  {new Set(registrosConNacPerfil.map((r) => r.perfilId)).size}
+                                </span>
+                              </div>
+                            </>
+                          )}
                           <div className="flex justify-between items-center pt-2 border-t border-border">
                             <span className="text-sm font-bold text-slate-500">Gran Total:</span>
                             <span className="text-lg font-black text-purple-600">
@@ -2004,19 +2104,29 @@ export default function Formularios({
 
                     {Array.from(summaryByIndicador.entries()).map(([indicadorId, regs]) => {
                       const ind = indicadores.find(i => i.id === indicadorId);
+                      const indOmiteNacPerfil = indicadorOmiteNacPerfil(ind);
                       const campos = (ind?.obs_indicador_campos || [])
                         .sort((a, b) => parseInt(a.orden || "0") - parseInt(b.orden || "0"));
                       const campoIds = campos.map((c) => c.id);
-                      const crossRows = aggregateByNacPerfil(regs, campoIds);
+                      const crossRows = indOmiteNacPerfil ? [] : aggregateByNacPerfil(regs, campoIds);
                       
                       // Calculate totals per campo
                       const campoTotals: Record<string, number> = {};
                       campos.forEach(c => { campoTotals[c.id] = 0; });
-                      crossRows.forEach((row) => {
-                        campos.forEach(c => {
-                          campoTotals[c.id] = (campoTotals[c.id] || 0) + (row.valores[c.id] || 0);
+                      if (indOmiteNacPerfil) {
+                        regs.forEach((reg) => {
+                          campos.forEach((c) => {
+                            campoTotals[c.id] =
+                              (campoTotals[c.id] || 0) + parseInt(reg.valores[c.id] || "0", 10);
+                          });
                         });
-                      });
+                      } else {
+                        crossRows.forEach((row) => {
+                          campos.forEach(c => {
+                            campoTotals[c.id] = (campoTotals[c.id] || 0) + (row.valores[c.id] || 0);
+                          });
+                        });
+                      }
                       const maxCampoTotal = Math.max(...Object.values(campoTotals), 1);
 
                       // Totals by nacionalidad (from aggregated rows)
@@ -2054,12 +2164,18 @@ export default function Formularios({
                                 {ind?.nombre || "Indicador"}
                               </p>
                               <p className="text-[10px] font-bold text-slate-400 mt-1">
-                                {crossRows.length} {crossRows.length === 1 ? "combinación" : "combinaciones"}
-                                {mergedInIndicator > 0 && (
-                                  <span className="text-purple-600 dark:text-purple-400 ml-1.5">
-                                    · {regs.length} registros
-                                  </span>
-                                )}
+                                {indOmiteNacPerfil
+                                  ? `${regs.length} ${regs.length === 1 ? "registro" : "registros"}`
+                                  : (
+                                    <>
+                                      {crossRows.length} {crossRows.length === 1 ? "combinación" : "combinaciones"}
+                                      {mergedInIndicator > 0 && (
+                                        <span className="text-purple-600 dark:text-purple-400 ml-1.5">
+                                          · {regs.length} registros
+                                        </span>
+                                      )}
+                                    </>
+                                  )}
                               </p>
                             </div>
                             <ChevronDown
@@ -2078,24 +2194,33 @@ export default function Formularios({
                               >
                                 <div className="px-4 pb-6 space-y-6 border-t border-border">
 
-                          <NacPerfilMatrix
-                            registros={regs}
-                            getNacionalidadNombre={getNacionalidadNombre}
-                            getPerfilNombre={getPerfilNombre}
-                            title="Matriz Nacionalidad × Perfil"
-                          />
-                          {/* Aggregated cross table */}
+                          {!indOmiteNacPerfil && (
+                            <NacPerfilMatrix
+                              registros={regs}
+                              getNacionalidadNombre={getNacionalidadNombre}
+                              getPerfilNombre={getPerfilNombre}
+                              title="Matriz Nacionalidad × Perfil"
+                            />
+                          )}
                           <div className="bg-card dark:bg-background rounded-2xl border border-border overflow-hidden">
                             <div className="flex items-center gap-2 px-5 py-3 bg-slate-50 dark:bg-background border-b border-border">
                               <Table2 className="w-4 h-4 text-slate-400" />
-                              <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest">Resumen cruzado por campos</h5>
+                              <h5 className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                                {indOmiteNacPerfil ? "Resumen por campos" : "Resumen cruzado por campos"}
+                              </h5>
                             </div>
                             <div className="overflow-x-auto">
                               <table className="w-full text-sm">
                                 <thead>
                                   <tr className="border-b border-border">
-                                    <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Nacionalidad</th>
-                                    <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Perfil</th>
+                                    {indOmiteNacPerfil ? (
+                                      <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Registro</th>
+                                    ) : (
+                                      <>
+                                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Nacionalidad</th>
+                                        <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Perfil</th>
+                                      </>
+                                    )}
                                     {campos.map(c => (
                                       <th key={c.id} className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">{c.obs_campos?.nombre}</th>
                                     ))}
@@ -2103,43 +2228,79 @@ export default function Formularios({
                                   </tr>
                                 </thead>
                                 <tbody>
-                                  {crossRows.map((row, rIdx) => {
-                                    const rowTotal = Object.values(row.valores).reduce((s, v) => s + v, 0);
-                                    return (
-                                      <tr key={crossKey(row.nacionalidadId, row.perfilId)} className={`border-b border-slate-50 dark:border-border/50 ${rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-secondary/30"}`}>
-                                        <td className="px-4 py-2.5 font-semibold text-amber-600 dark:text-amber-400">{getNacionalidadNombre(row.nacionalidadId)}</td>
-                                        <td className="px-4 py-2.5 font-semibold text-purple-600 dark:text-purple-400">
-                                          <span>{getPerfilNombre(row.perfilId)}</span>
-                                          {row.registroCount > 1 && (
-                                            <span className="ml-2 text-[9px] font-black uppercase tracking-wider text-purple-500 bg-purple-50 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
-                                              ×{row.registroCount}
-                                            </span>
-                                          )}
-                                        </td>
-                                        {campos.map(c => (
-                                          <td key={c.id} className="px-4 py-2.5 text-right font-mono font-bold text-foreground">{row.valores[c.id] ?? 0}</td>
+                                  {indOmiteNacPerfil ? (
+                                    <>
+                                      {regs.map((reg, rIdx) => {
+                                        const rowTotal = Object.values(reg.valores).reduce(
+                                          (s, v) => s + parseInt(v || "0", 10),
+                                          0,
+                                        );
+                                        return (
+                                          <tr
+                                            key={reg.id}
+                                            className={`border-b border-slate-50 dark:border-border/50 ${rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-secondary/30"}`}
+                                          >
+                                            <td className="px-4 py-2.5 font-semibold text-purple-600 dark:text-purple-400">
+                                              #{rIdx + 1}
+                                            </td>
+                                            {campos.map((c) => (
+                                              <td key={c.id} className="px-4 py-2.5 text-right font-mono font-bold text-foreground">
+                                                {parseInt(reg.valores[c.id] || "0", 10)}
+                                              </td>
+                                            ))}
+                                            <td className="px-4 py-2.5 text-right font-black text-purple-600">{rowTotal}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                      <tr className="bg-purple-50/50 dark:bg-purple-900/10 border-t-2 border-purple-200 dark:border-purple-800">
+                                        <td className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Totales</td>
+                                        {campos.map((c) => (
+                                          <td key={c.id} className="px-4 py-3 text-right font-black text-foreground">{campoTotals[c.id]}</td>
                                         ))}
-                                        <td className="px-4 py-2.5 text-right font-black text-purple-600">{rowTotal}</td>
+                                        <td className="px-4 py-3 text-right font-black text-purple-700 dark:text-purple-400 text-base">
+                                          {Object.values(campoTotals).reduce((a, b) => a + b, 0)}
+                                        </td>
                                       </tr>
-                                    );
-                                  })}
-                                  {/* Totals Row */}
-                                  <tr className="bg-purple-50/50 dark:bg-purple-900/10 border-t-2 border-purple-200 dark:border-purple-800">
-                                    <td colSpan={2} className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Totales</td>
-                                    {campos.map(c => (
-                                      <td key={c.id} className="px-4 py-3 text-right font-black text-foreground">{campoTotals[c.id]}</td>
-                                    ))}
-                                    <td className="px-4 py-3 text-right font-black text-purple-700 dark:text-purple-400 text-base">
-                                      {Object.values(campoTotals).reduce((a, b) => a + b, 0)}
-                                    </td>
-                                  </tr>
+                                    </>
+                                  ) : (
+                                    <>
+                                      {crossRows.map((row, rIdx) => {
+                                        const rowTotal = Object.values(row.valores).reduce((s, v) => s + v, 0);
+                                        return (
+                                          <tr key={crossKey(row.nacionalidadId, row.perfilId)} className={`border-b border-slate-50 dark:border-border/50 ${rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-secondary/30"}`}>
+                                            <td className="px-4 py-2.5 font-semibold text-amber-600 dark:text-amber-400">{getNacionalidadNombre(row.nacionalidadId)}</td>
+                                            <td className="px-4 py-2.5 font-semibold text-purple-600 dark:text-purple-400">
+                                              <span>{getPerfilNombre(row.perfilId)}</span>
+                                              {row.registroCount > 1 && (
+                                                <span className="ml-2 text-[9px] font-black uppercase tracking-wider text-purple-500 bg-purple-50 dark:bg-purple-900/30 px-1.5 py-0.5 rounded">
+                                                  ×{row.registroCount}
+                                                </span>
+                                              )}
+                                            </td>
+                                            {campos.map(c => (
+                                              <td key={c.id} className="px-4 py-2.5 text-right font-mono font-bold text-foreground">{row.valores[c.id] ?? 0}</td>
+                                            ))}
+                                            <td className="px-4 py-2.5 text-right font-black text-purple-600">{rowTotal}</td>
+                                          </tr>
+                                        );
+                                      })}
+                                      <tr className="bg-purple-50/50 dark:bg-purple-900/10 border-t-2 border-purple-200 dark:border-purple-800">
+                                        <td colSpan={2} className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Totales</td>
+                                        {campos.map(c => (
+                                          <td key={c.id} className="px-4 py-3 text-right font-black text-foreground">{campoTotals[c.id]}</td>
+                                        ))}
+                                        <td className="px-4 py-3 text-right font-black text-purple-700 dark:text-purple-400 text-base">
+                                          {Object.values(campoTotals).reduce((a, b) => a + b, 0)}
+                                        </td>
+                                      </tr>
+                                    </>
+                                  )}
                                 </tbody>
                               </table>
                             </div>
                           </div>
 
-                          {/* Bar Charts */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className={`grid grid-cols-1 gap-6 ${indOmiteNacPerfil ? "" : "md:grid-cols-2"}`}>
                             {/* Chart: Totals by Campo */}
                             <div className="bg-card dark:bg-background p-6 rounded-2xl border border-border space-y-5">
                               <div className="flex items-center gap-2">
@@ -2171,13 +2332,15 @@ export default function Formularios({
                               </div>
                             </div>
 
-                            <DonutChartCard
-                              title="Por Nacionalidad"
-                              icon={Users}
-                              iconClass="text-amber-500"
-                              data={totalsToDonutData(nacTotals, getNacionalidadNombre, 3)}
-                              chartKey={`ind-nac-${indicadorId}`}
-                            />
+                            {!indOmiteNacPerfil && (
+                              <DonutChartCard
+                                title="Por Nacionalidad"
+                                icon={Users}
+                                iconClass="text-amber-500"
+                                data={totalsToDonutData(nacTotals, getNacionalidadNombre, 3)}
+                                chartKey={`ind-nac-${indicadorId}`}
+                              />
+                            )}
                           </div>
                                 </div>
                               </motion.div>

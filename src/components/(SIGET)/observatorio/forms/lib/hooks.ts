@@ -15,6 +15,8 @@ import {
   getPredefinedFields,
   getNacionalidades,
   getPerfiles,
+  getRegistrosHistoricos,
+  deleteRegistro,
   ObsSector,
   ObsPolitica,
   ObsOrganizacion,
@@ -63,6 +65,29 @@ export function usePredefinedFields() {
     queryKey: ["predefinedFields"],
     queryFn: getPredefinedFields,
   });
+}
+
+export function useRegistrosHistoricos(organizacionId?: string, enabled = true) {
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["registros-historicos", organizacionId ?? "all"],
+    queryFn: () => getRegistrosHistoricos(organizacionId),
+    enabled,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteRegistro,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["registros-historicos"] });
+      toast.success("Registro eliminado correctamente.");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "No se pudo eliminar el registro.");
+    },
+  });
+
+  return { ...query, deleteRegistro: deleteMutation };
 }
 
 export function useNacionalidades() {
@@ -436,6 +461,28 @@ export interface RegistroEntradaLocal {
 
 export const SIN_ESPECIFICAR = "__none__";
 
+type IndicadorNacPerfilCheck = {
+  nombre?: string | null;
+  obs_indicador_campos?: { obs_campos?: { nombre?: string | null } | null }[] | null;
+};
+
+const PALABRAS_OMITEN_NAC_PERFIL = /reuniones|empresas|actores/i;
+
+export function indicadorOmiteNacPerfil(
+  indicador: IndicadorNacPerfilCheck | null | undefined,
+): boolean {
+  if (!indicador) return false;
+
+  const omitePorTexto = (texto?: string | null) =>
+    PALABRAS_OMITEN_NAC_PERFIL.test(texto || "");
+
+  if (omitePorTexto(indicador.nombre)) return true;
+
+  return (indicador.obs_indicador_campos || []).some((ic) =>
+    omitePorTexto(ic.obs_campos?.nombre),
+  );
+}
+
 export function useFormulario(
   onSuccess: () => void,
   initialPolitica?: ObsPolitica | null,
@@ -670,6 +717,11 @@ export function useFormulario(
       Object.entries(currentEntry.valores).map(([key, val]) => [key, val === "" ? "0" : val])
     );
 
+    const indicadorActual = indicadores.find((i) => i.id === currentEntry.indicadorId);
+    const omitNacPerfil = indicadorOmiteNacPerfil(indicadorActual);
+    const nacionalidadId = omitNacPerfil ? SIN_ESPECIFICAR : currentEntry.nacionalidadId;
+    const perfilId = omitNacPerfil ? SIN_ESPECIFICAR : currentEntry.perfilId;
+
     if (editingRegistroId) {
       setRegistros(prev =>
         prev.map(r =>
@@ -677,8 +729,8 @@ export function useFormulario(
             ? {
                 ...r,
                 indicadorId: currentEntry.indicadorId,
-                nacionalidadId: currentEntry.nacionalidadId,
-                perfilId: currentEntry.perfilId,
+                nacionalidadId,
+                perfilId,
                 valores: normalizedValores
               }
             : r
@@ -692,8 +744,8 @@ export function useFormulario(
     const newEntry: RegistroEntradaLocal = {
       id: crypto.randomUUID(),
       indicadorId: currentEntry.indicadorId,
-      nacionalidadId: currentEntry.nacionalidadId,
-      perfilId: currentEntry.perfilId,
+      nacionalidadId,
+      perfilId,
       valores: normalizedValores
     };
 

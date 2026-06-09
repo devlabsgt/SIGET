@@ -866,9 +866,11 @@ function DonutChart({
 function CampoBreakdownPanel({
   data,
   loading,
+  title = "Por Campo",
 }: {
   data: { nombre: string; total: number }[];
   loading: boolean;
+  title?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const panelInView = useInView(panelRef, { once: true, margin: "-40px" });
@@ -887,7 +889,7 @@ function CampoBreakdownPanel({
   return (
     <div ref={panelRef}>
       <p className="text-xs font-black uppercase tracking-widest text-white/70 mb-4">
-        Por Campo
+        {title}
       </p>
       {loading ? (
         <DonutChartContentSkeleton />
@@ -1116,26 +1118,66 @@ function MonitoreoDesglosePanel({
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        <DonutChart
-          data={stats?.byNacionalidad ?? []}
-          title="Por Nacionalidad"
-          loading={loading}
-          variant="dark"
-          embedded
-        />
-        <DonutChart
-          data={stats?.byPerfil ?? []}
-          title="Por Perfil"
-          loading={loading}
-          variant="dark"
-          embedded
-        />
-      </div>
+      {((stats?.byNacionalidad?.length ?? 0) > 0 ||
+        (stats?.byPerfil?.length ?? 0) > 0) && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {(stats?.byNacionalidad?.length ?? 0) > 0 && (
+            <DonutChart
+              data={stats?.byNacionalidad ?? []}
+              title="Por Nacionalidad"
+              loading={loading}
+              variant="dark"
+              embedded
+            />
+          )}
+          {(stats?.byPerfil?.length ?? 0) > 0 && (
+            <DonutChart
+              data={stats?.byPerfil ?? []}
+              title="Por Perfil"
+              loading={loading}
+              variant="dark"
+              embedded
+            />
+          )}
+        </div>
+      )}
 
-      <div className="mt-6 border-t border-white/10 pt-6">
-        <CampoBreakdownPanel data={stats?.byCampo ?? []} loading={loading} />
-      </div>
+      {(stats?.byCampo?.length ?? 0) > 0 && (
+        <div className="mt-6 border-t border-white/10 pt-6">
+          <CampoBreakdownPanel data={stats?.byCampo ?? []} loading={loading} />
+        </div>
+      )}
+
+      {((stats?.byIndicadorOmite?.length ?? 0) > 0 ||
+        (stats?.byCampoOmite?.length ?? 0) > 0) && (
+        <div className="mt-6 border-t border-violet-400/30 pt-6 space-y-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-violet-300">
+              Reuniones, Empresas y Actores
+            </p>
+            <p className="text-[11px] text-white/60 mt-1">
+              Desglose aparte, sin comparación por nacionalidad ni perfil.
+            </p>
+          </div>
+          {(stats?.byIndicadorOmite?.length ?? 0) > 0 && (
+            <DonutChart
+              data={stats?.byIndicadorOmite ?? []}
+              title="Por Indicador"
+              loading={loading}
+              variant="dark"
+              embedded
+              legendLimit={6}
+            />
+          )}
+          {(stats?.byCampoOmite?.length ?? 0) > 0 && (
+            <CampoBreakdownPanel
+              data={stats?.byCampoOmite ?? []}
+              loading={loading}
+              title="Por Campo"
+            />
+          )}
+        </div>
+      )}
 
       <div className="mt-6 flex justify-end">
         <AccederObservatorioButton className="justify-end" />

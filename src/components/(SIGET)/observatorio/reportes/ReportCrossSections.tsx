@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { ReportExcelButton } from "./ReportExcelButton";
 import {
   buildCampoDimensionCrossRows,
+  buildOmiteNacPerfilSectionRows,
   downloadCampoIndicadorExcel,
   downloadIndicadorDetailExcel,
   downloadSingleSheet,
@@ -50,6 +51,10 @@ import {
   getCampoTotalsForIndicador,
   buildNacTotalsMap,
   nacPerfilMatrixFromRows,
+  rowsConNacPerfil,
+  rowsOmiteNacPerfil,
+  indicadorOmiteNacPerfil,
+  OMITE_NAC_PERFIL_SECTION_TITLE,
   type ReportChartSlice,
   type ReportCampoOption,
 } from "./lib/cross-report-lib";
@@ -731,6 +736,108 @@ function NacPerfilMatrix({ rows }: { rows: ReportRow[] }) {
   );
 }
 
+/* ─── Bloque aparte: Reuniones / Empresas / Actores ─── */
+
+function OmiteNacPerfilCrossBlock({ rows }: { rows: ReportRow[] }) {
+  const omitRows = useMemo(() => rowsOmiteNacPerfil(rows), [rows]);
+  const availableCampos = useMemo(() => getAvailableCampos(omitRows), [omitRows]);
+  const selectedCampoIds = useMemo(
+    () => new Set(availableCampos.map((c) => c.catalogId)),
+    [availableCampos],
+  );
+
+  const indicadorData = useMemo(
+    () => aggregateReportSlices(omitRows, "indicador"),
+    [omitRows],
+  );
+  const campoProgressItems = useMemo(
+    () => buildCampoProgressItems(omitRows, selectedCampoIds, availableCampos),
+    [omitRows, selectedCampoIds, availableCampos],
+  );
+  const crossCampoInd = useMemo(
+    () => buildReportCampoDimensionCross(omitRows, availableCampos, "indicador"),
+    [omitRows, availableCampos],
+  );
+  const indicadoresRef = useMemo(
+    () =>
+      crossCampoInd.colIds.map((id) => ({
+        id,
+        nombre: crossCampoInd.getColLabel(id),
+      })),
+    [crossCampoInd],
+  );
+
+  if (omitRows.length === 0) return null;
+
+  const omitKey = omitRows.map((r) => r.valorId).join(",").slice(0, 80);
+
+  return (
+    <div
+      data-report-export-block
+      className="space-y-6 pt-6 border-t-2 border-violet-200 dark:border-violet-800/60"
+    >
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="w-2 h-7 bg-violet-600 rounded-full shrink-0" />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+            {OMITE_NAC_PERFIL_SECTION_TITLE}
+          </h3>
+          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+            Desglose por indicador y campo, sin comparación por nacionalidad ni perfil.
+          </p>
+        </div>
+        <ReportExcelButton
+          label="Excel"
+          onClick={() =>
+            downloadSingleSheet(
+              buildOmiteNacPerfilSectionRows(rows),
+              "reuniones-empresas-actores.xlsx",
+              OMITE_NAC_PERFIL_SECTION_TITLE,
+            )
+          }
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <DonutChartCard
+          title="Por Indicador"
+          icon={PieChartIcon}
+          iconClass="text-violet-500"
+          data={indicadorData}
+          chartKey={`omit-ind-${omitKey}`}
+          legendAccordion
+        />
+        <ProgressBarChartCard title="Por Campo" icon={BarChart3} iconClass="text-violet-500" contentAutoHeight>
+          <ProgressBarList items={campoProgressItems} />
+        </ProgressBarChartCard>
+      </div>
+
+      {crossCampoInd.colIds.length > 0 && (
+        <div className="space-y-4">
+          <CampoDimensionMatrix
+            title="Campos × Indicador"
+            cornerLabel="Campo ↓ / Indicador →"
+            campos={crossCampoInd.campos}
+            colIds={crossCampoInd.colIds}
+            grid={crossCampoInd.grid}
+            getColLabel={crossCampoInd.getColLabel}
+            accentClass="text-violet-600 dark:text-violet-400"
+            shortColLabels
+            onExportExcel={() =>
+              downloadCampoIndicadorExcel(
+                crossCampoInd,
+                indicadoresRef,
+                "reuniones-empresas-actores",
+              )
+            }
+          />
+          <IndicadorReferenciaTable indicadores={indicadoresRef} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Cruce global (misma UI que formularios paso 5) ─── */
 
 export function ReportGlobalCrossSection({
@@ -757,23 +864,38 @@ export function ReportGlobalCrossSection({
 
   const filterKey = [...selectedCampoIds].sort().join(",");
 
-  const nacData = useMemo(
-    () => aggregateReportSlices(filteredRows, "nacionalidad"),
-    [filteredRows]
-  );
-  const perfilData = useMemo(
-    () => aggregateReportSlices(filteredRows, "perfil"),
-    [filteredRows]
-  );
-  const indicadorData = useMemo(
-    () => aggregateReportSlices(filteredRows, "indicador"),
-    [filteredRows]
+  // ¿Hay filas que apliquen a nacionalidad/perfil? (excluye Reuniones/Empresas/Actores)
+  const nacPerfilFilteredRows = useMemo(
+    () => rowsConNacPerfil(filteredRows),
+    [filteredRows],
   );
 
-  const comboProgressItems = useMemo(() => buildNacPerfilProgressItems(filteredRows), [filteredRows]);
+  const hasNacPerfil = nacPerfilFilteredRows.length > 0;
+  const hasOmiteNacPerfil = useMemo(
+    () => rowsOmiteNacPerfil(filteredRows).length > 0,
+    [filteredRows],
+  );
+
+  const nacData = useMemo(
+    () => aggregateReportSlices(nacPerfilFilteredRows, "nacionalidad"),
+    [nacPerfilFilteredRows],
+  );
+  const perfilData = useMemo(
+    () => aggregateReportSlices(nacPerfilFilteredRows, "perfil"),
+    [nacPerfilFilteredRows],
+  );
+  const indicadorData = useMemo(
+    () => aggregateReportSlices(nacPerfilFilteredRows, "indicador"),
+    [nacPerfilFilteredRows],
+  );
+
+  const comboProgressItems = useMemo(
+    () => buildNacPerfilProgressItems(filteredRows),
+    [filteredRows],
+  );
   const campoProgressItems = useMemo(
-    () => buildCampoProgressItems(filteredRows, selectedCampoIds, availableCampos),
-    [filteredRows, selectedCampoIds, availableCampos]
+    () => buildCampoProgressItems(nacPerfilFilteredRows, selectedCampoIds, availableCampos),
+    [nacPerfilFilteredRows, selectedCampoIds, availableCampos],
   );
 
   const camposSeleccionados = useMemo(
@@ -782,12 +904,12 @@ export function ReportGlobalCrossSection({
   );
 
   const crossCampoNac = useMemo(
-    () => buildReportCampoDimensionCross(filteredRows, camposSeleccionados, "nacionalidad"),
-    [filteredRows, camposSeleccionados]
+    () => buildReportCampoDimensionCross(nacPerfilFilteredRows, camposSeleccionados, "nacionalidad"),
+    [nacPerfilFilteredRows, camposSeleccionados],
   );
   const crossCampoPerfil = useMemo(
-    () => buildReportCampoDimensionCross(filteredRows, camposSeleccionados, "perfil"),
-    [filteredRows, camposSeleccionados]
+    () => buildReportCampoDimensionCross(nacPerfilFilteredRows, camposSeleccionados, "perfil"),
+    [nacPerfilFilteredRows, camposSeleccionados],
   );
 
   const toggleCampo = (catalogId: string) => {
@@ -898,23 +1020,31 @@ export function ReportGlobalCrossSection({
         </AnimatePresence>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <DonutChartCard title="Por Nacionalidad" icon={Users} iconClass="text-amber-500" data={nacData} chartKey={`nac-${filterKey}`} />
-        <DonutChartCard title="Por Perfil" icon={Users} iconClass="text-blue-500" data={perfilData} chartKey={`perfil-${filterKey}`} />
-        <DonutChartCard title="Por Indicador" icon={PieChartIcon} iconClass="text-blue-500" data={indicadorData} chartKey={`ind-${filterKey}`} legendAccordion />
+      <div className={`grid grid-cols-1 gap-4 ${hasNacPerfil ? "md:grid-cols-3" : hasOmiteNacPerfil ? "hidden" : "md:grid-cols-1"}`}>
+        {hasNacPerfil && (
+          <>
+            <DonutChartCard title="Por Nacionalidad" icon={Users} iconClass="text-amber-500" data={nacData} chartKey={`nac-${filterKey}`} />
+            <DonutChartCard title="Por Perfil" icon={Users} iconClass="text-blue-500" data={perfilData} chartKey={`perfil-${filterKey}`} />
+          </>
+        )}
+        {hasNacPerfil && (
+          <DonutChartCard title="Por Indicador" icon={PieChartIcon} iconClass="text-blue-500" data={indicadorData} chartKey={`ind-${filterKey}`} legendAccordion />
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <div className="lg:col-span-4">
-          <ProgressBarChartCard title="Combinaciones Nac. × Perfil" icon={BarChart3} iconClass="text-blue-500">
-            <AnimatePresence mode="wait">
-              <motion.div key={`combo-${filterKey}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                <ProgressBarList items={comboProgressItems} getBarColor={(item, idx) => nacPerfilBarColor(item.label, idx)} />
-              </motion.div>
-            </AnimatePresence>
-          </ProgressBarChartCard>
-        </div>
-        <div className="lg:col-span-8">
+        {hasNacPerfil && (
+          <div className="lg:col-span-4">
+            <ProgressBarChartCard title="Combinaciones Nac. × Perfil" icon={BarChart3} iconClass="text-blue-500">
+              <AnimatePresence mode="wait">
+                <motion.div key={`combo-${filterKey}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                  <ProgressBarList items={comboProgressItems} getBarColor={(item, idx) => nacPerfilBarColor(item.label, idx)} />
+                </motion.div>
+              </AnimatePresence>
+            </ProgressBarChartCard>
+          </div>
+        )}
+        <div className={hasNacPerfil ? "lg:col-span-8" : "lg:col-span-12"}>
           <ProgressBarChartCard title="Por Campo" icon={BarChart3} iconClass="text-blue-500" contentAutoHeight>
             <AnimatePresence mode="wait">
               <motion.div key={`campos-${filterKey}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -929,7 +1059,7 @@ export function ReportGlobalCrossSection({
         </div>
       </div>
 
-      {selectedCampoIds.size > 0 && (
+      {selectedCampoIds.size > 0 && hasNacPerfil && (
         <div className="space-y-6">
           <CampoDimensionMatrix
             title="Campos × Nacionalidad"
@@ -964,6 +1094,8 @@ export function ReportGlobalCrossSection({
           />
         </div>
       )}
+
+      <OmiteNacPerfilCrossBlock rows={filteredRows} />
     </>
   );
 
@@ -1372,6 +1504,7 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
     <div className="w-full space-y-3 report-export-hide">
       {indicadores.map((ind, indIdx) => {
         const indRows = rows.filter((r) => r.indicadorId === ind.id);
+        const omite = indicadorOmiteNacPerfil(indRows);
         const crossRows = aggregateReportByNacPerfil(indRows);
         const campos = getCampoTotalsForIndicador(indRows);
         const maxCampoTotal = Math.max(...campos.map((c) => c.total), 1);
@@ -1415,7 +1548,9 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                   {ind.nombre}
                 </p>
                 <p className="text-[10px] font-bold text-slate-400 mt-1">
-                  {crossRows.length} {crossRows.length === 1 ? "combinación" : "combinaciones"}
+                  {omite
+                    ? `${OMITE_NAC_PERFIL_SECTION_TITLE} — sin nacionalidad/perfil`
+                    : `${crossRows.length} ${crossRows.length === 1 ? "combinación" : "combinaciones"}`}
                 </p>
               </div>
               <ChevronDown className={`w-5 h-5 shrink-0 text-slate-400 transition-transform mt-0.5 ${isOpen ? "rotate-180" : ""}`} />
@@ -1438,7 +1573,7 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                       />
                     </div>
 
-                    <NacPerfilMatrix rows={indRows} />
+                    {!omite && <NacPerfilMatrix rows={indRows} />}
 
                     <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                       <div className="flex items-center gap-2 px-5 py-3 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800">
@@ -1451,8 +1586,12 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="border-b border-slate-100 dark:border-slate-800">
-                              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Nacionalidad</th>
-                              <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Perfil</th>
+                              {!omite && (
+                                <>
+                                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Nacionalidad</th>
+                                  <th className="px-4 py-3 text-left text-[10px] font-black text-slate-400 uppercase tracking-wider">Perfil</th>
+                                </>
+                              )}
                               {campos.map((c) => (
                                 <th key={c.id} className="px-4 py-3 text-right text-[10px] font-black text-slate-400 uppercase tracking-wider">
                                   {c.nombre}
@@ -1462,38 +1601,52 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                             </tr>
                           </thead>
                           <tbody>
-                            {crossRows.map((row, rIdx) => {
-                              const nacLabel = indRows.find((r) => (r.nacionalidadId || "__none__") === row.nacionalidadId)?.nacionalidadNombre || "Sin especificar";
-                              const perfLabel = indRows.find((r) => (r.perfilId || "__none__") === row.perfilId)?.perfilNombre || "Sin especificar";
-                              const rowTotal = Object.values(row.valores).reduce((s, v) => s + v, 0);
-                              return (
-                                <tr key={`${row.nacionalidadId}-${row.perfilId}`} className={`border-b border-slate-50 dark:border-slate-800/50 ${rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
-                                  <td className="px-4 py-2.5 font-semibold text-amber-600 dark:text-amber-400">{nacLabel}</td>
-                                  <td className="px-4 py-2.5 font-semibold text-blue-600 dark:text-blue-400">{perfLabel}</td>
+                            {omite ? (
+                              <tr className="bg-blue-50/50 dark:bg-blue-900/10 border-t-2 border-blue-200 dark:border-blue-800">
+                                <td className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Totales</td>
+                                {campos.map((c) => (
+                                  <td key={c.id} className="px-4 py-3 text-right font-black text-slate-800 dark:text-slate-200">{c.total}</td>
+                                ))}
+                                <td className="px-4 py-3 text-right font-black text-blue-700 dark:text-blue-400 text-base">
+                                  {campos.reduce((s, c) => s + c.total, 0)}
+                                </td>
+                              </tr>
+                            ) : (
+                              <>
+                                {crossRows.map((row, rIdx) => {
+                                  const nacLabel = indRows.find((r) => (r.nacionalidadId || "__none__") === row.nacionalidadId)?.nacionalidadNombre || "Sin especificar";
+                                  const perfLabel = indRows.find((r) => (r.perfilId || "__none__") === row.perfilId)?.perfilNombre || "Sin especificar";
+                                  const rowTotal = Object.values(row.valores).reduce((s, v) => s + v, 0);
+                                  return (
+                                    <tr key={`${row.nacionalidadId}-${row.perfilId}`} className={`border-b border-slate-50 dark:border-slate-800/50 ${rIdx % 2 === 0 ? "bg-white dark:bg-transparent" : "bg-slate-50/50 dark:bg-slate-900/30"}`}>
+                                      <td className="px-4 py-2.5 font-semibold text-amber-600 dark:text-amber-400">{nacLabel}</td>
+                                      <td className="px-4 py-2.5 font-semibold text-blue-600 dark:text-blue-400">{perfLabel}</td>
+                                      {campos.map((c) => (
+                                        <td key={c.id} className="px-4 py-2.5 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
+                                          {row.valores[c.id] ?? 0}
+                                        </td>
+                                      ))}
+                                      <td className="px-4 py-2.5 text-right font-black text-blue-600">{rowTotal}</td>
+                                    </tr>
+                                  );
+                                })}
+                                <tr className="bg-blue-50/50 dark:bg-blue-900/10 border-t-2 border-blue-200 dark:border-blue-800">
+                                  <td colSpan={2} className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Totales</td>
                                   {campos.map((c) => (
-                                    <td key={c.id} className="px-4 py-2.5 text-right font-mono font-bold text-slate-700 dark:text-slate-300">
-                                      {row.valores[c.id] ?? 0}
-                                    </td>
+                                    <td key={c.id} className="px-4 py-3 text-right font-black text-slate-800 dark:text-slate-200">{c.total}</td>
                                   ))}
-                                  <td className="px-4 py-2.5 text-right font-black text-blue-600">{rowTotal}</td>
+                                  <td className="px-4 py-3 text-right font-black text-blue-700 dark:text-blue-400 text-base">
+                                    {campos.reduce((s, c) => s + c.total, 0)}
+                                  </td>
                                 </tr>
-                              );
-                            })}
-                            <tr className="bg-blue-50/50 dark:bg-blue-900/10 border-t-2 border-blue-200 dark:border-blue-800">
-                              <td colSpan={2} className="px-4 py-3 font-black text-xs text-slate-500 uppercase tracking-wider">Totales</td>
-                              {campos.map((c) => (
-                                <td key={c.id} className="px-4 py-3 text-right font-black text-slate-800 dark:text-slate-200">{c.total}</td>
-                              ))}
-                              <td className="px-4 py-3 text-right font-black text-blue-700 dark:text-blue-400 text-base">
-                                {campos.reduce((s, c) => s + c.total, 0)}
-                              </td>
-                            </tr>
+                              </>
+                            )}
                           </tbody>
                         </table>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-stretch">
+                    <div className={`grid grid-cols-1 gap-6 items-stretch ${omite ? "" : "md:grid-cols-2"}`}>
                       <div className="bg-white dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-5">
                         <div className="flex items-center gap-2">
                           <BarChart3 className="w-4 h-4 text-blue-500" />
@@ -1523,14 +1676,16 @@ export function ReportIndicadorDetailSection({ rows }: { rows: ReportRow[] }) {
                           })}
                         </div>
                       </div>
-                      <DonutChartCard
-                        title="Por Nacionalidad"
-                        icon={Users}
-                        iconClass="text-amber-500"
-                        data={nacDonut}
-                        chartKey={`ind-nac-${ind.id}`}
-                        size="lg"
-                      />
+                      {!omite && (
+                        <DonutChartCard
+                          title="Por Nacionalidad"
+                          icon={Users}
+                          iconClass="text-amber-500"
+                          data={nacDonut}
+                          chartKey={`ind-nac-${ind.id}`}
+                          size="lg"
+                        />
+                      )}
                     </div>
                   </div>
                 </motion.div>

@@ -25,6 +25,37 @@ function crossKey(nacionalidadId: string, perfilId: string) {
   return `${nacionalidadId}::${perfilId}`;
 }
 
+/**
+ * Indicadores o campos que no aplican a nacionalidad/perfil (p. ej. Reuniones,
+ * Empresas, Actores). Estos no deben incluirse en las gráficas/tablas que
+ * comparan nacionalidad y/o perfil; tienen sus propias gráficas por campo.
+ */
+export const OMITE_NAC_PERFIL_REGEX = /reuniones|empresas|actores/i;
+
+export function reportRowOmiteNacPerfil(row: ReportRow): boolean {
+  return (
+    OMITE_NAC_PERFIL_REGEX.test(row.indicadorNombre || "") ||
+    OMITE_NAC_PERFIL_REGEX.test(row.campoNombre || "")
+  );
+}
+
+/** Filas que sí aplican a los cruces de nacionalidad/perfil. */
+export function rowsConNacPerfil(rows: ReportRow[]): ReportRow[] {
+  return rows.filter((r) => !reportRowOmiteNacPerfil(r));
+}
+
+/** Filas de indicadores/campos Reuniones, Empresas o Actores. */
+export function rowsOmiteNacPerfil(rows: ReportRow[]): ReportRow[] {
+  return rows.filter((r) => reportRowOmiteNacPerfil(r));
+}
+
+export const OMITE_NAC_PERFIL_SECTION_TITLE = "Reuniones, Empresas y Actores";
+
+/** true si todas las filas (de un indicador ya filtrado) omiten nac/perfil. */
+export function indicadorOmiteNacPerfil(rows: ReportRow[]): boolean {
+  return rows.length > 0 && rows.every((r) => reportRowOmiteNacPerfil(r));
+}
+
 export function filterReportRows(
   rows: ReportRow[],
   selectedIndicadorId: string,
@@ -73,19 +104,26 @@ export function getPoliticasEnDatos(rows: ReportRow[]) {
 }
 
 export function computeGlobalCrossStats(rows: ReportRow[]) {
+  const nacPerfilRows = rowsConNacPerfil(rows);
   const combos = new Set<string>();
-  for (const r of rows) {
+  for (const r of nacPerfilRows) {
     combos.add(crossKey(r.nacionalidadId || "__none__", r.perfilId || "__none__"));
   }
-  return { comboCount: combos.size, registroCount: new Set(rows.map((r) => r.registroId)).size };
+  return {
+    comboCount: combos.size,
+    registroCount: new Set(rows.map((r) => r.registroId)).size,
+  };
 }
 
 export function aggregateReportSlices(
   rows: ReportRow[],
   dimension: "nacionalidad" | "perfil" | "indicador"
 ): ReportChartSlice[] {
+  // Las gráficas por nacionalidad/perfil excluyen Reuniones/Empresas/Actores.
+  const sourceRows =
+    dimension === "indicador" ? rows : rowsConNacPerfil(rows);
   const totals = new Map<string, { id: string; name: string; value: number }>();
-  for (const r of rows) {
+  for (const r of sourceRows) {
     const id =
       dimension === "indicador"
         ? r.indicadorId
@@ -122,7 +160,7 @@ export function aggregateReportSlices(
 
 export function buildNacPerfilProgressItems(rows: ReportRow[]): ReportProgressItem[] {
   const totals = new Map<string, ReportProgressItem & { value: number }>();
-  for (const r of rows) {
+  for (const r of rowsConNacPerfil(rows)) {
     const nacId = r.nacionalidadId || "__none__";
     const perfId = r.perfilId || "__none__";
     const key = crossKey(nacId, perfId);
@@ -172,7 +210,10 @@ export function buildReportCampoDimensionCross(
   const colLabels = new Map<string, string>();
   for (const c of campos) grid.set(c.catalogId, new Map());
 
-  for (const r of rows) {
+  // Los cruces Campo × Nacionalidad/Perfil excluyen Reuniones/Empresas/Actores.
+  const sourceRows = dimension === "indicador" ? rows : rowsConNacPerfil(rows);
+
+  for (const r of sourceRows) {
     if (!grid.has(r.campoId)) continue;
     const dimId =
       dimension === "nacionalidad"
@@ -224,7 +265,7 @@ export function buildReportCampoDimensionCross(
 
 export function aggregateReportByNacPerfil(rows: ReportRow[]): ReportNacPerfilRow[] {
   const map = new Map<string, ReportNacPerfilRow>();
-  for (const r of rows) {
+  for (const r of rowsConNacPerfil(rows)) {
     const nacId = r.nacionalidadId || "__none__";
     const perfId = r.perfilId || "__none__";
     const key = crossKey(nacId, perfId);
@@ -251,7 +292,7 @@ export function getCampoTotalsForIndicador(rows: ReportRow[]) {
 
 export function buildNacTotalsMap(rows: ReportRow[]) {
   const totals = new Map<string, { id: string; name: string; value: number }>();
-  for (const r of rows) {
+  for (const r of rowsConNacPerfil(rows)) {
     const id = r.nacionalidadId || "__none__";
     const existing = totals.get(id);
     if (existing) existing.value += r.cantidad;
@@ -260,7 +301,8 @@ export function buildNacTotalsMap(rows: ReportRow[]) {
   return totals;
 }
 
-export function nacPerfilMatrixFromRows(rows: ReportRow[]) {
+export function nacPerfilMatrixFromRows(rowsInput: ReportRow[]) {
+  const rows = rowsConNacPerfil(rowsInput);
   const totals = new Map<string, number>();
   const nacLabels = new Map<string, string>();
   const perfLabels = new Map<string, string>();

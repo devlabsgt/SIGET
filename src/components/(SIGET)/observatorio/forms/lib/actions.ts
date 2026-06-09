@@ -126,6 +126,235 @@ export async function getAllRegistros() {
   return data;
 }
 
+export interface RegistroHistoricoValor {
+  id: string;
+  cantidad: number;
+  campoNombre: string;
+  campoOrden: number;
+  indicadorNombre: string;
+  politicaId: string | null;
+  politicaCodigo: string;
+  politicaDescripcion: string;
+  sectorId: string | null;
+  sectorNombre: string;
+  nacionalidadNombre: string | null;
+  perfilNombre: string | null;
+}
+
+export interface RegistroHistoricoPolitica {
+  codigo: string;
+  descripcion: string;
+}
+
+export interface RegistroHistorico {
+  id: string;
+  mes: number;
+  anio: number;
+  createdAt: string;
+  createdById: string | null;
+  creadorNombre: string | null;
+  creadorEmail: string | null;
+  organizacionId: string | null;
+  organizacionNombre: string;
+  totalAtenciones: number;
+  totalValores: number;
+  politicas: RegistroHistoricoPolitica[];
+  valores: RegistroHistoricoValor[];
+}
+
+export async function getRegistrosHistoricos(
+  organizacionId?: string,
+): Promise<RegistroHistorico[]> {
+  const supabase = await createClient();
+
+  let query = supabase
+    .from("obs_registros")
+    .select(
+      `
+      id,
+      mes,
+      anio,
+      created_at,
+      created_by,
+      organizacion_id,
+      obs_organizaciones ( nombre ),
+      obs_registros_valores (
+        id,
+        cantidad,
+        nacionalidad_id,
+        perfil_id,
+        obs_indicador_campos (
+          orden,
+          obs_campos ( nombre ),
+          obs_indicadores (
+            nombre,
+            obs_politicas (
+              id,
+              codigo,
+              descripcion,
+              sector_id,
+              obs_sectores ( nombre )
+            )
+          )
+        )
+      )
+    `,
+    )
+    .order("created_at", { ascending: false });
+
+  if (organizacionId) {
+    query = query.eq("organizacion_id", organizacionId);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  if (!data) return [];
+
+  const creatorIds = [
+    ...new Set(
+      (data as any[])
+        .map((r) => r.created_by as string | null)
+        .filter(Boolean),
+    ),
+  ] as string[];
+
+  const [nacRes, perfRes, creatorsRes] = await Promise.all([
+    supabase.from("obs_nacionalidades").select("id, nombre"),
+    supabase.from("obs_perfiles").select("id, nombre"),
+    creatorIds.length > 0
+      ? supabase
+          .from("profiles")
+          .select("id, nombre, email")
+          .in("id", creatorIds)
+      : Promise.resolve({ data: [] as { id: string; nombre: string | null; email: string | null }[], error: null }),
+  ]);
+
+  const nacMap = new Map<string, string>(
+    (nacRes.data || []).map((n: any) => [n.id, n.nombre]),
+  );
+  const perfMap = new Map<string, string>(
+    (perfRes.data || []).map((p: any) => [p.id, p.nombre]),
+  );
+  const creatorMap = new Map<
+    string,
+    { nombre: string | null; email: string | null }
+  >(
+    (creatorsRes.data || []).map((p: any) => [
+      p.id,
+      { nombre: p.nombre ?? null, email: p.email ?? null },
+    ]),
+  );
+
+  const unwrap = <T,>(value: T | T[] | null | undefined): T | null => {
+    if (value == null) return null;
+    return Array.isArray(value) ? (value[0] ?? null) : value;
+  };
+
+  return (data as any[]).map((reg) => {
+    const org = unwrap<any>(reg.obs_organizaciones);
+    const rawValores = (reg.obs_registros_valores || []) as any[];
+
+    const valores: RegistroHistoricoValor[] = rawValores.map((v) => {
+      const ic = unwrap<any>(v.obs_indicador_campos);
+      const campo = unwrap<any>(ic?.obs_campos);
+      const ind = unwrap<any>(ic?.obs_indicadores);
+      const pol = unwrap<any>(ind?.obs_politicas);
+      const sec = unwrap<any>(pol?.obs_sectores);
+
+      return {
+        id: v.id,
+        cantidad: v.cantidad ?? 0,
+        campoNombre: campo?.nombre ?? "Sin especificar",
+        campoOrden: parseInt(String(ic?.orden ?? "0"), 10),
+        indicadorNombre: ind?.nombre ?? "Sin especificar",
+        politicaId: pol?.id ?? null,
+        politicaCodigo: pol?.codigo ?? "—",
+        politicaDescripcion: pol?.descripcion ?? "",
+        sectorId: pol?.sector_id ?? null,
+        sectorNombre: sec?.nombre ?? "Sin especificar",
+        nacionalidadNombre: v.nacionalidad_id
+          ? (nacMap.get(v.nacionalidad_id) ?? "Sin especificar")
+          : null,
+        perfilNombre: v.perfil_id
+          ? (perfMap.get(v.perfil_id) ?? "Sin especificar")
+          : null,
+      };
+    });
+
+    const totalAtenciones = valores.reduce((s, v) => s + v.cantidad, 0);
+    const politicaMap = new Map<string, string>();
+    for (const v of valores) {
+      if (v.politicaCodigo && v.politicaCodigo !== "—") {
+        politicaMap.set(v.politicaCodigo, v.politicaDescripcion);
+      }
+    }
+    const politicas = Array.from(politicaMap.entries())
+      .map(([codigo, descripcion]) => ({ codigo, descripcion }))
+      .sort((a, b) =>
+        a.codigo.localeCompare(b.codigo, "es", { numeric: true }),
+      );
+
+    const creator = reg.created_by
+      ? creatorMap.get(reg.created_by)
+      : undefined;
+
+    return {
+      id: reg.id,
+      mes: reg.mes,
+      anio: reg.anio,
+      createdAt: reg.created_at,
+      createdById: reg.created_by ?? null,
+      creadorNombre: creator?.nombre ?? null,
+      creadorEmail: creator?.email ?? null,
+      organizacionId: reg.organizacion_id,
+      organizacionNombre: org?.nombre ?? "Sin organización",
+      totalAtenciones,
+      totalValores: valores.length,
+      politicas,
+      valores,
+    };
+  });
+}
+
+export async function deleteRegistro(registroId: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) throw new Error("No autenticado.");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("rol")
+    .eq("id", user.id)
+    .single();
+
+  const role =
+    profile?.rol ||
+    (user.user_metadata?.rol as string | undefined) ||
+    user.role ||
+    "";
+
+  if (!role.includes("admin") && role !== "super") {
+    throw new Error("No tiene permisos para eliminar registros.");
+  }
+
+  const { error: valoresError } = await supabase
+    .from("obs_registros_valores")
+    .delete()
+    .eq("registro_id", registroId);
+
+  if (valoresError) throw new Error(valoresError.message);
+
+  const { error: registroError } = await supabase
+    .from("obs_registros")
+    .delete()
+    .eq("id", registroId);
+
+  if (registroError) throw new Error(registroError.message);
+}
+
 export async function getIndicadoresByPolitica(politicaId: string) {
   const supabase = await createClient();
   const { data, error } = await supabase

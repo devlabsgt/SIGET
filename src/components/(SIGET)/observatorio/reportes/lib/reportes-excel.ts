@@ -8,7 +8,11 @@ import {
   getCampoTotalsForIndicador,
   getIndicadoresEnUso,
   getPoliticasEnDatos,
+  indicadorOmiteNacPerfil,
   nacPerfilMatrixFromRows,
+  OMITE_NAC_PERFIL_SECTION_TITLE,
+  reportRowOmiteNacPerfil,
+  rowsOmiteNacPerfil,
 } from "./cross-report-lib";
 
 export type ExcelSheetDef = { name: string; rows: unknown[][] };
@@ -245,7 +249,22 @@ export function buildNacPerfilMatrixRows(rows: ReportRow[]): unknown[][] {
   return [headers, ...body, ["Total columna", ...colTotals, grandTotal]];
 }
 
+export function buildIndicadorCamposSoloRows(indRows: ReportRow[]): unknown[][] {
+  const campos = getCampoTotalsForIndicador(indRows);
+  if (campos.length === 0) return [["Sin datos"]];
+
+  return [
+    ["Campo", "Total"],
+    ...campos.map((c) => [c.nombre, c.total]),
+    ["Total", campos.reduce((s, c) => s + c.total, 0)],
+  ];
+}
+
 export function buildIndicadorCrossCamposRows(indRows: ReportRow[]): unknown[][] {
+  if (indicadorOmiteNacPerfil(indRows)) {
+    return buildIndicadorCamposSoloRows(indRows);
+  }
+
   const crossRows = aggregateReportByNacPerfil(indRows);
   const campos = getCampoTotalsForIndicador(indRows);
   const headers = [
@@ -281,6 +300,37 @@ export function buildIndicadorCrossCamposRows(indRows: ReportRow[]): unknown[][]
   return [headers, ...body, totals];
 }
 
+export function buildOmiteNacPerfilSectionRows(rows: ReportRow[]): unknown[][] {
+  const omitRows = rowsOmiteNacPerfil(rows);
+  if (omitRows.length === 0) return [];
+
+  const allCampos = getAvailableCampos(omitRows);
+  const crossInd = buildReportCampoDimensionCross(omitRows, allCampos, "indicador");
+  const indicadores = crossInd.colIds.map((id) => ({
+    id,
+    nombre: crossInd.getColLabel(id),
+  }));
+
+  const camposSolo = getCampoTotalsForIndicador(omitRows);
+
+  return [
+    [OMITE_NAC_PERFIL_SECTION_TITLE.toUpperCase()],
+    ["Nota", "Sin desglose por nacionalidad ni perfil"],
+    [],
+    ["RESUMEN POR CAMPO"],
+    ["Campo", "Total"],
+    ...camposSolo.map((c) => [c.nombre, c.total]),
+    ["Total", camposSolo.reduce((s, c) => s + c.total, 0)],
+    [],
+    ["CAMPOS × INDICADOR"],
+    ...buildCampoDimensionCrossRows(crossInd, true),
+    [],
+    ["REFERENCIA DE INDICADORES"],
+    ...buildIndicadorReferenciaRows(indicadores),
+    [],
+  ];
+}
+
 function section(title: string, rows: unknown[][]): unknown[][] {
   return [[title], ...rows, []];
 }
@@ -298,11 +348,23 @@ export function withIndicadorHeader(indicadorNombre: string, rows: unknown[][]):
 }
 
 export function downloadIndicadorDetailExcel(indicadorNombre: string, indRows: ReportRow[]) {
-  const rows: unknown[][] = [
-    ...buildIndicadorHeaderRows(indicadorNombre),
-    ...section("MATRIZ NACIONALIDAD × PERFIL", buildNacPerfilMatrixRows(indRows)),
-    ...section("RESUMEN CRUZADO POR CAMPOS", buildIndicadorCrossCamposRows(indRows)),
-  ];
+  const omite = indicadorOmiteNacPerfil(indRows);
+  const rows: unknown[][] = [...buildIndicadorHeaderRows(indicadorNombre)];
+
+  if (omite) {
+    rows.push(
+      ...section(
+        `${OMITE_NAC_PERFIL_SECTION_TITLE.toUpperCase()} — RESUMEN POR CAMPO`,
+        buildIndicadorCamposSoloRows(indRows),
+      ),
+    );
+  } else {
+    rows.push(
+      ...section("MATRIZ NACIONALIDAD × PERFIL", buildNacPerfilMatrixRows(indRows)),
+      ...section("RESUMEN CRUZADO POR CAMPOS", buildIndicadorCrossCamposRows(indRows)),
+    );
+  }
+
   downloadSingleSheet(
     rows,
     `${safeFilename(indicadorNombre.slice(0, 40))}-detalle-indicador.xlsx`,
@@ -317,12 +379,26 @@ export function downloadCompleteReportExcel(rows: ReportRow[]) {
   const general: unknown[][] = [...buildRawDataRows(rows), []];
   general.push(...section("RESUMEN POR ORGANIZACIÓN", buildOrgSummaryRows(rows)));
 
-  const allCampos = getAvailableCampos(rows);
-  if (allCampos.length > 0) {
-    const crossNac = buildReportCampoDimensionCross(rows, allCampos, "nacionalidad");
-    const crossPerfil = buildReportCampoDimensionCross(rows, allCampos, "perfil");
+  const nacPerfilRows = rows.filter((r) => !reportRowOmiteNacPerfil(r));
+  const allCamposNacPerfil = getAvailableCampos(nacPerfilRows);
+  if (allCamposNacPerfil.length > 0) {
+    const crossNac = buildReportCampoDimensionCross(
+      nacPerfilRows,
+      allCamposNacPerfil,
+      "nacionalidad",
+    );
+    const crossPerfil = buildReportCampoDimensionCross(
+      nacPerfilRows,
+      allCamposNacPerfil,
+      "perfil",
+    );
     general.push(...section("CAMPOS × NACIONALIDAD", buildCampoDimensionCrossRows(crossNac)));
     general.push(...section("CAMPOS × PERFIL", buildCampoDimensionCrossRows(crossPerfil)));
+  }
+
+  const omitSection = buildOmiteNacPerfilSectionRows(rows);
+  if (omitSection.length > 0) {
+    general.push(...omitSection);
   }
 
   sheets.push({ name: sanitizeSheetName("General", used), rows: general });
@@ -349,15 +425,28 @@ export function downloadCompleteReportExcel(rows: ReportRow[]) {
 
     indicadores.forEach((ind, idx) => {
       const indRows = polRows.filter((r) => r.indicadorId === ind.id);
+      const omite = indicadorOmiteNacPerfil(indRows);
       const indSheet: unknown[][] = [
         ["DETALLE POR INDICADOR"],
         ["Política", pol.codigo],
         ["Referencia", `Ind. ${idx + 1}`],
         ["Indicador", ind.nombre],
         [],
-        ...section("MATRIZ NACIONALIDAD × PERFIL", buildNacPerfilMatrixRows(indRows)),
-        ...section("RESUMEN CRUZADO POR CAMPOS", buildIndicadorCrossCamposRows(indRows)),
       ];
+
+      if (omite) {
+        indSheet.push(
+          ...section(
+            `${OMITE_NAC_PERFIL_SECTION_TITLE.toUpperCase()} — RESUMEN POR CAMPO`,
+            buildIndicadorCamposSoloRows(indRows),
+          ),
+        );
+      } else {
+        indSheet.push(
+          ...section("MATRIZ NACIONALIDAD × PERFIL", buildNacPerfilMatrixRows(indRows)),
+          ...section("RESUMEN CRUZADO POR CAMPOS", buildIndicadorCrossCamposRows(indRows)),
+        );
+      }
       sheets.push({
         name: sanitizeSheetName(`${pol.codigo} Ind${idx + 1}`, used),
         rows: indSheet,

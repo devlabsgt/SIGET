@@ -51,6 +51,7 @@ import {
   ReportGlobalCrossSection,
   ReportPoliticaIndicadorSection,
 } from "./ReportCrossSections";
+import { rowsConNacPerfil, rowsOmiteNacPerfil } from "./lib/cross-report-lib";
 import { ReportExcelButton } from "./ReportExcelButton";
 import { ReportExportHeader } from "./ReportExportHeader";
 import {
@@ -338,6 +339,12 @@ export default function Reportes({ onBack }: ReportesProps) {
     return rows;
   }, [allRows, selectedSectorIds, selectedOrgIds, selectedPoliticaIds, dateMode, selectedYear, singleMonth, startMonth, endMonth]);
 
+  // Filas que aplican a nacionalidad/perfil (excluye Reuniones/Empresas/Actores).
+  const nacPerfilRows = useMemo(() => rowsConNacPerfil(filteredRows), [filteredRows]);
+  const omitRows = useMemo(() => rowsOmiteNacPerfil(filteredRows), [filteredRows]);
+  const hasOmiteNacPerfil = omitRows.length > 0;
+  const hasNacPerfilData = nacPerfilRows.length > 0;
+
   // ── KPIs ──
   const kpis = useMemo(() => {
     const totalAtenciones = filteredRows.reduce((s, r) => s + r.cantidad, 0);
@@ -349,7 +356,7 @@ export default function Reportes({ onBack }: ReportesProps) {
   // ── Donut chart data by different dimensions ──
   const campoDonutData = useMemo(() => {
     const map = new Map<string, { nombre: string; total: number; orden: number }>();
-    for (const r of filteredRows) {
+    for (const r of nacPerfilRows) {
       const key = r.campoId;
       const existing = map.get(key);
       if (existing) {
@@ -361,11 +368,37 @@ export default function Reportes({ onBack }: ReportesProps) {
     return Array.from(map.values())
       .sort((a, b) => a.orden - b.orden)
       .map((d, i) => ({ name: d.nombre, value: d.total, color: softBarColor(i) }));
-  }, [filteredRows]);
+  }, [nacPerfilRows]);
+
+  const omitIndicadorDonutData = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of omitRows) {
+      map.set(r.indicadorNombre, (map.get(r.indicadorNombre) || 0) + r.cantidad);
+    }
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value], i) => ({ name, value, color: softBarColor(i) }));
+  }, [omitRows]);
+
+  const omitCampoDonutData = useMemo(() => {
+    const map = new Map<string, { nombre: string; total: number; orden: number }>();
+    for (const r of omitRows) {
+      const key = r.campoId;
+      const existing = map.get(key);
+      if (existing) {
+        existing.total += r.cantidad;
+      } else {
+        map.set(key, { nombre: r.campoNombre, total: r.cantidad, orden: r.campoOrden });
+      }
+    }
+    return Array.from(map.values())
+      .sort((a, b) => a.orden - b.orden)
+      .map((d, i) => ({ name: d.nombre, value: d.total, color: softBarColor(i) }));
+  }, [omitRows]);
 
   const nacDonutData = useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of filteredRows) {
+    for (const r of nacPerfilRows) {
       const key = r.nacionalidadNombre || "Sin especificar";
       map.set(key, (map.get(key) || 0) + r.cantidad);
     }
@@ -376,18 +409,18 @@ export default function Reportes({ onBack }: ReportesProps) {
       value,
       color: isGuatemalteco(name) ? GUATEMALTECO_CELESTE : nationalityColor(name, otherIdx++),
     }));
-  }, [filteredRows]);
+  }, [nacPerfilRows]);
 
   const perfilDonutData = useMemo(() => {
     const map = new Map<string, number>();
-    for (const r of filteredRows) {
+    for (const r of nacPerfilRows) {
       const key = r.perfilNombre || "Sin especificar";
       map.set(key, (map.get(key) || 0) + r.cantidad);
     }
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .map(([name, value], i) => ({ name, value, color: perfilColor(i) }));
-  }, [filteredRows]);
+  }, [nacPerfilRows]);
 
   const activeDonutData = activeChartTab === "campos" ? campoDonutData
     : activeChartTab === "nacionalidad" ? nacDonutData
@@ -408,8 +441,10 @@ export default function Reportes({ onBack }: ReportesProps) {
 
   // ── Tendencia mensual apilada: registros + nacionalidades por mes ──
   const monthlyStackChart = useMemo(() => {
+    // El apilado por nacionalidad excluye Reuniones/Empresas/Actores; los
+    // registros (línea) siguen contando todas las filas.
     const nacTotals = new Map<string, number>();
-    for (const r of filteredRows) {
+    for (const r of nacPerfilRows) {
       const n = r.nacionalidadNombre || "Sin especificar";
       nacTotals.set(n, (nacTotals.get(n) || 0) + r.cantidad);
     }
@@ -422,7 +457,7 @@ export default function Reportes({ onBack }: ReportesProps) {
     const monthMap = new Map<string, MonthRow>();
     const registroSets = new Map<string, Set<string>>();
 
-    for (const r of filteredRows) {
+    const ensureMonthRow = (r: ReportRow) => {
       const key = `${r.anio}-${String(r.mes).padStart(2, "0")}`;
       if (!monthMap.has(key)) {
         const row: MonthRow = {
@@ -435,10 +470,19 @@ export default function Reportes({ onBack }: ReportesProps) {
         monthMap.set(key, row);
         registroSets.set(key, new Set());
       }
+      return key;
+    };
+
+    for (const r of filteredRows) {
+      const key = ensureMonthRow(r);
+      registroSets.get(key)!.add(r.registroId);
+    }
+
+    for (const r of nacPerfilRows) {
+      const key = ensureMonthRow(r);
       const nac = r.nacionalidadNombre || "Sin especificar";
       const row = monthMap.get(key)!;
       row[nac] = Number(row[nac]) + r.cantidad;
-      registroSets.get(key)!.add(r.registroId);
     }
 
     for (const [key, set] of registroSets) {
@@ -460,7 +504,7 @@ export default function Reportes({ onBack }: ReportesProps) {
     }
 
     return { data, nacNames, indicatorTotals };
-  }, [filteredRows]);
+  }, [filteredRows, nacPerfilRows]);
 
   const monthlyNacColors = useMemo(() => {
     let otherIdx = 0;
@@ -918,11 +962,40 @@ export default function Reportes({ onBack }: ReportesProps) {
                   <KpiCard compact icon={BarChart3} label="Registros" value={fmt(kpis.totalRegistros)} color="sky" />
                   <KpiCard compact icon={Building2} label="Organizaciones" value={fmt(kpis.totalOrgs)} color="cyan" />
                 </div>
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-                  <DimensionDonutPanel title="Campos" data={campoDonutData} chartId="screen-campos" />
-                  <DimensionDonutPanel title="Nacionalidad" data={nacDonutData} chartId="screen-nac" />
-                  <DimensionDonutPanel title="Perfil" data={perfilDonutData} chartId="screen-perfil" />
+                <div
+                  className={`grid grid-cols-1 gap-4 ${
+                    hasNacPerfilData ? "xl:grid-cols-3" : "xl:grid-cols-1"
+                  }`}
+                >
+                  {campoDonutData.length > 0 && (
+                    <DimensionDonutPanel title="Campos" data={campoDonutData} chartId="screen-campos" />
+                  )}
+                  {hasNacPerfilData && (
+                    <DimensionDonutPanel title="Nacionalidad" data={nacDonutData} chartId="screen-nac" />
+                  )}
+                  {hasNacPerfilData && (
+                    <DimensionDonutPanel title="Perfil" data={perfilDonutData} chartId="screen-perfil" />
+                  )}
                 </div>
+                {hasOmiteNacPerfil && (
+                  <div className="pt-4 border-t border-violet-200 dark:border-violet-800/50 space-y-3">
+                    <p className="text-xs font-black uppercase tracking-widest text-violet-600 dark:text-violet-400">
+                      Reuniones, Empresas y Actores
+                    </p>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                      <DimensionDonutPanel
+                        title="Por Indicador"
+                        data={omitIndicadorDonutData}
+                        chartId="screen-omit-ind"
+                      />
+                      <DimensionDonutPanel
+                        title="Por Campo"
+                        data={omitCampoDonutData}
+                        chartId="screen-omit-campo"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               <div className="report-export-hide grid grid-cols-1 xl:grid-cols-[10.5rem_minmax(0,1fr)_minmax(0,1.15fr)] gap-4 xl:gap-6 items-stretch xl:items-center">
@@ -971,10 +1044,35 @@ export default function Reportes({ onBack }: ReportesProps) {
                 <KpiCard icon={Building2} label="Organizaciones" value={fmt(kpis.totalOrgs)} color="cyan" />
               </div>
               <div className="grid grid-cols-1 gap-4">
-                <DimensionDonutPanel title="Campos" data={campoDonutData} chartId="print-campos" />
-                <DimensionDonutPanel title="Nacionalidad" data={nacDonutData} chartId="print-nac" />
-                <DimensionDonutPanel title="Perfil" data={perfilDonutData} chartId="print-perfil" />
+                {campoDonutData.length > 0 && (
+                  <DimensionDonutPanel title="Campos" data={campoDonutData} chartId="print-campos" />
+                )}
+                {hasNacPerfilData && (
+                  <DimensionDonutPanel title="Nacionalidad" data={nacDonutData} chartId="print-nac" />
+                )}
+                {hasNacPerfilData && (
+                  <DimensionDonutPanel title="Perfil" data={perfilDonutData} chartId="print-perfil" />
+                )}
               </div>
+              {hasOmiteNacPerfil && (
+                <div className="mt-6 pt-6 border-t border-violet-200 space-y-3">
+                  <p className="text-xs font-black uppercase tracking-widest text-violet-700">
+                    Reuniones, Empresas y Actores
+                  </p>
+                  <div className="grid grid-cols-1 gap-4">
+                    <DimensionDonutPanel
+                      title="Por Indicador"
+                      data={omitIndicadorDonutData}
+                      chartId="print-omit-ind"
+                    />
+                    <DimensionDonutPanel
+                      title="Por Campo"
+                      data={omitCampoDonutData}
+                      chartId="print-omit-campo"
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

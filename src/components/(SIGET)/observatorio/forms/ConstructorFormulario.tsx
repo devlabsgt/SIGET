@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronDown, ChevronUp, Save, Trash2, X, Loader2, LayoutTemplate, Plus, ArrowUp, ArrowDown, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronUp, Save, Trash2, X, Loader2, Plus, ArrowUp, ArrowDown, Settings2 } from "lucide-react";
 import { useConstructorFormulario } from "./lib/hooks";
 
 interface ConstructorProps {
@@ -74,8 +74,7 @@ export default function ConstructorFormulario({ onBack, initialData }: Construct
             <ChevronLeft className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
           <div>
-            <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <LayoutTemplate className="w-4 h-4 text-emerald-600" />
+            <h2 className="text-2xl font-bold text-foreground leading-tight">
               {initialData?.politica ? "Editar Formulario" : "Crear Formulario"}
             </h2>
           </div>
@@ -207,18 +206,9 @@ export default function ConstructorFormulario({ onBack, initialData }: Construct
                 className="max-w-3xl mx-auto bg-card rounded-3xl border border-border p-0 md:p-8 shadow-xl shadow-slate-200/10 dark:shadow-none space-y-6"
               >
                 {/* Cabecera del Paso 2 */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border w-full px-6 pt-6 md:px-0 md:pt-0">
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-black shrink-0">2</span>
-                    <h3 className="text-[10px] font-black text-foreground uppercase tracking-widest leading-tight">Estructura de Indicadores</h3>
-                  </div>
-                  <button
-                    onClick={handleAddIndicador}
-                    className="w-full sm:w-auto py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer rounded-xl active:scale-95 flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Nuevo Indicador
-                  </button>
+                <div className="flex items-center gap-3 pb-3 border-b border-border w-full px-6 pt-6 md:px-0 md:pt-0">
+                  <span className="w-6 h-6 rounded-full bg-emerald-600 text-white text-[10px] flex items-center justify-center font-black shrink-0">2</span>
+                  <h3 className="text-[10px] font-black text-foreground uppercase tracking-widest leading-tight">Estructura de Indicadores</h3>
                 </div>
 
                 {/* Listado de Indicadores colapsables */}
@@ -397,6 +387,16 @@ export default function ConstructorFormulario({ onBack, initialData }: Construct
                       </motion.div>
                     ))}
                   </AnimatePresence>
+                </div>
+
+                <div className="flex justify-center px-6 md:px-0 pt-2">
+                  <button
+                    onClick={handleAddIndicador}
+                    className="py-2.5 px-4 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400 font-bold text-xs uppercase tracking-wider transition-all cursor-pointer rounded-xl active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Nuevo Indicador
+                  </button>
                 </div>
 
                 {/* Botones de Paso 2 Centrados y Proporcionales */}
