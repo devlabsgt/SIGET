@@ -45,9 +45,9 @@ export default function Confirmar({
   };
 
   return (
-    <div className="w-full space-y-6">
+    <div className="w-full space-y-4 sm:space-y-6">
       <PasoIndicador paso={2} />
-      <div className="rounded-2xl border border-border bg-card/50 px-4 py-3 dark:border-zinc-800">
+      <div className="rounded-xl border border-border bg-card/50 px-3 py-2.5 dark:border-zinc-800 sm:rounded-2xl sm:px-4 sm:py-3">
         <h2 className="text-lg font-black text-foreground dark:text-zinc-50">
           Confirme su informe
         </h2>

@@ -23,6 +23,7 @@ import { AuroraText } from "@/components/ui/aurora-text";
 import { useUser, useUserContext } from "@/components/(base)/providers/UserProvider";
 import {
   getManageableRoles,
+  isObservatorioRole,
   ROLE_LABELS,
 } from "@/components/(base)/(users)/usuarios/lib/permissions";
 
@@ -124,6 +125,8 @@ export default function SignUp({
       logic.setRol(creatableRoles[0]);
     }
   }, [isOpen, creatableRoles, logic.rol, logic.setRol]);
+
+  const showOrganizacion = isObservatorioRole(logic.rol);
 
   const suggestedUsername = useMemo(() => {
     if (logic.name.trim().length > 3) {
@@ -351,7 +354,13 @@ export default function SignUp({
                         id="rol"
                         name="rol"
                         value={logic.rol}
-                        onChange={(e) => logic.setRol(e.target.value)}
+                        onChange={(e) => {
+                          const newRol = e.target.value;
+                          logic.setRol(newRol);
+                          if (!isObservatorioRole(newRol)) {
+                            logic.setOrganizacionId("");
+                          }
+                        }}
                       >
                         {creatableRoles.map((role) => (
                           <option key={role} value={role}>
@@ -361,27 +370,29 @@ export default function SignUp({
                       </Select>
                     </div>
 
-                    <div className="grid gap-2">
-                      <Label htmlFor="organizacion_id">
-                        Organización{" "}
-                        <span className="font-normal text-muted-foreground">
-                          (opcional)
-                        </span>
-                      </Label>
-                      <Select
-                        id="organizacion_id"
-                        name="organizacion_id"
-                        value={logic.organizacionId}
-                        onChange={(e) => logic.setOrganizacionId(e.target.value)}
-                      >
-                        <option value="">Sin organización</option>
-                        {organizaciones.map((org) => (
-                          <option key={org.id} value={org.id}>
-                            {org.nombre}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
+                    {showOrganizacion && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="organizacion_id">
+                          Organización{" "}
+                          <span className="font-normal text-muted-foreground">
+                            (opcional)
+                          </span>
+                        </Label>
+                        <Select
+                          id="organizacion_id"
+                          name="organizacion_id"
+                          value={logic.organizacionId}
+                          onChange={(e) => logic.setOrganizacionId(e.target.value)}
+                        >
+                          <option value="">Sin organización</option>
+                          {organizaciones.map((org) => (
+                            <option key={org.id} value={org.id}>
+                              {org.nombre}
+                            </option>
+                          ))}
+                        </Select>
+                      </div>
+                    )}
 
                     <div className="grid gap-2">
                       <div className="flex items-center justify-between">

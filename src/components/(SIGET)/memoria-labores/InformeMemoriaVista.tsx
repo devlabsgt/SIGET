@@ -182,7 +182,7 @@ function DonutLeyenda({
 }
 
 const beneficiarioSubPanel =
-  "rounded-2xl bg-white p-5 shadow-sm ring-1 ring-sky-100 dark:bg-zinc-900/70 dark:ring-sky-900/40";
+  "rounded-2xl bg-white p-3 shadow-sm ring-1 ring-sky-100 dark:bg-zinc-900/70 dark:ring-sky-900/40 sm:p-5";
 
 function DonutPanel({
   title,
@@ -403,7 +403,7 @@ export function InformeMemoriaEncabezado({
       <button
         type="button"
         onClick={onToggle}
-        className="relative w-full overflow-hidden bg-gradient-to-r from-azul-trifinio to-celeste-trifinio px-5 py-6 text-left transition-opacity hover:opacity-95 sm:px-8 sm:py-7 cursor-pointer"
+        className="relative w-full overflow-hidden bg-gradient-to-r from-azul-trifinio to-celeste-trifinio px-3 py-5 text-left transition-opacity hover:opacity-95 sm:px-8 sm:py-7 cursor-pointer"
       >
         {content}
       </button>
@@ -411,7 +411,7 @@ export function InformeMemoriaEncabezado({
   }
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-r from-azul-trifinio to-celeste-trifinio px-5 py-6 sm:px-8 sm:py-7">
+    <div className="relative overflow-hidden bg-gradient-to-r from-azul-trifinio to-celeste-trifinio px-3 py-5 sm:px-8 sm:py-7">
       {content}
     </div>
   );
@@ -433,8 +433,8 @@ function InformeMemoriaCuerpo({
   footer?: React.ReactNode;
 }) {
   return (
-    <div className="p-5 sm:p-8">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+    <div className="p-3 sm:p-5 md:p-8">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
         {[
           { label: "Oficina / unidad", value: oficina || "—" },
           { label: "Informante", value: nombre || "—" },
@@ -587,7 +587,7 @@ function ProyectoInformeDetalle({
   ];
 
   return (
-    <article className="rounded-3xl border border-slate-200/70 bg-slate-50/40 p-5 sm:p-6 dark:border-zinc-800 dark:bg-zinc-900/30">
+    <article className="rounded-2xl border border-slate-200/70 bg-slate-50/40 p-3 sm:rounded-3xl sm:p-6 dark:border-zinc-800 dark:bg-zinc-900/30">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-azul-trifinio text-lg font-black text-white">
@@ -752,7 +752,7 @@ function SeccionPanel({
 }) {
   const styles = seccionToneStyles[tone];
   return (
-    <section className={cn("rounded-2xl p-5", styles.panel)}>
+    <section className={cn("rounded-2xl p-3 sm:p-5", styles.panel)}>
       <div className="mb-4 flex items-center gap-2.5">
         <span
           className={cn(
