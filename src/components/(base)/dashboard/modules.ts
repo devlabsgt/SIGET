@@ -22,6 +22,15 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     allowedRoles: ["super", "admin", "observatorio"],
   },
   {
+    id: "memoria-labores",
+    title: "Memoria de",
+    subtitle: "Labores",
+    desc: "Formularios institucionales del Plan Trifinio para la memoria de labores semestral.",
+    animatedIcon: "wvhscmei",
+    href: "/siget/memoria-labores",
+    allowedRoles: ["super", "admin", "comunicacion"],
+  },
+  {
     id: "perfil",
     title: "Gestión de",
     subtitle: "Mi Perfil",

@@ -1,11 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
-import { BookOpen, Globe, KeyRound, LogIn, LogOut, Settings, ShieldAlert, Smartphone, User, Users } from "lucide-react";
+import {
+  BookOpen,
+  ChevronDown,
+  FileText,
+  Globe,
+  Home,
+  KeyRound,
+  LogIn,
+  LogOut,
+  Settings,
+  ShieldAlert,
+  Smartphone,
+  User,
+  Users,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { createClient } from "@/utils/supabase/client";
@@ -38,6 +52,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   observatorio: Globe,
   perfil: User,
   admin: Settings,
+  "memoria-labores": FileText,
 };
 
 type MenuAccordionOption = {
@@ -49,7 +64,117 @@ type MenuAccordionOption = {
 
 function MenuAccordionIcon({ optionId }: { optionId: string }) {
   const Icon = MENU_OPTION_ICONS[optionId] ?? User;
-  return <Icon className="size-6 shrink-0 text-celeste-trifinio" strokeWidth={2} aria-hidden />;
+  return <Icon className="size-4 shrink-0 text-celeste-trifinio" strokeWidth={2} aria-hidden />;
+}
+
+type MenuSectionVariant = "modules" | "account" | "admin";
+
+const MENU_SECTION_STYLES: Record<
+  MenuSectionVariant,
+  { label: string; dot: string; panel: string; item: string; itemHover: string; itemActive: string }
+> = {
+  modules: {
+    label: "text-foreground",
+    dot: "bg-celeste-trifinio",
+    panel: "bg-white/90 dark:bg-zinc-900/90 ring-1 ring-zinc-200/80 dark:ring-zinc-700/60",
+    item: "bg-white dark:bg-zinc-900",
+    itemHover: "hover:bg-zinc-50 dark:hover:bg-zinc-800/80",
+    itemActive: "bg-celeste-trifinio/12 dark:bg-celeste-trifinio/20 ring-1 ring-inset ring-celeste-trifinio/30",
+  },
+  account: {
+    label: "text-violet-700 dark:text-violet-300",
+    dot: "bg-violet-500",
+    panel: "bg-violet-50/90 dark:bg-violet-950/40 ring-1 ring-violet-200/70 dark:ring-violet-800/50",
+    item: "bg-white/80 dark:bg-violet-950/50",
+    itemHover: "hover:bg-violet-100/80 dark:hover:bg-violet-900/40",
+    itemActive: "bg-violet-100 dark:bg-violet-900/50 ring-1 ring-inset ring-violet-300/60 dark:ring-violet-600/50",
+  },
+  admin: {
+    label: "text-celeste-trifinio",
+    dot: "bg-celeste-trifinio",
+    panel: "bg-sky-50/90 dark:bg-sky-950/35 ring-1 ring-celeste-trifinio/25 dark:ring-celeste-trifinio/30",
+    item: "bg-white/85 dark:bg-sky-950/45",
+    itemHover: "hover:bg-sky-100/70 dark:hover:bg-sky-900/35",
+    itemActive: "bg-celeste-trifinio/15 dark:bg-celeste-trifinio/25 ring-1 ring-inset ring-celeste-trifinio/35",
+  },
+};
+
+function MenuActiveIndicator({
+  active,
+  variant = "modules",
+}: {
+  active: boolean;
+  variant?: MenuSectionVariant;
+}) {
+  const accent =
+    variant === "account"
+      ? "bg-violet-500"
+      : "bg-celeste-trifinio";
+
+  return (
+    <span
+      className={cn(
+        "absolute left-0 top-2 bottom-2 w-1 rounded-r-full transition-all duration-300 ease-out",
+        accent,
+        active ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50",
+      )}
+    />
+  );
+}
+
+function MenuSection({
+  label,
+  children,
+  variant = "modules",
+}: {
+  label: string;
+  children: ReactNode;
+  variant?: MenuSectionVariant;
+}) {
+  const styles = MENU_SECTION_STYLES[variant];
+
+  return (
+    <section className="space-y-2.5">
+      <div className="flex items-center gap-2.5 px-0.5">
+        <span className={cn("size-2 shrink-0 rounded-full", styles.dot)} />
+        <h3 className={cn("text-[11px] font-black uppercase tracking-[0.18em]", styles.label)}>
+          {label}
+        </h3>
+        <div className="h-px flex-1 bg-border/70" />
+      </div>
+      <div className={cn("space-y-2 rounded-2xl p-2", styles.panel)}>{children}</div>
+    </section>
+  );
+}
+
+function MenuItemShell({
+  id,
+  variant = "modules",
+  active = false,
+  className,
+  children,
+}: {
+  id?: string;
+  variant?: MenuSectionVariant;
+  active?: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const styles = MENU_SECTION_STYLES[variant];
+
+  return (
+    <div
+      id={id}
+      className={cn(
+        "overflow-hidden rounded-xl transition-colors duration-200",
+        styles.item,
+        active ? styles.itemActive : styles.itemHover,
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 function MenuAccordion({
@@ -64,6 +189,8 @@ function MenuAccordion({
   isRouteActive,
   onNavigate,
   onOptionClick,
+  variant = "modules",
+  icon: HeaderIcon = User,
 }: {
   id: string;
   title: string;
@@ -76,48 +203,62 @@ function MenuAccordion({
   isRouteActive: boolean;
   onNavigate: () => void;
   onOptionClick?: (optionId: string) => void;
+  variant?: MenuSectionVariant;
+  icon?: LucideIcon;
 }) {
   const isExpanded = open || isRouteActive;
+  const styles = MENU_SECTION_STYLES[variant];
+  const titleAccent =
+    variant === "account"
+      ? isExpanded
+        ? "text-violet-700 dark:text-violet-300"
+        : "text-foreground"
+      : isExpanded
+        ? "text-celeste-trifinio"
+        : "text-foreground";
 
   return (
-    <div
-      id={id}
-      className={cn(
-        "overflow-hidden transition-colors duration-300 ease-out",
-        open && "bg-zinc-100 dark:bg-zinc-800/70",
-      )}
-    >
+    <MenuItemShell variant={variant} active={isExpanded} id={id}>
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={open}
-        className={cn(
-          "relative flex w-full items-center gap-3 px-5 py-3.5 text-left transition-colors duration-300 cursor-pointer",
-          !open && "hover:bg-muted/50 dark:hover:bg-white/5",
-        )}
+        className="relative flex w-full items-center gap-3 px-3.5 py-3 text-left cursor-pointer"
       >
-        <span
+        <MenuActiveIndicator active={isExpanded} variant={variant} />
+        <div
           className={cn(
-            "absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-celeste-trifinio transition-all duration-300 ease-out",
-            isExpanded ? "opacity-100 scale-y-100" : "opacity-0 scale-y-50",
+            "flex size-9 shrink-0 items-center justify-center rounded-lg",
+            isExpanded
+              ? variant === "account"
+                ? "bg-violet-500/15 dark:bg-violet-500/25"
+                : "bg-celeste-trifinio/15 dark:bg-celeste-trifinio/25"
+              : "bg-zinc-100 dark:bg-zinc-800",
           )}
-        />
-        <div className="min-w-0 flex-1 pl-1">
-          <p
+        >
+          <HeaderIcon
             className={cn(
-              "text-xs font-black uppercase leading-tight bg-gradient-to-r from-celeste-trifinio to-celeste-trifinio bg-clip-text transition-[background-size,color] duration-500 ease-out",
-              open
-                ? "bg-[length:100%_100%] text-transparent"
-                : "bg-[length:0%_100%] text-foreground",
+              "size-4",
+              variant === "account" ? "text-violet-600 dark:text-violet-300" : "text-celeste-trifinio",
             )}
-          >
+            strokeWidth={2.25}
+          />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={cn("text-xs font-black uppercase leading-tight transition-colors", titleAccent)}>
             {title}
             {subtitle ? ` ${subtitle}` : ""}
           </p>
-          <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-1">
+          <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
             {desc}
           </p>
         </div>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform duration-300",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
       <div
@@ -127,27 +268,34 @@ function MenuAccordion({
         )}
       >
         <div className="overflow-hidden">
-          <div className="flex flex-col">
+          <div className={cn("mx-2 mb-2 space-y-1.5 rounded-xl p-1.5", styles.panel)}>
             {options.map((opt, index) => {
               const isActive = opt.href
                 ? pathname === opt.href || pathname.startsWith(`${opt.href}/`)
                 : false;
 
               const itemClassName = cn(
-                "flex w-full items-center gap-3 px-5 py-3 text-left transition-colors duration-200 cursor-pointer",
+                "relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-200 cursor-pointer",
                 open ? "translate-y-0 opacity-100" : "-translate-y-1 opacity-0",
-                isActive
-                  ? "bg-zinc-200/80 dark:bg-zinc-700/60"
-                  : "hover:bg-zinc-200/80 dark:hover:bg-zinc-700/60",
+                isActive ? styles.itemActive : styles.itemHover,
+                styles.item,
               );
 
               const itemContent = (
                 <>
-                  <MenuAccordionIcon optionId={opt.id} />
+                  <MenuActiveIndicator active={isActive} variant={variant} />
+                  <div
+                    className={cn(
+                      "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                      variant === "account"
+                        ? "bg-violet-500/10 dark:bg-violet-500/20"
+                        : "bg-celeste-trifinio/10 dark:bg-celeste-trifinio/15",
+                    )}
+                  >
+                    <MenuAccordionIcon optionId={opt.id} />
+                  </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-bold leading-tight text-foreground">
-                      {opt.title}
-                    </p>
+                    <p className="text-sm font-bold leading-tight text-foreground">{opt.title}</p>
                     <p className="text-[10px] text-muted-foreground leading-snug truncate mt-0.5">
                       {opt.desc}
                     </p>
@@ -189,7 +337,7 @@ function MenuAccordion({
           </div>
         </div>
       </div>
-    </div>
+    </MenuItemShell>
   );
 }
 
@@ -197,6 +345,52 @@ interface MenuProps {
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
   user: any;
+}
+
+function MenuHomeLink({
+  pathname,
+  onNavigate,
+}: {
+  pathname: string;
+  onNavigate: () => void;
+}) {
+  const isActive = pathname === "/siget";
+
+  return (
+    <MenuItemShell variant="modules" active={isActive}>
+      <Link
+        id="menu-inicio"
+        href="/siget"
+        onClick={onNavigate}
+        className="relative flex items-center gap-3 px-3.5 py-3 cursor-pointer"
+      >
+        <MenuActiveIndicator active={isActive} variant="modules" />
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+            isActive
+              ? "bg-celeste-trifinio/15 dark:bg-celeste-trifinio/25"
+              : "bg-zinc-100 dark:bg-zinc-800",
+          )}
+        >
+          <Home className="size-4 text-celeste-trifinio" strokeWidth={2.25} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "text-xs font-black uppercase leading-tight transition-colors",
+              isActive ? "text-celeste-trifinio" : "text-foreground",
+            )}
+          >
+            Inicio
+          </p>
+          <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
+            Panel principal y acceso a los módulos del sistema.
+          </p>
+        </div>
+      </Link>
+    </MenuItemShell>
+  );
 }
 
 function MenuModuleLink({
@@ -212,30 +406,40 @@ function MenuModuleLink({
   const Icon = MODULE_ICONS[mod.id] ?? User;
 
   return (
-    <Link
-      id={`menu-${mod.id}`}
-      href={mod.href}
-      onClick={onNavigate}
-      className={cn(
-        "flex items-center gap-3 px-5 py-3.5 transition-colors cursor-pointer",
-        isActive
-          ? "bg-zinc-100 dark:bg-zinc-800/70"
-          : "hover:bg-muted/50 dark:hover:bg-white/5",
-      )}
-    >
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted/60 dark:bg-white/10">
-        <Icon className="size-5 text-celeste-trifinio" strokeWidth={2.25} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs font-black uppercase leading-tight text-foreground">
-          {mod.title}
-          {mod.subtitle ? ` ${mod.subtitle}` : ""}
-        </p>
-        <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
-          {mod.desc}
-        </p>
-      </div>
-    </Link>
+    <MenuItemShell variant="modules" active={isActive}>
+      <Link
+        id={`menu-${mod.id}`}
+        href={mod.href}
+        onClick={onNavigate}
+        className="relative flex items-center gap-3 px-3.5 py-3 cursor-pointer"
+      >
+        <MenuActiveIndicator active={isActive} variant="modules" />
+        <div
+          className={cn(
+            "flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors",
+            isActive
+              ? "bg-celeste-trifinio/15 dark:bg-celeste-trifinio/25"
+              : "bg-zinc-100 dark:bg-zinc-800",
+          )}
+        >
+          <Icon className="size-4 text-celeste-trifinio" strokeWidth={2.25} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              "text-xs font-black uppercase leading-tight transition-colors",
+              isActive ? "text-celeste-trifinio" : "text-foreground",
+            )}
+          >
+            {mod.title}
+            {mod.subtitle ? ` ${mod.subtitle}` : ""}
+          </p>
+          <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">
+            {mod.desc}
+          </p>
+        </div>
+      </Link>
+    </MenuItemShell>
   );
 }
 
@@ -341,21 +545,21 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
 
             <aside
               className={cn(
-                "fixed right-0 z-[110] pointer-events-auto w-full sm:w-100 bg-card border-l border-border/40 transition-transform duration-500 overflow-y-auto flex flex-col",
+                "fixed right-0 z-[110] pointer-events-auto w-full sm:w-100 bg-zinc-100/95 dark:bg-zinc-950 border-l border-border/50 transition-transform duration-500 overflow-y-auto flex flex-col",
                 menuTop,
                 menuHeight,
                 isOpen ? "translate-x-0" : "translate-x-full pointer-events-none",
               )}
             >
         {user ? (
-          <>
-            <div className="flex w-full shrink-0 items-center justify-between px-6 h-[var(--mobile-breadcrumb-height)] md:h-auto md:pt-6 md:pb-4">
+          <div className="shrink-0 border-b border-celeste-trifinio/15 bg-gradient-to-b from-celeste-trifinio/12 via-celeste-trifinio/5 to-transparent dark:from-celeste-trifinio/20 dark:via-celeste-trifinio/8 dark:to-transparent">
+            <div className="flex w-full items-center justify-between px-5 h-[var(--mobile-breadcrumb-height)] md:h-auto md:pt-5 md:pb-3">
               <button
                 type="button"
                 onClick={handleLogout}
                 className="group flex items-center justify-center gap-2 text-red-500 dark:text-red-400 cursor-pointer transition-colors duration-300 active:scale-95"
               >
-                <LogOut className="size-4 md:size-6 shrink-0 rotate-180 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:-translate-x-0.5" />
+                <LogOut className="size-4 md:size-5 shrink-0 rotate-180 transition-transform duration-500 ease-out group-hover:scale-125 group-hover:-translate-x-0.5" />
                 <span className="text-sm font-bold bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_2px] bg-left-bottom bg-no-repeat transition-[background-size] duration-300 ease-out group-hover:bg-[length:100%_2px]">
                   Cerrar Sesión
                 </span>
@@ -363,118 +567,125 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
               <PushNotificationToggle />
             </div>
 
-            <div className="px-6">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Usuario:
-                  </p>
-                  <p className="font-bold leading-tight text-celeste-trifinio truncate">{usuario}</p>
-                </div>
-                <div className="min-w-0 text-right">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Rol:
-                  </p>
-                  <p className="font-bold leading-tight text-celeste-trifinio uppercase truncate">
-                    {effectiveRole}
-                  </p>
-                </div>
-                <div className="col-span-2 min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                    Nombre:
-                  </p>
-                  <p className="font-bold leading-tight text-celeste-trifinio truncate">{nombre}</p>
+            <div className="px-5 pb-4">
+              <div className="rounded-2xl bg-white/90 dark:bg-zinc-900/90 p-4 shadow-sm ring-1 ring-white/60 dark:ring-zinc-700/60">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Usuario
+                    </p>
+                    <p className="font-bold leading-tight text-celeste-trifinio truncate">{usuario}</p>
+                  </div>
+                  <div className="min-w-0 text-right">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Rol
+                    </p>
+                    <p className="font-bold leading-tight text-celeste-trifinio uppercase truncate">
+                      {effectiveRole}
+                    </p>
+                  </div>
+                  <div className="col-span-2 min-w-0 border-t border-border/40 pt-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Nombre
+                    </p>
+                    <p className="font-bold leading-tight text-foreground truncate">{nombre}</p>
+                  </div>
                 </div>
               </div>
+
+              <button
+                type="button"
+                onClick={() => setIsManualOpen(true)}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-celeste-trifinio/40 bg-white/50 dark:bg-zinc-900/40 px-4 py-2.5 text-left transition-colors duration-200 hover:border-celeste-trifinio hover:bg-white/80 dark:hover:bg-zinc-900/70 cursor-pointer active:scale-[0.99]"
+              >
+                <BookOpen className="size-4 text-celeste-trifinio shrink-0" strokeWidth={2.25} />
+                <span className="text-xs font-bold text-celeste-trifinio">Manual de Usuario</span>
+              </button>
             </div>
-          </>
+          </div>
         ) : (
           <div className="p-6" />
         )}
 
-        {user && (
-          <div className="px-6 pt-4">
-            <button
-              type="button"
-              onClick={() => setIsManualOpen(true)}
-              className="group flex w-full items-center gap-3 rounded-xl border border-celeste-trifinio/30 bg-celeste-trifinio/5 px-4 py-3 text-left transition-colors duration-300 hover:bg-celeste-trifinio/10 cursor-pointer active:scale-[0.99]"
-            >
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-celeste-trifinio/15">
-                <BookOpen className="size-5 text-celeste-trifinio" strokeWidth={2.25} />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs font-black uppercase leading-tight text-foreground">
-                  Manual de Usuario
-                </p>
-                <p className="text-[10px] text-muted-foreground leading-snug mt-0.5 line-clamp-1">
-                  Consulta la guía completa del sistema
-                </p>
-              </div>
-            </button>
-          </div>
-        )}
-
-        <div className="flex flex-col flex-1 py-6 pb-8">
+        <div className="flex flex-col flex-1 px-4 py-6 pb-8">
           {user ? (
             <>
-              {(mainModules.length > 0 || observatorioModule || perfilModule || adminModule) && (
-                <nav className="mb-6 flex flex-col divide-y divide-border/25">
-                  {observatorioModule && (
-                    <MenuAccordion
-                      id="menu-observatorio"
-                      title={observatorioModule.title}
-                      subtitle={observatorioModule.subtitle}
-                      desc={observatorioModule.desc}
-                      options={OBSERVATORIO_MENU_OPTIONS}
-                      pathname={pathname}
-                      open={openAccordionId === "observatorio"}
-                      onToggle={() => toggleAccordion("observatorio")}
-                      isRouteActive={isObservatorioRoute}
-                      onNavigate={() => setIsOpen(false)}
-                    />
+              <nav className="mb-6 flex flex-col gap-7">
+                <MenuSection label="Inicio" variant="modules">
+                  <MenuHomeLink
+                    pathname={pathname}
+                    onNavigate={() => setIsOpen(false)}
+                  />
+                </MenuSection>
+
+                {(observatorioModule || mainModules.length > 0) && (
+                    <MenuSection label="Módulos SIGET" variant="modules">
+                      {observatorioModule && (
+                        <MenuAccordion
+                          id="menu-observatorio"
+                          title={observatorioModule.title}
+                          subtitle={observatorioModule.subtitle}
+                          desc={observatorioModule.desc}
+                          options={OBSERVATORIO_MENU_OPTIONS}
+                          pathname={pathname}
+                          open={openAccordionId === "observatorio"}
+                          onToggle={() => toggleAccordion("observatorio")}
+                          isRouteActive={isObservatorioRoute}
+                          onNavigate={() => setIsOpen(false)}
+                          variant="modules"
+                          icon={Globe}
+                        />
+                      )}
+                      {mainModules.map((mod) => (
+                        <MenuModuleLink
+                          key={mod.id}
+                          mod={mod}
+                          pathname={pathname}
+                          onNavigate={() => setIsOpen(false)}
+                        />
+                      ))}
+                    </MenuSection>
                   )}
 
                   {perfilModule && (
-                    <MenuAccordion
-                      id="menu-perfil"
-                      title={perfilModule.title}
-                      subtitle={perfilModule.subtitle}
-                      desc={perfilModule.desc}
-                      options={perfilMenuOptions}
-                      pathname={pathname}
-                      open={openAccordionId === "perfil"}
-                      onToggle={() => toggleAccordion("perfil")}
-                      isRouteActive={isProfileOpen || (isPasskeysOpen && passkeysEnabled)}
-                      onNavigate={() => setIsOpen(false)}
-                      onOptionClick={handlePerfilOptionClick}
-                    />
+                    <MenuSection label="Mi Cuenta" variant="account">
+                      <MenuAccordion
+                        id="menu-perfil"
+                        title={perfilModule.title}
+                        subtitle={perfilModule.subtitle}
+                        desc={perfilModule.desc}
+                        options={perfilMenuOptions}
+                        pathname={pathname}
+                        open={openAccordionId === "perfil"}
+                        onToggle={() => toggleAccordion("perfil")}
+                        isRouteActive={isProfileOpen || (isPasskeysOpen && passkeysEnabled)}
+                        onNavigate={() => setIsOpen(false)}
+                        onOptionClick={handlePerfilOptionClick}
+                        variant="account"
+                        icon={User}
+                      />
+                    </MenuSection>
                   )}
-
-                  {mainModules.map((mod) => (
-                    <MenuModuleLink
-                      key={mod.id}
-                      mod={mod}
-                      pathname={pathname}
-                      onNavigate={() => setIsOpen(false)}
-                    />
-                  ))}
 
                   {adminModule && (
-                    <MenuAccordion
-                      id="menu-admin"
-                      title={adminModule.title}
-                      subtitle={adminModule.subtitle}
-                      desc={adminModule.desc}
-                      options={getVisibleAdminOptions(ADMIN_MENU_OPTIONS, effectiveRole)}
-                      pathname={pathname}
-                      open={openAccordionId === "admin"}
-                      onToggle={() => toggleAccordion("admin")}
-                      isRouteActive={isAdminRoute}
-                      onNavigate={() => setIsOpen(false)}
-                    />
+                    <MenuSection label="Administración" variant="admin">
+                      <MenuAccordion
+                        id="menu-admin"
+                        title={adminModule.title}
+                        subtitle={adminModule.subtitle}
+                        desc={adminModule.desc}
+                        options={getVisibleAdminOptions(ADMIN_MENU_OPTIONS, effectiveRole)}
+                        pathname={pathname}
+                        open={openAccordionId === "admin"}
+                        onToggle={() => toggleAccordion("admin")}
+                        isRouteActive={isAdminRoute}
+                        onNavigate={() => setIsOpen(false)}
+                        variant="admin"
+                        icon={Settings}
+                      />
+                    </MenuSection>
                   )}
                 </nav>
-              )}
             </>
           ) : (
             <div className="mb-8 mt-2">
@@ -505,6 +716,7 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
                 <option value="admin">Simular: ADMIN</option>
                 <option value="admin-observatorio">Simular: ADMIN-OBSERVATORIO</option>
                 <option value="observatorio">Simular: OBSERVATORIO</option>
+                <option value="comunicacion">Simular: COMUNICACIÓN</option>
                 <option value="user">Simular: USER</option>
               </select>
             </div>

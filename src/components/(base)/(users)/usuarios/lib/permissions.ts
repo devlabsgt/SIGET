@@ -2,6 +2,7 @@ export const ROLE_LABELS: Record<string, string> = {
   user: "Usuario (Estándar)",
   observatorio: "Observatorio",
   "admin-observatorio": "Admin Observatorio",
+  comunicacion: "Comunicación",
   admin: "Administrador",
   super: "Super Admin",
 };
@@ -11,6 +12,7 @@ export const ROLE_ORDER = [
   "admin",
   "admin-observatorio",
   "observatorio",
+  "comunicacion",
   "user",
 ] as const;
 

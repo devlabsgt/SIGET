@@ -14,7 +14,7 @@ export default function ConditionalFooter() {
   return (
     <footer
       className={cn(
-        "w-full relative z-10 mt-auto",
+        "w-full relative z-10 mt-auto shrink-0",
         isDashboard
           ? "bg-muted dark:bg-muted border-t-0"
           : "bg-card border-t border-border/40",

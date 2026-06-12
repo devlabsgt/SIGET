@@ -53,6 +53,7 @@ Todo componente debe ser autocontenido. Queda prohibido dispersar la lógica en 
 - Consistencia Arquitectónica: Antes de proponer o crear una nueva funcionalidad, el asistente debe inspeccionar el directorio local del componente en `components/[nombre-componente]/` y apegarse estrictamente a la división de archivos existente (`ComponentePrincipal`, `forms/`, `lib/`).
 - Preferencia de Herramientas: Si el asistente requiere realizar consultas asíncronas desde componentes del cliente, debe estructurar la petición utilizando los hooks de TanStack Query (`useQuery` o `useMutation`), absteniéndose de sugerir estructuras basadas en `useEffect` tradicionales para la carga de datos.
 
+
 ### 6. Convención Estricta para Enrutamiento (Carpeta app/)
 - Los archivos dentro de la carpeta `app/` (`page.tsx`) deben actuar exclusivamente como contenedores limpios y enrutadores. Está PROHIBIDO maquetar interfaces complejas, lógica de negocio o estados directamente en ellos.
 - Cada archivo `page.tsx` debe limitarse únicamente a importar y renderizar el `ComponentePrincipal` correspondiente, envolviéndolo obligatoriamente en una frontera de `<Suspense>` para optimizar el streaming del lado del servidor.
