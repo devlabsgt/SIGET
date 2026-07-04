@@ -12,6 +12,10 @@ import {
   periodoFromProyectos,
   sumBeneficiariosProyectos,
 } from "./types";
+import {
+  MEMORIA_IMAGENES_BUCKET,
+  normalizeImagenStoragePath,
+} from "@/components/(base)/imgs/constants";
 
 const TABLE = "cs_proyectos_memoria_labores";
 const ALLOWED_ROLES = ["super", "admin", "comunicacion"];
@@ -395,11 +399,86 @@ export async function updateProyectoMemoria(
   return normalize(row, informante);
 }
 
+function collectImagenPathsFromDb(imagenes: unknown): string[] {
+  if (!Array.isArray(imagenes)) return [];
+  const paths = new Set<string>();
+  for (const grupo of imagenes) {
+    if (!Array.isArray(grupo)) continue;
+    for (const entry of grupo) {
+      if (typeof entry !== "string") continue;
+      const clean = normalizeImagenStoragePath(entry);
+      if (clean) paths.add(clean);
+    }
+  }
+  return [...paths];
+}
+
 export async function deleteProyectoMemoria(id: string): Promise<void> {
   const { supabase, role } = await requireRoleAccess();
   if (!isPrivilegedMemoriaRole(role)) {
     throw new Error("No tiene permisos para eliminar informes.");
   }
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(TABLE)
+    .select("id, imagenes")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) {
+    if (fetchError.code === "PGRST116") {
+      throw new Error("Informe no encontrado.");
+    }
+    throw new Error(fetchError.message);
+  }
+
+  const paths = collectImagenPathsFromDb((existing as MemoriaRow).imagenes);
+  if (paths.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from(MEMORIA_IMAGENES_BUCKET)
+      .remove(paths);
+    if (storageError) {
+      throw new Error("No se pudieron eliminar las imágenes del informe.");
+    }
+  }
+
   const { error } = await supabase.from(TABLE).delete().eq("id", id);
+  if (error) throw new Error(error.message);
+}
+
+export async function updateMemoriaImagenes(
+  id: string,
+  imagenes: string[][],
+): Promise<void> {
+  const { supabase, user, role } = await requireRoleAccess();
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(TABLE)
+    .select("id, created_by, proyectos")
+    .eq("id", id)
+    .single();
+
+  if (fetchError) {
+    if (fetchError.code === "PGRST116") {
+      throw new Error("Informe no encontrado.");
+    }
+    throw new Error(fetchError.message);
+  }
+
+  await assertMemoriaOwnership(user, role, existing as MemoriaRow);
+
+  const proyectos = normalizeProyectosFromDb(
+    (existing as MemoriaRow).proyectos,
+  );
+  const normalized = normalizeImagenesFromDb(imagenes, proyectos.length);
+
+  const { error } = await supabase
+    .from(TABLE)
+    .update({
+      imagenes: normalized,
+      updated_by: user.id,
+    })
+    .eq("id", id);
+
   if (error) throw new Error(error.message);
 }

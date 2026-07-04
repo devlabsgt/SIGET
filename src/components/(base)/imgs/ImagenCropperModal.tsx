@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Cropper, { Area } from "react-easy-crop";
-import { Loader2, RotateCw, X, ZoomIn, ZoomOut } from "lucide-react";
+import { Loader2, RotateCw, Undo2, X, ZoomIn, ZoomOut } from "lucide-react";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import { cropImage, type PixelCrop } from "./cropImage";
@@ -23,11 +23,15 @@ export default function ImagenCropperModal({
   imageSrc,
   onClose,
   onApply,
+  queuePosition,
+  queueTotal,
 }: {
   open: boolean;
   imageSrc: string;
   onClose: () => void;
   onApply: (file: File) => Promise<void>;
+  queuePosition?: number;
+  queueTotal?: number;
 }) {
   const reduceMotion = useReducedMotion();
   const cropContainerRef = useRef<HTMLDivElement>(null);
@@ -39,6 +43,7 @@ export default function ImagenCropperModal({
     null,
   );
   const [uploading, setUploading] = useState(false);
+  const [cropperResetKey, setCropperResetKey] = useState(0);
 
   useEffect(() => {
     if (!open) return;
@@ -84,6 +89,20 @@ export default function ImagenCropperModal({
     setRotation((r) => r + 90);
     setCrop({ x: 0, y: 0 });
   };
+
+  const handleReset = () => {
+    setRotation(0);
+    setCrop({ x: 0, y: 0 });
+    setCroppedAreaPixels(null);
+    setCropperResetKey((k) => k + 1);
+  };
+
+  const secondaryBtn =
+    "inline-flex h-11 w-[5rem] shrink-0 flex-col items-center justify-center gap-0.5 rounded-xl border-0 bg-zinc-200 px-1.5 text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600";
+  const confirmBtn =
+    "inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-xl border-0 bg-azul-trifinio px-8 text-[10px] font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer";
+  const cancelBtn =
+    "inline-flex h-11 shrink-0 items-center justify-center rounded-xl border-0 bg-zinc-200 px-8 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600";
 
   const handleApply = async () => {
     if (!croppedAreaPixels) return;
@@ -153,10 +172,17 @@ export default function ImagenCropperModal({
               "md:max-h-[92dvh] md:max-w-2xl md:rounded-3xl md:border md:border-border md:shadow-lg dark:md:border-zinc-700",
             )}
           >
-            <div className="flex shrink-0 items-center justify-between px-5 pt-[max(1.25rem,env(safe-area-inset-top))] md:px-6 md:pt-6">
-              <h3 className="text-base font-black text-foreground md:text-lg">
-                Recortar imagen
-              </h3>
+            <div className="flex shrink-0 items-center justify-between px-2.5 pt-[max(1.25rem,env(safe-area-inset-top))] md:px-6 md:pt-6">
+              <div className="min-w-0">
+                <h3 className="text-base font-black text-foreground md:text-lg">
+                  Recortar imagen
+                </h3>
+                {queueTotal != null && queueTotal > 1 && queuePosition != null && (
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    Imagen {queuePosition} de {queueTotal}
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={onClose}
@@ -167,66 +193,90 @@ export default function ImagenCropperModal({
               </button>
             </div>
 
-            <div
-              ref={cropContainerRef}
-              className="relative mx-5 mt-3 min-h-[min(52dvh,520px)] flex-1 overflow-hidden rounded-2xl bg-white md:mx-6 md:mt-4 md:min-h-[min(58dvh,560px)]"
-            >
-              <Cropper
-                image={imageSrc}
-                crop={crop}
-                zoom={zoom}
-                minZoom={minZoom}
-                maxZoom={ZOOM_MAX}
-                rotation={rotation}
-                aspect={MEMORIA_IMAGEN_ASPECT}
-                objectFit="contain"
-                restrictPosition={false}
-                showGrid
-                onCropChange={setCrop}
-                onZoomChange={setZoom}
-                onRotationChange={setRotation}
-                onCropComplete={onCropComplete}
-                onMediaLoaded={handleMediaLoaded}
-                style={{
-                  containerStyle: { background: "#ffffff" },
-                  mediaStyle: { background: "#ffffff" },
-                  cropAreaStyle: { border: "2px solid #059669" },
-                }}
-              />
+            <div className="flex min-h-0 flex-1 flex-col justify-center overflow-y-auto max-md:px-2.5 md:mx-6 md:mt-4">
+              <div className="flex w-full flex-col py-2 md:gap-3 md:py-0">
+                <div
+                  ref={cropContainerRef}
+                  className={cn(
+                    "relative w-full overflow-hidden bg-white",
+                    "aspect-[3/4] max-md:rounded-xl",
+                    "md:min-h-[min(58dvh,560px)] md:aspect-auto md:rounded-2xl",
+                  )}
+                >
+                  <Cropper
+                    key={`${imageSrc}-${cropperResetKey}`}
+                    image={imageSrc}
+                    crop={crop}
+                    zoom={zoom}
+                    minZoom={minZoom}
+                    maxZoom={ZOOM_MAX}
+                    rotation={rotation}
+                    aspect={MEMORIA_IMAGEN_ASPECT}
+                    objectFit="contain"
+                    restrictPosition={false}
+                    showGrid
+                    onCropChange={setCrop}
+                    onZoomChange={setZoom}
+                    onRotationChange={setRotation}
+                    onCropComplete={onCropComplete}
+                    onMediaLoaded={handleMediaLoaded}
+                    style={{
+                      containerStyle: { background: "#ffffff" },
+                      mediaStyle: { background: "#ffffff" },
+                      cropAreaStyle: { border: "2px solid #1a95d3" },
+                    }}
+                  />
+                </div>
+
+                <div className="mt-3 flex w-full items-stretch gap-2 md:mt-3">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    disabled={uploading}
+                    className={secondaryBtn}
+                    aria-label="Restablecer imagen"
+                  >
+                    <Undo2 className="h-4 w-4 shrink-0" />
+                    <span className="text-[10px] font-semibold leading-none">
+                      Restablecer
+                    </span>
+                  </button>
+                  <div className="flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-xl bg-zinc-200 px-3.5 dark:bg-zinc-700">
+                    <ZoomOut className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <input
+                      type="range"
+                      min={minZoom}
+                      max={ZOOM_MAX}
+                      step={0.05}
+                      value={Math.max(minZoom, Math.min(ZOOM_MAX, zoom))}
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="min-w-0 flex-1 accent-celeste-trifinio [&::-webkit-slider-thumb]:h-5 [&::-webkit-slider-thumb]:w-5 [&::-webkit-slider-runnable-track]:h-2"
+                    />
+                    <ZoomIn className="h-5 w-5 shrink-0 text-muted-foreground" />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRotate}
+                    disabled={uploading}
+                    className={secondaryBtn}
+                    aria-label="Rotar imagen"
+                  >
+                    <RotateCw className="h-4 w-4 shrink-0" />
+                    <span className="text-[10px] font-semibold leading-none">
+                      Rotar
+                    </span>
+                  </button>
+                </div>
+              </div>
             </div>
 
-            <div className="shrink-0 space-y-3 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6 md:pb-6">
-              <div className="flex items-center gap-3">
-                <ZoomOut className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <input
-                  type="range"
-                  min={minZoom}
-                  max={ZOOM_MAX}
-                  step={0.05}
-                  value={Math.max(minZoom, Math.min(ZOOM_MAX, zoom))}
-                  onChange={(e) => setZoom(Number(e.target.value))}
-                  className="flex-1 accent-emerald-600"
-                />
-                <ZoomIn className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </div>
-
-              <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={handleRotate}
-                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-zinc-200 px-4 text-xs font-bold text-zinc-700 transition-colors hover:bg-zinc-300 cursor-pointer dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
-                >
-                  Rotar Imagen
-                  <RotateCw className="h-4 w-4 shrink-0" />
-                </button>
-              </div>
-
-              <div className="flex items-center justify-center gap-3 pt-1">
+            <div className="shrink-0 px-2.5 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6 md:pb-6">
+              <div className="flex w-full items-stretch justify-end gap-3">
                 <button
                   type="button"
                   onClick={onClose}
                   disabled={uploading}
-                  className="inline-flex h-11 flex-1 items-center justify-center rounded-xl border-0 bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 md:flex-none"
+                  className={cancelBtn}
                 >
                   Cancelar
                 </button>
@@ -234,7 +284,7 @@ export default function ImagenCropperModal({
                   type="button"
                   onClick={handleApply}
                   disabled={uploading || !croppedAreaPixels}
-                  className="inline-flex h-11 flex-1 items-center justify-center gap-2 rounded-xl border-0 bg-emerald-200 px-6 text-[10px] font-bold uppercase tracking-widest text-emerald-900 transition-colors hover:bg-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-emerald-800/70 dark:text-emerald-50 dark:hover:bg-emerald-700/80 md:flex-none"
+                  className={confirmBtn}
                 >
                   {uploading ? (
                     <>

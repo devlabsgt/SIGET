@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import {
   getImagenPublicUrl,
@@ -17,6 +17,7 @@ export default function ImagenTile({
   busy,
   disabled,
   onView,
+  onEdit,
   onDelete,
 }: {
   path: string;
@@ -25,10 +26,11 @@ export default function ImagenTile({
   busy?: boolean;
   disabled?: boolean;
   onView: (url: string) => void;
+  onEdit?: (url: string) => void;
   onDelete: () => void;
 }) {
   const storagePath = normalizeImagenStoragePath(path) ?? path;
-  const { url: storedUrl, loading } = useImagenDisplayUrl(storagePath);
+  const { url: storedUrl, loading, missing } = useImagenDisplayUrl(storagePath);
   const [previewBroken, setPreviewBroken] = useState(false);
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [imgFailed, setImgFailed] = useState(false);
@@ -84,9 +86,13 @@ export default function ImagenTile({
     setImgFailed(true);
   };
 
+  const showMissing =
+    missing && (!previewUrl || previewBroken) && !loading;
+  const showFailed = imgFailed || (showMissing && !loading);
+
   return (
     <div className="relative aspect-[3/4] w-full overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-      {displayUrl && !imgFailed ? (
+      {displayUrl && !showFailed ? (
         <button
           type="button"
           onClick={() => onView(displayUrl)}
@@ -106,21 +112,43 @@ export default function ImagenTile({
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : (
-        <div className="flex h-full w-full items-center justify-center px-2 text-center text-[10px] font-semibold text-muted-foreground">
-          No se pudo cargar la imagen
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center text-[10px] font-semibold text-muted-foreground">
+          <span>
+            {showMissing
+              ? "Archivo no encontrado en storage"
+              : "No se pudo cargar la imagen"}
+          </span>
+          {showMissing && !readOnly && (
+            <span className="text-[9px] font-medium opacity-80">
+              Elimínala y vuelve a subirla
+            </span>
+          )}
         </div>
       )}
 
       {!readOnly && (
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={busy || disabled}
-          className="absolute right-1.5 top-1.5 flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-600 shadow-sm transition-colors hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
-          title="Eliminar imagen"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <div className="absolute right-1.5 top-1.5 flex items-center gap-1.5">
+          {onEdit && displayUrl && !showFailed && (
+            <button
+              type="button"
+              onClick={() => onEdit(displayUrl)}
+              disabled={busy || disabled}
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-100 text-azul-trifinio shadow-sm transition-colors hover:bg-sky-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-sky-950 dark:text-sky-300 dark:hover:bg-sky-900"
+              title="Editar imagen"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy || disabled}
+            className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-100 text-red-600 shadow-sm transition-colors hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+            title="Eliminar imagen"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
       )}
     </div>
   );

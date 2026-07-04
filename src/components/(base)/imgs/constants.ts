@@ -62,6 +62,41 @@ export function getImagenPublicUrl(
   return `${base}/storage/v1/object/public/${MEMORIA_IMAGENES_BUCKET}/${cleanPath}`;
 }
 
+type StorageListClient = {
+  storage: {
+    from: (bucket: string) => {
+      list: (
+        path?: string,
+        options?: { limit?: number; search?: string },
+      ) => Promise<{
+        data: { name: string }[] | null;
+        error: { message: string } | null;
+      }>;
+    };
+  };
+};
+
+/** Comprueba si el archivo existe en el bucket (nombre exacto). */
+export async function imagenExistsInStorage(
+  supabase: StorageListClient,
+  path: string,
+): Promise<boolean> {
+  const cleanPath = normalizeImagenStoragePath(path);
+  if (!cleanPath) return false;
+
+  const slash = cleanPath.lastIndexOf("/");
+  const folder = slash >= 0 ? cleanPath.slice(0, slash) : "";
+  const fileName = slash >= 0 ? cleanPath.slice(slash + 1) : cleanPath;
+  const searchToken = fileName.split(".")[0]?.slice(0, 13) ?? fileName;
+
+  const { data, error } = await supabase.storage
+    .from(MEMORIA_IMAGENES_BUCKET)
+    .list(folder, { limit: 20, search: searchToken });
+
+  if (error) return false;
+  return (data ?? []).some((item) => item.name === fileName);
+}
+
 export function generateImagenStoragePath(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
 }

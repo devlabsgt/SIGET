@@ -18,6 +18,39 @@ const swalImagenCustomClass = {
   icon: "!border-amber-500 !text-amber-500",
 } as const;
 
+const swalImagenOkButtonClass = swalImagenCustomClass.cancelButton;
+
+function elevateSwalZIndex() {
+  const container = Swal.getContainer();
+  if (container) container.style.zIndex = "10001";
+}
+
+export function alertDemasiadasImagenes(
+  remaining: number,
+  max: number,
+): Promise<{ isConfirmed: boolean }> {
+  const dark = isDarkTheme();
+  const text =
+    remaining <= 0
+      ? `Máximo ${max} imágenes por proyecto.`
+      : `Puedes seleccionar máx. ${remaining} ${remaining === 1 ? "imagen más" : "imágenes más"}.`;
+
+  return Swal.fire({
+    title: "Demasiadas imágenes",
+    text,
+    icon: "warning",
+    confirmButtonText: "Entendido",
+    background: dark ? "#18181b" : "#f4f4f5",
+    color: dark ? "#fafafa" : "#18181b",
+    buttonsStyling: false,
+    customClass: {
+      ...swalImagenCustomClass,
+      confirmButton: swalImagenOkButtonClass,
+    },
+    didOpen: elevateSwalZIndex,
+  });
+}
+
 export function confirmEliminarImagen() {
   const dark = isDarkTheme();
   return Swal.fire({
@@ -26,6 +59,26 @@ export function confirmEliminarImagen() {
     icon: "warning",
     showCancelButton: true,
     confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    background: dark ? "#18181b" : "#f4f4f5",
+    color: dark ? "#fafafa" : "#18181b",
+    buttonsStyling: false,
+    customClass: swalImagenCustomClass,
+    didOpen: () => {
+      const container = Swal.getContainer();
+      if (container) container.style.zIndex = "10001";
+    },
+  });
+}
+
+export function confirmEliminarTodasImagenes(cantidad: number) {
+  const dark = isDarkTheme();
+  return Swal.fire({
+    title: "¿Eliminar todas las imágenes?",
+    text: `Se eliminarán ${cantidad} imágenes del proyecto.`,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar todas",
     cancelButtonText: "Cancelar",
     background: dark ? "#18181b" : "#f4f4f5",
     color: dark ? "#fafafa" : "#18181b",

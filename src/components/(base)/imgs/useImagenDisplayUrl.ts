@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
 import {
   getImagenPublicUrl,
+  imagenExistsInStorage,
   MEMORIA_IMAGENES_BUCKET,
   normalizeImagenStoragePath,
 } from "./constants";
@@ -11,11 +12,13 @@ import {
 export function useImagenDisplayUrl(path: string | null) {
   const [url, setUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [missing, setMissing] = useState(false);
 
   useEffect(() => {
     const cleanPath = normalizeImagenStoragePath(path);
     if (!cleanPath) {
       setUrl(null);
+      setMissing(true);
       setLoading(false);
       return;
     }
@@ -23,24 +26,33 @@ export function useImagenDisplayUrl(path: string | null) {
     let cancelled = false;
     setLoading(true);
     setUrl(null);
+    setMissing(false);
 
     (async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase.storage
-          .from(MEMORIA_IMAGENES_BUCKET)
-          .createSignedUrl(cleanPath, 60 * 60);
+      const supabase = createClient();
+      const exists = await imagenExistsInStorage(supabase, cleanPath);
 
-        if (!cancelled && !error && data?.signedUrl) {
-          setUrl(data.signedUrl);
-          return;
-        }
-      } catch {
-        // intentar URL pública
+      if (cancelled) return;
+
+      if (!exists) {
+        setMissing(true);
+        setUrl(null);
+        return;
       }
 
+      const publicUrl = getImagenPublicUrl(cleanPath);
+      if (publicUrl) {
+        setUrl(publicUrl);
+        return;
+      }
+
+      const { data, error } = await supabase.storage
+        .from(MEMORIA_IMAGENES_BUCKET)
+        .createSignedUrl(cleanPath, 60 * 60);
+
       if (!cancelled) {
-        setUrl(getImagenPublicUrl(cleanPath));
+        setUrl(!error && data?.signedUrl ? data.signedUrl : null);
+        if (error || !data?.signedUrl) setMissing(true);
       }
     })().finally(() => {
       if (!cancelled) setLoading(false);
@@ -51,5 +63,5 @@ export function useImagenDisplayUrl(path: string | null) {
     };
   }, [path]);
 
-  return { url, loading };
+  return { url, loading, missing };
 }

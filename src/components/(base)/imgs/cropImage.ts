@@ -90,3 +90,54 @@ export async function cropImage(
     );
   });
 }
+
+/** Recorta centrado un archivo al aspecto indicado (ancho/alto) y devuelve un JPEG. */
+export async function autoCropFileToAspect(
+  file: File,
+  aspect: number,
+): Promise<File> {
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await createImage(url);
+    const iw = image.naturalWidth || image.width;
+    const ih = image.naturalHeight || image.height;
+
+    let cw = iw;
+    let ch = ih;
+    if (iw / ih > aspect) {
+      cw = Math.round(ih * aspect);
+      ch = ih;
+    } else {
+      cw = iw;
+      ch = Math.round(iw / aspect);
+    }
+
+    const sx = Math.max(0, Math.round((iw - cw) / 2));
+    const sy = Math.max(0, Math.round((ih - ch) / 2));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = cw;
+    canvas.height = ch;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("No se pudo obtener el contexto del canvas");
+
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, cw, ch);
+    ctx.drawImage(image, sx, sy, cw, ch, 0, 0, cw, ch);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) =>
+          result
+            ? resolve(result)
+            : reject(new Error("Error al procesar la imagen")),
+        "image/jpeg",
+        0.92,
+      );
+    });
+
+    return new File([blob], "imagen.jpg", { type: "image/jpeg" });
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}

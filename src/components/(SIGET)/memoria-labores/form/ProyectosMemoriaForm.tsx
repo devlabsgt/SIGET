@@ -29,7 +29,7 @@ import {
   confirmQuitarProyectoMemoria,
 } from "../lib/swal";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
-import { createProyectoMemoria, updateProyectoMemoria } from "../lib/actions";
+import { createProyectoMemoria, updateProyectoMemoria, updateMemoriaImagenes } from "../lib/actions";
 import { proyectosMemoriaSchema } from "../lib/schemas";
 import {
   emptyProyectoAvance,
@@ -502,7 +502,13 @@ export default function ProyectosMemoriaForm({
       imagenes: normalizeImagenesFromDb(initial.imagenes, proyectos.length),
     };
   });
+  const draftIdRef = useRef<string | null>(null);
+  const imagenesRef = useRef<string[][]>(form.imagenes ?? []);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    imagenesRef.current = form.imagenes ?? [];
+  }, [form.imagenes]);
   const { effectiveRole } = useUserContext();
   const isSuper = effectiveRole === "super";
 
@@ -670,43 +676,94 @@ export default function ProyectosMemoriaForm({
     });
   };
 
-  const addProyectoImagen = (proyectoIndex: number, path: string) => {
-    setForm((prev) => {
-      if (proyectoIndex < 0 || proyectoIndex >= prev.proyectos.length) {
-        return prev;
-      }
+  const persistImagenes = async (nextImagenes: string[][]) => {
+    const memoriaId = initial?.id ?? draftIdRef.current;
+    if (memoriaId) {
+      await updateMemoriaImagenes(memoriaId, nextImagenes);
+      return;
+    }
 
-      const imagenes = [...(prev.imagenes ?? [])];
-      while (imagenes.length < prev.proyectos.length) {
-        imagenes.push([]);
-      }
+    const attempt = { ...form, imagenes: nextImagenes };
+    const parsed = proyectosMemoriaSchema.safeParse(attempt);
+    if (!parsed.success) return;
 
-      const grupo = [...(imagenes[proyectoIndex] ?? [])];
-      if (grupo.includes(path) || grupo.length >= MAX_IMAGENES_PROYECTO) {
-        return { ...prev, imagenes };
-      }
-
-      imagenes[proyectoIndex] = [...grupo, path];
-      return { ...prev, imagenes };
-    });
+    const created = await createProyectoMemoria(parsed.data);
+    draftIdRef.current = created.id;
   };
 
-  const removeProyectoImagen = (proyectoIndex: number, path: string) => {
-    setForm((prev) => {
-      if (proyectoIndex < 0 || proyectoIndex >= prev.proyectos.length) {
-        return prev;
-      }
+  const commitImagenes = async (
+    nextImagenes: string[][],
+    previousImagenes: string[][],
+    fallbackMessage: string,
+  ) => {
+    imagenesRef.current = nextImagenes;
+    setForm((prev) => ({ ...prev, imagenes: nextImagenes }));
+    try {
+      await persistImagenes(nextImagenes);
+    } catch (err) {
+      imagenesRef.current = previousImagenes;
+      setForm((prev) => ({ ...prev, imagenes: previousImagenes }));
+      toast.error(err instanceof Error ? err.message : fallbackMessage);
+      throw err;
+    }
+  };
 
-      const imagenes = [...(prev.imagenes ?? [])];
-      while (imagenes.length < prev.proyectos.length) {
-        imagenes.push([]);
-      }
+  const addProyectoImagen = async (proyectoIndex: number, path: string) => {
+    if (proyectoIndex < 0 || proyectoIndex >= form.proyectos.length) return;
 
-      imagenes[proyectoIndex] = (imagenes[proyectoIndex] ?? []).filter(
-        (p) => p !== path,
-      );
-      return { ...prev, imagenes };
-    });
+    const previous = imagenesRef.current;
+    const next = previous.map((g) => [...g]);
+    while (next.length < form.proyectos.length) next.push([]);
+
+    const grupo = next[proyectoIndex] ?? [];
+    if (grupo.includes(path) || grupo.length >= MAX_IMAGENES_PROYECTO) return;
+    next[proyectoIndex] = [...grupo, path];
+
+    await commitImagenes(next, previous, "No se pudo vincular la imagen al informe.");
+  };
+
+  const removeProyectoImagen = async (proyectoIndex: number, path: string) => {
+    if (proyectoIndex < 0 || proyectoIndex >= form.proyectos.length) return;
+
+    const previous = imagenesRef.current;
+    const next = previous.map((g) => [...g]);
+    while (next.length < form.proyectos.length) next.push([]);
+    next[proyectoIndex] = (next[proyectoIndex] ?? []).filter((p) => p !== path);
+
+    await commitImagenes(
+      next,
+      previous,
+      "No se pudo actualizar las imágenes del informe.",
+    );
+  };
+
+  const replaceProyectoImagen = async (
+    proyectoIndex: number,
+    oldPath: string,
+    newPath: string,
+  ) => {
+    if (proyectoIndex < 0 || proyectoIndex >= form.proyectos.length) return;
+
+    const previous = imagenesRef.current;
+    const next = previous.map((g) => [...g]);
+    while (next.length < form.proyectos.length) next.push([]);
+
+    const grupo = next[proyectoIndex] ?? [];
+    const idx = grupo.indexOf(oldPath);
+    if (idx >= 0) {
+      grupo[idx] = newPath;
+    } else if (grupo.length < MAX_IMAGENES_PROYECTO) {
+      grupo.push(newPath);
+    } else {
+      return;
+    }
+    next[proyectoIndex] = grupo;
+
+    await commitImagenes(
+      next,
+      previous,
+      "No se pudo actualizar la imagen del informe.",
+    );
   };
 
   const updateProyectoBeneficiario = (
@@ -762,6 +819,8 @@ export default function ProyectosMemoriaForm({
           await onCreatePublic(data);
         } else if (isEdit && initial) {
           await updateProyectoMemoria(initial.id, data);
+        } else if (draftIdRef.current) {
+          await updateProyectoMemoria(draftIdRef.current, data);
         } else {
           await createProyectoMemoria(data);
         }
@@ -868,6 +927,7 @@ export default function ProyectosMemoriaForm({
           onRemove={removeProyecto}
           onImagenAdd={addProyectoImagen}
           onImagenRemove={removeProyectoImagen}
+          onImagenReplace={replaceProyectoImagen}
           sectionTitleClass={sectionTitleClass}
           isPublic={isPublic}
           isEdit={isEdit}
@@ -895,6 +955,7 @@ function ProyectosEjecutadosSection({
   onRemove,
   onImagenAdd,
   onImagenRemove,
+  onImagenReplace,
   sectionTitleClass,
   isPublic,
   isEdit,
@@ -939,6 +1000,11 @@ function ProyectosEjecutadosSection({
   onRemove: (index: number) => void;
   onImagenAdd: (proyectoIndex: number, path: string) => void;
   onImagenRemove: (proyectoIndex: number, path: string) => void;
+  onImagenReplace: (
+    proyectoIndex: number,
+    oldPath: string,
+    newPath: string,
+  ) => void;
   sectionTitleClass: string;
   isPublic: boolean;
   isEdit: boolean;
@@ -1091,6 +1157,7 @@ function ProyectosEjecutadosSection({
                   disabled={isPending}
                   onAdd={onImagenAdd}
                   onRemove={onImagenRemove}
+                  onReplace={onImagenReplace}
                 />
               </div>
             </motion.div>
@@ -1215,19 +1282,21 @@ function ProyectoImagenesFields({
   disabled,
   onAdd,
   onRemove,
+  onReplace,
 }: {
   proyectoIndex: number;
   paths: string[];
   disabled?: boolean;
   onAdd: (proyectoIndex: number, path: string) => void;
   onRemove: (proyectoIndex: number, path: string) => void;
+  onReplace: (proyectoIndex: number, oldPath: string, newPath: string) => void;
 }) {
   return (
     <ProyectoSubseccion
       seccion="proyecto"
       title="Imágenes del proyecto"
       icon={<Images className="w-3.5 h-3.5" />}
-      hint="hasta 4 fotografías del proyecto. En el teléfono puede tomar la foto con la cámara."
+      hint="hasta 4 fotografías del proyecto; puede elegir varias a la vez en la galería. Use el lápiz para recortar una. En el teléfono puede tomar la foto con la cámara."
       flush
     >
       <ProyectoImagenes
@@ -1235,6 +1304,9 @@ function ProyectoImagenesFields({
         disabled={disabled}
         onAdd={(path) => onAdd(proyectoIndex, path)}
         onRemove={(path) => onRemove(proyectoIndex, path)}
+        onReplace={(oldPath, newPath) =>
+          onReplace(proyectoIndex, oldPath, newPath)
+        }
       />
     </ProyectoSubseccion>
   );
