@@ -1,12 +1,13 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import type { ProyectosMemoria } from "./types";
+import type { AutofillInformeUsuario, ProyectosMemoria } from "./types";
 import {
   proyectosMemoriaSchema,
   type ProyectosMemoriaInput,
 } from "./schemas";
 import {
+  normalizeImagenesFromDb,
   normalizeProyectosFromDb,
   periodoFromProyectos,
   sumBeneficiariosProyectos,
@@ -14,6 +15,33 @@ import {
 
 const TABLE = "cs_proyectos_memoria_labores";
 const ALLOWED_ROLES = ["super", "admin", "comunicacion"];
+
+const SELECT_COLUMNS =
+  "id, periodo, proyectos, imagenes, created_by, updated_by, created_at, updated_at";
+
+type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+type ProfileRow = {
+  id: string;
+  nombre: string | null;
+  puesto_id: string | null;
+};
+
+type MemoriaRow = {
+  id: string;
+  periodo: string;
+  proyectos: unknown;
+  imagenes: unknown;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+function isPrivilegedMemoriaRole(role: string): boolean {
+  const normalized = role.toLowerCase();
+  return normalized === "super" || normalized.includes("admin");
+}
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -39,24 +67,141 @@ async function requireRoleAccess() {
   return { supabase, user, role };
 }
 
-const SELECT_COLUMNS =
-  "id, periodo, cargo, nombre, oficina, proyectos, beneficiarios, created_at";
+const RAIZ_PLAN_TRIFINIO = "Plan Trifinio";
+const SEPARADOR_JERARQUIA = " · ";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function normalize(row: any): ProyectosMemoria {
-  const proyectos = normalizeProyectosFromDb(
-    row.proyectos,
-    row.beneficiarios ?? undefined,
+function prefijarRaizOrganizacion(ruta: string): string {
+  const limpia = ruta.trim();
+  if (!limpia) return RAIZ_PLAN_TRIFINIO;
+  if (limpia.startsWith(RAIZ_PLAN_TRIFINIO)) return limpia;
+  return `${RAIZ_PLAN_TRIFINIO}${SEPARADOR_JERARQUIA}${limpia}`;
+}
+
+async function rutaDepartamentoIterativa(
+  supabase: SupabaseServerClient,
+  departamentoId: string,
+): Promise<string> {
+  const partes: string[] = [];
+  let actualId: string | null = departamentoId;
+  const visitados = new Set<string>();
+
+  while (actualId && !visitados.has(actualId)) {
+    visitados.add(actualId);
+    const { data: dep } = await supabase
+      .from("departamentos")
+      .select("nombre, parent_id")
+      .eq("id", actualId)
+      .maybeSingle();
+    if (!dep) break;
+    partes.unshift(String(dep.nombre ?? ""));
+    actualId = (dep.parent_id as string | null) ?? null;
+  }
+
+  return partes.join(SEPARADOR_JERARQUIA);
+}
+
+async function oficinaDesdePuesto(
+  supabase: SupabaseServerClient,
+  puestoId: string,
+  departamentoId: string | null,
+): Promise<string> {
+  const { data: jefaturas } = await supabase
+    .from("puesto_jefaturas")
+    .select("departamento_id")
+    .eq("puesto_id", puestoId);
+
+  const jefaturaIds = (jefaturas ?? []).map((row) =>
+    String(row.departamento_id),
   );
+
+  let ruta = "";
+  if (jefaturaIds.length > 0) {
+    const rutas = await Promise.all(
+      jefaturaIds.map((id) => rutaDepartamentoIterativa(supabase, id)),
+    );
+    const unicas = [...new Set(rutas.filter(Boolean))];
+    if (unicas.length > 0) ruta = unicas.join(" · ");
+  } else if (departamentoId) {
+    ruta = await rutaDepartamentoIterativa(supabase, departamentoId);
+  }
+
+  return prefijarRaizOrganizacion(ruta);
+}
+
+async function informanteDesdeProfile(
+  supabase: SupabaseServerClient,
+  profile: ProfileRow,
+): Promise<AutofillInformeUsuario> {
+  const nombre = String(profile.nombre ?? "").trim();
+  const puestoId = profile.puesto_id;
+
+  if (!puestoId) {
+    return { nombre, cargo: "", oficina: "" };
+  }
+
+  const { data: puesto } = await supabase
+    .from("puestos")
+    .select("nombre, departamento_id")
+    .eq("id", puestoId)
+    .maybeSingle();
+
+  const cargo = String(puesto?.nombre ?? "").trim();
+  const departamentoId = (puesto?.departamento_id as string | null) ?? null;
+  const oficina = await oficinaDesdePuesto(supabase, puestoId, departamentoId);
+
+  return { nombre, cargo, oficina };
+}
+
+async function resolveInformantes(
+  supabase: SupabaseServerClient,
+  rows: MemoriaRow[],
+): Promise<Map<string, AutofillInformeUsuario>> {
+  const profileIds = [
+    ...new Set(
+      rows.map((row) => row.created_by).filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  if (profileIds.length === 0) return new Map();
+
+  const { data: profiles, error } = await supabase
+    .from("profiles")
+    .select("id, nombre, puesto_id")
+    .in("id", profileIds);
+
+  if (error || !profiles) return new Map();
+
+  const entries = await Promise.all(
+    profiles.map(async (profile) => {
+      const informante = await informanteDesdeProfile(
+        supabase,
+        profile as ProfileRow,
+      );
+      return [profile.id, informante] as const;
+    }),
+  );
+
+  return new Map(entries);
+}
+
+function normalize(
+  row: MemoriaRow,
+  informante?: AutofillInformeUsuario | null,
+): ProyectosMemoria {
+  const proyectos = normalizeProyectosFromDb(row.proyectos);
   return {
     id: row.id,
     periodo: row.periodo,
-    cargo: row.cargo ?? null,
-    nombre: row.nombre ?? null,
-    oficina: row.oficina ?? null,
     proyectos,
     beneficiarios: sumBeneficiariosProyectos(proyectos),
-    created_at: row.created_at ?? row.periodo ?? new Date().toISOString(),
+    imagenes: normalizeImagenesFromDb(row.imagenes, proyectos.length),
+    created_by: row.created_by ?? null,
+    updated_by: row.updated_by ?? null,
+    created_at: row.created_at ?? new Date().toISOString(),
+    updated_at: row.updated_at ?? null,
+    nombre: informante?.nombre || null,
+    cargo: informante?.cargo || null,
+    oficina: informante?.oficina || null,
   };
 }
 
@@ -74,29 +219,65 @@ function validateAndBuildPayload(input: ProyectosMemoriaInput) {
   const data = result.data;
   return {
     periodo: periodoFromProyectos(data.proyectos),
-    cargo: data.cargo || null,
-    nombre: data.nombre || null,
-    oficina: data.oficina || null,
     proyectos: data.proyectos,
-    beneficiarios: sumBeneficiariosProyectos(data.proyectos),
+    imagenes: normalizeImagenesFromDb(data.imagenes, data.proyectos.length),
   };
 }
 
+async function assertMemoriaOwnership(
+  user: { id: string },
+  role: string,
+  memoria: { created_by?: string | null },
+): Promise<void> {
+  if (isPrivilegedMemoriaRole(role)) return;
+  if (memoria.created_by !== user.id) {
+    throw new Error("No tiene permisos para este informe.");
+  }
+}
+
+export async function getAutofillInformeUsuario(): Promise<AutofillInformeUsuario | null> {
+  try {
+    const { supabase, user } = await requireAuth();
+
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("id, nombre, puesto_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profileError || !profile) return null;
+
+    return informanteDesdeProfile(supabase, profile as ProfileRow);
+  } catch {
+    return null;
+  }
+}
+
 export async function getProyectosMemoria(): Promise<ProyectosMemoria[]> {
-  const { supabase } = await requireRoleAccess();
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select(SELECT_COLUMNS)
-    .order("periodo", { ascending: false });
+  const { supabase, user, role } = await requireRoleAccess();
+
+  let query = supabase.from(TABLE).select(SELECT_COLUMNS);
+
+  if (!isPrivilegedMemoriaRole(role)) {
+    query = query.eq("created_by", user.id);
+  }
+
+  const { data, error } = await query.order("periodo", { ascending: false });
 
   if (error) throw new Error(error.message);
-  return (data || []).map(normalize);
+
+  const rows = (data ?? []) as MemoriaRow[];
+  const informantes = await resolveInformantes(supabase, rows);
+
+  return rows.map((row) =>
+    normalize(row, row.created_by ? informantes.get(row.created_by) : null),
+  );
 }
 
 export async function getProyectoMemoria(
   id: string,
 ): Promise<ProyectosMemoria | null> {
-  const { supabase } = await requireRoleAccess();
+  const { supabase, user, role } = await requireRoleAccess();
   const { data, error } = await supabase
     .from(TABLE)
     .select(SELECT_COLUMNS)
@@ -107,41 +288,117 @@ export async function getProyectoMemoria(
     if (error.code === "PGRST116") return null;
     throw new Error(error.message);
   }
-  return data ? normalize(data) : null;
+  if (!data) return null;
+
+  const row = data as MemoriaRow;
+
+  try {
+    await assertMemoriaOwnership(user, role, row);
+  } catch {
+    return null;
+  }
+
+  let informante: AutofillInformeUsuario | null = null;
+  if (row.created_by) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, nombre, puesto_id")
+      .eq("id", row.created_by)
+      .maybeSingle();
+    if (profile) {
+      informante = await informanteDesdeProfile(supabase, profile as ProfileRow);
+    }
+  }
+
+  return normalize(row, informante);
 }
 
 export async function createProyectoMemoria(
   input: ProyectosMemoriaInput,
 ): Promise<ProyectosMemoria> {
-  const { supabase } = await requireRoleAccess();
+  const { supabase, user } = await requireRoleAccess();
+  const payload = validateAndBuildPayload(input);
+
   const { data, error } = await supabase
     .from(TABLE)
-    .insert(validateAndBuildPayload(input))
+    .insert({
+      ...payload,
+      created_by: user.id,
+      updated_by: user.id,
+    })
     .select(SELECT_COLUMNS)
     .single();
 
   if (error) throw new Error(error.message);
-  return normalize(data);
+
+  const row = data as MemoriaRow;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, nombre, puesto_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const informante = profile
+    ? await informanteDesdeProfile(supabase, profile as ProfileRow)
+    : null;
+
+  return normalize(row, informante);
 }
 
 export async function updateProyectoMemoria(
   id: string,
   input: ProyectosMemoriaInput,
 ): Promise<ProyectosMemoria> {
-  const { supabase } = await requireRoleAccess();
+  const { supabase, user, role } = await requireRoleAccess();
+  const payload = validateAndBuildPayload(input);
+
+  const { data: existing, error: fetchError } = await supabase
+    .from(TABLE)
+    .select(SELECT_COLUMNS)
+    .eq("id", id)
+    .single();
+
+  if (fetchError) {
+    if (fetchError.code === "PGRST116") {
+      throw new Error("Informe no encontrado.");
+    }
+    throw new Error(fetchError.message);
+  }
+
+  await assertMemoriaOwnership(user, role, existing as MemoriaRow);
+
   const { data, error } = await supabase
     .from(TABLE)
-    .update(validateAndBuildPayload(input))
+    .update({
+      ...payload,
+      updated_by: user.id,
+    })
     .eq("id", id)
     .select(SELECT_COLUMNS)
     .single();
 
   if (error) throw new Error(error.message);
-  return normalize(data);
+
+  const row = data as MemoriaRow;
+  const profileId = row.created_by ?? user.id;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("id, nombre, puesto_id")
+    .eq("id", profileId)
+    .maybeSingle();
+
+  const informante = profile
+    ? await informanteDesdeProfile(supabase, profile as ProfileRow)
+    : null;
+
+  return normalize(row, informante);
 }
 
 export async function deleteProyectoMemoria(id: string): Promise<void> {
-  const { supabase } = await requireRoleAccess();
+  const { supabase, role } = await requireRoleAccess();
+  if (!isPrivilegedMemoriaRole(role)) {
+    throw new Error("No tiene permisos para eliminar informes.");
+  }
   const { error } = await supabase.from(TABLE).delete().eq("id", id);
   if (error) throw new Error(error.message);
 }

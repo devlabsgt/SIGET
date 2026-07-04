@@ -49,25 +49,34 @@ export const proyectoItemSchema = z.object({
   efectos: listaTexto,
 });
 
-const proyectosListaSchema = z
-  .array(proyectoItemSchema)
-  .transform((arr) =>
-    arr.filter(
-      (p) =>
-        p.nombre.length > 0 ||
-        p.descripcion.length > 0 ||
-        p.avances.length > 0 ||
-        p.resultados.length > 0 ||
-        p.efectos.length > 0,
-    ),
-  );
+const proyectoTieneContenido = (p: z.infer<typeof proyectoItemSchema>) =>
+  p.nombre.length > 0 ||
+  p.descripcion.length > 0 ||
+  p.avances.length > 0 ||
+  p.resultados.length > 0 ||
+  p.efectos.length > 0;
 
-export const proyectosMemoriaSchema = z.object({
-  cargo: z.string().trim().max(200).optional().default(""),
-  nombre: z.string().trim().max(200).optional().default(""),
-  oficina: z.string().trim().max(300).optional().default(""),
-  proyectos: proyectosListaSchema,
-});
+export const proyectosMemoriaSchema = z
+  .object({
+    proyectos: z.array(proyectoItemSchema),
+    imagenes: z
+      .array(z.array(z.string()).max(4))
+      .optional()
+      .default([]),
+  })
+  .transform((data) => {
+    const pares = data.proyectos.map((proyecto, index) => ({
+      proyecto,
+      imagenes: data.imagenes[index] ?? [],
+    }));
+    const filtrados = pares.filter(({ proyecto }) =>
+      proyectoTieneContenido(proyecto),
+    );
+    return {
+      proyectos: filtrados.map(({ proyecto }) => proyecto),
+      imagenes: filtrados.map(({ imagenes }) => imagenes),
+    };
+  });
 
 export type ProyectosMemoriaInput = z.infer<typeof proyectosMemoriaSchema>;
 export type ProyectoAvance = z.infer<typeof proyectoAvanceSchema>;

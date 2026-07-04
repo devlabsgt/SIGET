@@ -51,7 +51,7 @@ export default function Header() {
           showBreadcrumb ? "h-28" : "h-14"
         }`}
       />
-      <header className="w-full fixed left-0 transition-all bg-card border-b border-border/40 z-[100] shadow-sm">
+      <header className="w-full fixed left-0 transition-all bg-zinc-100 dark:bg-zinc-800 border-b border-border/40 z-[100] shadow-sm">
         <div className="mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-8 gap-4">
           <div className="flex items-center h-full">
             <div className="flex items-center shrink-0">
@@ -176,7 +176,7 @@ export default function Header() {
       {showBreadcrumb && (
         <div 
           style={{ top: 'calc(var(--banner-height, 0px) + 56px)' }}
-          className="fixed left-0 md:hidden w-full px-6 h-[var(--mobile-breadcrumb-height)] flex items-center bg-card z-[105]"
+          className="fixed left-0 md:hidden w-full px-6 h-[var(--mobile-breadcrumb-height)] flex items-center bg-zinc-100 dark:bg-zinc-800 z-[105]"
         >
           <BreadcrumbNav />
         </div>

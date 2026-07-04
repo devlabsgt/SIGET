@@ -8,24 +8,31 @@ import { cn } from "@/lib/utils";
 interface MagicCardProps {
   children?: React.ReactNode;
   className?: string;
+  innerClassName?: string;
   gradientSize?: number;
   gradientColor?: string;
   gradientOpacity?: number;
   gradientFrom?: string;
   gradientTo?: string;
+  gradientEndColor?: string;
+  borderWidth?: number;
   style?: React.CSSProperties;
 }
 
 export function MagicCard({
   children,
   className,
+  innerClassName,
   gradientSize = 200,
-  gradientColor = "#262626", // Ya no afecta, pero se deja por compatibilidad
-  gradientOpacity = 0.8, // Ya no afecta
+  gradientColor = "#262626",
+  gradientOpacity = 0.8,
   gradientFrom = "#9E7AFF",
   gradientTo = "#FE8BBB",
+  gradientEndColor,
+  borderWidth = 1,
   style,
 }: MagicCardProps) {
+  const fadeColor = gradientEndColor ?? "var(--border)";
   const mouseX = useMotionValue(-gradientSize);
   const mouseY = useMotionValue(-gradientSize);
   const reset = useCallback(() => {
@@ -75,23 +82,28 @@ export function MagicCard({
       className={cn("group relative rounded-[inherit]", className)}
       onPointerMove={handlePointerMove}
       onPointerLeave={reset}
-      onPointerEnter={reset}
       style={style}
     >
       <motion.div
-        className="bg-border pointer-events-none absolute inset-0 rounded-[inherit] duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 z-0 rounded-[inherit] opacity-0 transition-opacity duration-300 group-hover:opacity-100"
         style={{
           background: useMotionTemplate`
           radial-gradient(${gradientSize}px circle at ${mouseX}px ${mouseY}px,
           ${gradientFrom}, 
           ${gradientTo}, 
-          var(--border) 100%
+          ${fadeColor} 100%
           )
           `,
         }}
       />
 
-      <div className="bg-background absolute inset-px rounded-[inherit]" />
+      <div
+        className={cn(
+          "absolute z-[1] rounded-[inherit] bg-background",
+          innerClassName,
+        )}
+        style={{ inset: borderWidth }}
+      />
       <div className="relative z-10 h-full w-full flex flex-col">{children}</div>
     </div>
   );

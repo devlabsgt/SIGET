@@ -4,75 +4,95 @@ import {
   useState,
   useTransition,
   useRef,
+  useEffect,
   useLayoutEffect,
   useCallback,
+  Fragment,
 } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowRight,
   ChevronLeft,
   Loader2,
-  Minus,
   Plus,
-  Save,
-  Trash2,
   Users,
   CalendarDays,
   TrendingUp,
   ListChecks,
   Sparkles,
+  Wand2,
+  Images,
 } from "lucide-react";
-import Swal from "sweetalert2";
+import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import {
-  createProyectoMemoria,
-  updateProyectoMemoria,
-} from "../lib/actions";
+  confirmQuitarMemoria,
+  confirmQuitarProyectoMemoria,
+} from "../lib/swal";
+import { useUserContext } from "@/components/(base)/providers/UserProvider";
+import { createProyectoMemoria, updateProyectoMemoria } from "../lib/actions";
 import { proyectosMemoriaSchema } from "../lib/schemas";
 import {
   emptyProyectoAvance,
   emptyProyectoItem,
   emptyProyectoMemoria,
+  normalizeImagenesFromDb,
   normalizeProyectosFromDb,
+  rellenoPruebaMemoriaLabores,
+  formatoOrdinalCortoEs,
+  MAX_IMAGENES_PROYECTO,
   type Beneficiarios,
   type ProyectoAvance,
   type ProyectoItem,
   type ProyectosMemoria,
   type ProyectosMemoriaInput,
 } from "../lib/types";
+import { useAutofillInformeUsuario } from "../lib/hooks";
+import { ProyectoImagenes } from "@/components/(base)/imgs";
 
 interface ProyectosMemoriaFormProps {
   initial?: ProyectosMemoria | null;
   onBack?: () => void;
   onSaved: () => void;
   variant?: "admin" | "public";
-  onCreatePublic?: (
-    input: ProyectosMemoriaInput,
-  ) => Promise<{ success: true }>;
+  onCreatePublic?: (input: ProyectosMemoriaInput) => Promise<{ success: true }>;
   onReview?: (input: ProyectosMemoriaInput) => void;
   restoreDraft?: ProyectosMemoriaInput | null;
 }
 
 type ProyectoListaKey = "resultados" | "efectos";
 
+const listItemMotionTransition = {
+  duration: 0.28,
+  ease: [0.4, 0, 0.2, 1] as const,
+};
+
+const listItemMotionProps = {
+  layout: true,
+  initial: { opacity: 0, y: 10 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8, scale: 0.99 },
+  transition: listItemMotionTransition,
+} as const;
+
 const sectionTitleClass =
   "flex items-center gap-2 bg-azul-trifinio text-white px-4 py-2.5 rounded-t-xl text-sm font-bold tracking-tight";
 
 const formSectionClass =
-  "rounded-xl border border-border bg-card shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900/90";
+  "rounded-xl border border-border bg-card dark:border-zinc-700/90 dark:bg-zinc-900/90";
 
 const formInputClass =
-  "h-10 w-full rounded-lg border border-border bg-zinc-50 px-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-celeste-trifinio dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:[color-scheme:dark]";
+  "h-10 w-full rounded-lg border border-border bg-zinc-50 px-3 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:[color-scheme:dark]";
 
 const formTextareaClass =
-  "w-full rounded-lg border border-border bg-zinc-50 px-3 py-2 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-celeste-trifinio resize-none overflow-hidden dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500";
+  "w-full rounded-lg border border-border bg-zinc-50 px-3 py-2 text-sm text-foreground outline-none transition-all placeholder:text-muted-foreground/70 resize-none overflow-hidden dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100 dark:placeholder:text-zinc-500";
 
 const formLabelClass =
   "text-[11px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-300";
 
 const sectionAddButtonBase =
-  "flex items-center gap-2 text-xs font-bold hover:underline cursor-pointer";
+  "inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-bold transition-colors hover:no-underline cursor-pointer";
 
-const sectionAddButtonColor = {
+const sectionTitleColor = {
   avance: "text-amber-600 dark:text-amber-400",
   resultado: "text-violet-600 dark:text-violet-400",
   efecto: "text-emerald-600 dark:text-emerald-400",
@@ -80,57 +100,99 @@ const sectionAddButtonColor = {
   beneficiarios: "text-sky-600 dark:text-sky-400",
 } as const;
 
-type ProyectoSeccionKey = keyof typeof sectionAddButtonColor;
+const sectionAddButtonStyle = {
+  avance:
+    "bg-amber-100 text-amber-700 hover:bg-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:hover:bg-amber-900",
+  resultado:
+    "bg-violet-100 text-violet-700 hover:bg-violet-200 dark:bg-violet-950 dark:text-violet-400 dark:hover:bg-violet-900",
+  efecto:
+    "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-950 dark:text-emerald-400 dark:hover:bg-emerald-900",
+  proyecto:
+    "bg-sky-100 text-azul-trifinio hover:bg-sky-200 dark:bg-sky-950 dark:text-azul-trifinio dark:hover:bg-sky-900",
+  beneficiarios:
+    "bg-sky-100 text-sky-700 hover:bg-sky-200 dark:bg-sky-950 dark:text-sky-400 dark:hover:bg-sky-900",
+} as const;
 
-const proyectoSeccionShell =
-  "rounded-xl border border-border bg-card p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/80";
+type ProyectoSeccionKey = keyof typeof sectionTitleColor;
 
-const proyectoSeccionShellCompact =
-  "border-t border-border pt-3 dark:border-zinc-700 sm:rounded-xl sm:border sm:border-border sm:bg-card sm:p-4 sm:shadow-sm sm:pt-4 dark:sm:border-zinc-700 dark:sm:bg-zinc-900/80";
+const sectionBorderStyles: Record<ProyectoSeccionKey, string> = {
+  avance: "border-2 border-amber-500 dark:border-amber-400",
+  resultado: "border-2 border-violet-500 dark:border-violet-400",
+  efecto: "border-2 border-emerald-500 dark:border-emerald-400",
+  beneficiarios: "border-2 border-celeste-trifinio",
+  proyecto: "border-2 border-azul-trifinio",
+};
+
+const sectionInputFocus: Record<ProyectoSeccionKey, string> = {
+  proyecto:
+    "focus-visible:ring-2 focus-visible:ring-azul-trifinio focus-visible:border-azul-trifinio",
+  avance:
+    "focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:border-amber-500 dark:focus-visible:ring-amber-400 dark:focus-visible:border-amber-400",
+  resultado:
+    "focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:border-violet-500 dark:focus-visible:ring-violet-400 dark:focus-visible:border-violet-400",
+  efecto:
+    "focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:border-emerald-500 dark:focus-visible:ring-emerald-400 dark:focus-visible:border-emerald-400",
+  beneficiarios:
+    "focus-visible:ring-2 focus-visible:ring-celeste-trifinio focus-visible:border-celeste-trifinio",
+};
+
+const proyectoSeccionShell = "rounded-xl bg-card p-4 dark:bg-zinc-900/80";
+
+const proyectoSeccionShellCompact = proyectoSeccionShell;
 
 const formSectionBodyClass = (isPublic: boolean) =>
-  isPublic ? "p-3 sm:p-4" : "p-4";
+  isPublic ? "px-0 py-4 sm:p-4" : "p-4";
 
-const proyectosListBodyClass = (isPublic: boolean) =>
-  isPublic ? "space-y-4 p-2 sm:space-y-5 sm:p-4" : "space-y-5 p-4";
+const proyectosListBodyClass = "flex flex-col gap-4";
 
 const proyectoCardClass = (isPublic: boolean) =>
   cn(
-    "space-y-3 sm:space-y-4",
-    isPublic
-      ? "border-b border-border pb-4 last:border-b-0 last:pb-0 dark:border-zinc-700 sm:rounded-xl sm:border sm:p-4 sm:bg-muted/20 dark:sm:bg-zinc-950/50"
-      : "rounded-xl border border-border p-4 bg-muted/20 dark:border-zinc-700 dark:bg-zinc-950/50",
+    "overflow-hidden rounded-xl border border-border bg-muted/20 dark:border-zinc-700 dark:bg-zinc-950/50",
+    isPublic && "shadow-sm",
   );
 
-const nestedItemShellClass = (compact: boolean) =>
-  cn(
-    "space-y-2",
-    compact
-      ? "border-t border-border py-3 first:border-t-0 first:pt-0 dark:border-zinc-700 sm:rounded-lg sm:border sm:border-border/80 sm:bg-muted/30 sm:p-3 sm:first:border-t dark:sm:border-zinc-800 dark:sm:bg-zinc-950/60"
-      : "rounded-lg border border-border/80 bg-muted/30 p-3 dark:border-zinc-800 dark:bg-zinc-950/60",
+const nestedItemShellClass =
+  "space-y-3 rounded-lg border border-border/80 bg-muted/30 p-3 dark:border-zinc-800 dark:bg-zinc-950/60";
+
+function confirmQuitar(onConfirm: () => void) {
+  void confirmQuitarMemoria({}).then((result) => {
+    if (result.isConfirmed) onConfirm();
+  });
+}
+
+function ProyectoRemoveButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void confirmQuitarProyectoMemoria().then((result) => {
+          if (result.isConfirmed) onClick();
+        });
+      }}
+      className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-red-100 px-3 text-xs font-bold text-red-600 transition-colors hover:bg-red-200 hover:no-underline cursor-pointer dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+    >
+      Quitar Proyecto
+    </button>
   );
+}
 
 function SectionRemoveButton({
-  label,
   onClick,
   className,
 }: {
-  label: string;
   onClick: () => void;
   className?: string;
 }) {
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => confirmQuitar(onClick)}
       className={cn(
-        sectionAddButtonBase,
-        "text-red-600 dark:text-red-400",
+        "flex h-9 items-center gap-1.5 rounded-lg bg-red-100 px-3 text-xs font-bold text-red-600 transition-colors hover:bg-red-200 hover:no-underline cursor-pointer dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900",
         className,
       )}
     >
-      <Minus className="w-4 h-4" />
-      {label}
+      Quitar
     </button>
   );
 }
@@ -140,8 +202,11 @@ const Field = ({
   value,
   onChange,
   rows = 2,
+  seccion = "proyecto",
   ...props
-}: React.TextareaHTMLAttributes<HTMLTextAreaElement>) => {
+}: React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  seccion?: ProyectoSeccionKey;
+}) => {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   const resize = useCallback(() => {
@@ -164,7 +229,7 @@ const Field = ({
         onChange?.(e);
         requestAnimationFrame(resize);
       }}
-      className={cn(formTextareaClass, className)}
+      className={cn(formTextareaClass, sectionInputFocus[seccion], className)}
       {...props}
     />
   );
@@ -172,9 +237,15 @@ const Field = ({
 
 const TextInput = ({
   className,
+  seccion = "proyecto",
   ...props
-}: React.InputHTMLAttributes<HTMLInputElement>) => (
-  <input {...props} className={cn(formInputClass, className)} />
+}: React.InputHTMLAttributes<HTMLInputElement> & {
+  seccion?: ProyectoSeccionKey;
+}) => (
+  <input
+    {...props}
+    className={cn(formInputClass, sectionInputFocus[seccion], className)}
+  />
 );
 
 const Label = ({
@@ -183,6 +254,80 @@ const Label = ({
 }: React.LabelHTMLAttributes<HTMLLabelElement>) => (
   <label {...props} className={cn(formLabelClass, className)} />
 );
+
+function formatHintText(hint: string): string {
+  const trimmed = hint.trim();
+  if (!trimmed) return trimmed;
+  const withColons = trimmed.replace(
+    /:\s*([a-záéíóúüñ])/gi,
+    (_, letter: string) => `: ${letter.toUpperCase()}`,
+  );
+  const capitalized = withColons.charAt(0).toUpperCase() + withColons.slice(1);
+  return capitalized.endsWith(".") ? capitalized : `${capitalized}.`;
+}
+
+function FieldLabelWithHint({
+  htmlFor,
+  label,
+  hint,
+  className,
+}: {
+  htmlFor?: string;
+  label: string;
+  hint: string;
+  className?: string;
+}) {
+  return (
+    <label
+      htmlFor={htmlFor}
+      className={cn(
+        formLabelClass,
+        "block text-[11px] leading-snug normal-case tracking-normal",
+        className,
+      )}
+    >
+      <span className="uppercase tracking-wider">{label}</span>
+      {": "}
+      <span className="font-normal text-muted-foreground dark:text-zinc-500">
+        {formatHintText(hint)}
+      </span>
+    </label>
+  );
+}
+
+function textoDependenciaJerarquica(oficina?: string, cargo?: string): string {
+  return [oficina, cargo]
+    .filter((s) => s?.trim())
+    .map((s) => s!.trim().replace(/\s*\/\s*/g, " · "))
+    .join(" · ");
+}
+
+function DatoSoloLectura({
+  label,
+  value,
+  loading = false,
+  className,
+}: {
+  label: string;
+  value: string;
+  loading?: boolean;
+  className?: string;
+}) {
+  return (
+    <div className={cn("grid gap-1.5 min-w-0", className)}>
+      <Label>{label}</Label>
+      <p
+        className={cn(
+          "min-h-10 rounded-lg border border-border/60 bg-zinc-50/40 px-3 py-2.5 text-sm font-semibold leading-snug text-foreground dark:border-zinc-700/60 dark:bg-zinc-950/40 dark:text-zinc-100",
+          "lg:text-base lg:whitespace-nowrap lg:overflow-x-auto",
+          loading && "text-muted-foreground animate-pulse",
+        )}
+      >
+        {loading ? "Cargando…" : value.trim() || "—"}
+      </p>
+    </div>
+  );
+}
 
 const FieldHint = ({
   children,
@@ -205,10 +350,12 @@ const NumericInput = ({
   className,
   value,
   onValueChange,
+  seccion = "avance",
   ...props
 }: Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange"> & {
   value: number;
   onValueChange: (value: number) => void;
+  seccion?: ProyectoSeccionKey;
 }) => (
   <input
     {...props}
@@ -221,34 +368,86 @@ const NumericInput = ({
       const digits = e.target.value.replace(/\D/g, "");
       onValueChange(digits === "" ? 0 : parseInt(digits, 10));
     }}
-    className={cn(formInputClass, className)}
+    className={cn(
+      formInputClass,
+      sectionInputFocus[seccion],
+      "h-9 max-w-[4.75rem] px-2 text-center text-sm",
+      className,
+    )}
   />
 );
+
+function ListaItemDosLineas({
+  index,
+  label,
+  children,
+}: {
+  index: number;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="flex h-9 min-w-[2.5rem] shrink-0 items-center justify-center rounded-lg bg-muted/60 px-1 text-xs font-black text-muted-foreground dark:bg-zinc-800 dark:text-zinc-300">
+          {formatoOrdinalCortoEs(index)}
+        </span>
+        <Label className="text-right normal-case tracking-normal text-[10px]">
+          {label}
+        </Label>
+      </div>
+      <div className="min-w-0 w-full">{children}</div>
+    </div>
+  );
+}
 
 function ProyectoSubseccion({
   seccion,
   title,
   icon,
+  hint,
   children,
   compact = false,
+  flush = false,
 }: {
   seccion: ProyectoSeccionKey;
   title: string;
   icon: React.ReactNode;
+  hint?: React.ReactNode;
   children: React.ReactNode;
   compact?: boolean;
+  flush?: boolean;
 }) {
   return (
-    <div className={compact ? proyectoSeccionShellCompact : proyectoSeccionShell}>
+    <div
+      className={cn(
+        flush
+          ? "bg-card p-4 dark:bg-zinc-900/80"
+          : compact
+            ? proyectoSeccionShellCompact
+            : proyectoSeccionShell,
+        sectionBorderStyles[seccion],
+        flush && "rounded-none border-x-0",
+      )}
+    >
       <p
         className={cn(
-          "flex items-center gap-2 text-sm font-bold border-b border-border dark:border-zinc-700",
+          "border-b border-border text-sm leading-snug dark:border-zinc-700",
           compact ? "mb-3 pb-2 sm:mb-4 sm:pb-3" : "mb-4 pb-3",
-          sectionAddButtonColor[seccion],
+          sectionTitleColor[seccion],
         )}
       >
-        {icon}
-        {title}
+        <span className="inline-flex items-center gap-2 font-bold">
+          {icon}
+          {title}
+          {hint ? ":" : ""}
+        </span>
+        {hint ? (
+          <span className="font-normal opacity-90">
+            {" "}
+            {typeof hint === "string" ? formatHintText(hint) : hint}
+          </span>
+        ) : null}
       </p>
       <div className={cn("space-y-3", compact && "space-y-0 sm:space-y-3")}>
         {children}
@@ -261,20 +460,24 @@ function SectionAddButton({
   label,
   color,
   onClick,
+  className,
 }: {
   label: string;
   color: ProyectoSeccionKey;
   onClick: () => void;
+  className?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(sectionAddButtonBase, sectionAddButtonColor[color])}
-    >
-      <Plus className="w-4 h-4" />
-      {label}
-    </button>
+    <div className={cn("pt-3", className)}>
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(sectionAddButtonBase, sectionAddButtonStyle[color])}
+      >
+        <Plus className="w-4 h-4" />
+        {label}
+      </button>
+    </div>
   );
 }
 
@@ -290,21 +493,33 @@ export default function ProyectosMemoriaForm({
   const [form, setForm] = useState<ProyectosMemoriaInput>(() => {
     if (restoreDraft) return restoreDraft;
     if (!initial) return emptyProyectoMemoria();
-    const proyectos = normalizeProyectosFromDb(
-      initial.proyectos,
-      initial.beneficiarios,
-    );
+    const normalizados = normalizeProyectosFromDb(initial.proyectos);
+    const proyectos = normalizados.length
+      ? normalizados
+      : [emptyProyectoItem()];
     return {
-      cargo: initial.cargo ?? "",
-      nombre: initial.nombre ?? "",
-      oficina: initial.oficina ?? "",
-      proyectos: proyectos.length ? proyectos : [emptyProyectoItem()],
+      proyectos,
+      imagenes: normalizeImagenesFromDb(initial.imagenes, proyectos.length),
     };
   });
   const [isPending, startTransition] = useTransition();
+  const { effectiveRole } = useUserContext();
+  const isSuper = effectiveRole === "super";
 
   const isPublic = variant === "public";
   const isEdit = Boolean(initial) && !isPublic;
+
+  const puedeAutocompletar = !isEdit && !restoreDraft;
+  const { data: autofillUsuario, isLoading: autofillLoading } =
+    useAutofillInformeUsuario(puedeAutocompletar);
+
+  const informanteNombre =
+    (isEdit ? initial?.nombre : autofillUsuario?.nombre) ?? "";
+  const informanteOficina =
+    (isEdit ? initial?.oficina : autofillUsuario?.oficina) ?? "";
+  const informanteCargo =
+    (isEdit ? initial?.cargo : autofillUsuario?.cargo) ?? "";
+  const informanteLoading = puedeAutocompletar && autofillLoading;
 
   const updateProyecto = (
     index: number,
@@ -419,10 +634,7 @@ export default function ProyectosMemoriaForm({
     }));
   };
 
-  const removeProyectoAvance = (
-    proyectoIndex: number,
-    avanceIndex: number,
-  ) => {
+  const removeProyectoAvance = (proyectoIndex: number, avanceIndex: number) => {
     setForm((prev) => ({
       ...prev,
       proyectos: prev.proyectos.map((p, i) =>
@@ -443,17 +655,58 @@ export default function ProyectosMemoriaForm({
     setForm((prev) => ({
       ...prev,
       proyectos: [...prev.proyectos, emptyProyectoItem()],
+      imagenes: [...(prev.imagenes ?? []), []],
     }));
   };
 
   const removeProyecto = (index: number) => {
-    setForm((prev) => ({
-      ...prev,
-      proyectos:
-        prev.proyectos.length > 1
-          ? prev.proyectos.filter((_, i) => i !== index)
-          : prev.proyectos,
-    }));
+    setForm((prev) => {
+      if (prev.proyectos.length <= 1) return prev;
+      return {
+        ...prev,
+        proyectos: prev.proyectos.filter((_, i) => i !== index),
+        imagenes: (prev.imagenes ?? []).filter((_, i) => i !== index),
+      };
+    });
+  };
+
+  const addProyectoImagen = (proyectoIndex: number, path: string) => {
+    setForm((prev) => {
+      if (proyectoIndex < 0 || proyectoIndex >= prev.proyectos.length) {
+        return prev;
+      }
+
+      const imagenes = [...(prev.imagenes ?? [])];
+      while (imagenes.length < prev.proyectos.length) {
+        imagenes.push([]);
+      }
+
+      const grupo = [...(imagenes[proyectoIndex] ?? [])];
+      if (grupo.includes(path) || grupo.length >= MAX_IMAGENES_PROYECTO) {
+        return { ...prev, imagenes };
+      }
+
+      imagenes[proyectoIndex] = [...grupo, path];
+      return { ...prev, imagenes };
+    });
+  };
+
+  const removeProyectoImagen = (proyectoIndex: number, path: string) => {
+    setForm((prev) => {
+      if (proyectoIndex < 0 || proyectoIndex >= prev.proyectos.length) {
+        return prev;
+      }
+
+      const imagenes = [...(prev.imagenes ?? [])];
+      while (imagenes.length < prev.proyectos.length) {
+        imagenes.push([]);
+      }
+
+      imagenes[proyectoIndex] = (imagenes[proyectoIndex] ?? []).filter(
+        (p) => p !== path,
+      );
+      return { ...prev, imagenes };
+    });
   };
 
   const updateProyectoBeneficiario = (
@@ -472,8 +725,7 @@ export default function ProyectosMemoriaForm({
                 ...p.beneficiarios,
                 [grupo]: {
                   ...p.beneficiarios[grupo],
-                  [campo]:
-                    Number.isFinite(value) && value >= 0 ? value : 0,
+                  [campo]: Number.isFinite(value) && value >= 0 ? value : 0,
                 },
               },
             }
@@ -489,11 +741,9 @@ export default function ProyectosMemoriaForm({
     if (!parsed.success) {
       const issue = parsed.error.issues[0];
       const path = issue?.path?.join(".");
-      Swal.fire({
-        icon: "warning",
-        title: "Revise el formulario",
-        text: `${path ? `${path}: ` : ""}${issue?.message ?? "Datos inválidos."}`,
-      });
+      toast.warn(
+        `${path ? `${path}: ` : ""}${issue?.message ?? "Datos inválidos."}`,
+      );
       return;
     }
 
@@ -507,34 +757,27 @@ export default function ProyectosMemoriaForm({
     startTransition(async () => {
       try {
         if (isPublic) {
-          if (!onCreatePublic) throw new Error("Acción de envío no configurada.");
+          if (!onCreatePublic)
+            throw new Error("Acción de envío no configurada.");
           await onCreatePublic(data);
         } else if (isEdit && initial) {
           await updateProyectoMemoria(initial.id, data);
         } else {
           await createProyectoMemoria(data);
         }
-        const isDark = document.documentElement.classList.contains("dark");
-        await Swal.fire({
-          icon: "success",
-          title: isPublic
-            ? "Informe enviado"
+        toast.success(
+          isPublic
+            ? "Informe enviado."
             : isEdit
-              ? "Memoria actualizada"
-              : "Memoria registrada",
-          timer: 1600,
-          showConfirmButton: false,
-          background: isDark ? "#252526" : "#ffffff",
-          color: isDark ? "#cccccc" : "#000000",
-        });
+              ? "Memoria actualizada."
+              : "Avances registrados.",
+        );
         if (isPublic) setForm(emptyProyectoMemoria());
         onSaved();
       } catch (err) {
-        await Swal.fire({
-          icon: "error",
-          title: "No se pudo guardar",
-          text: err instanceof Error ? err.message : "Error desconocido",
-        });
+        toast.error(
+          err instanceof Error ? err.message : "No se pudo guardar.",
+        );
       }
     });
   };
@@ -542,7 +785,7 @@ export default function ProyectosMemoriaForm({
   return (
     <form onSubmit={handleSubmit} className="w-full">
       {!isPublic && (
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-start gap-3 mb-6">
           {onBack && (
             <button
               type="button"
@@ -552,9 +795,11 @@ export default function ProyectosMemoriaForm({
               <ChevronLeft className="w-5 h-5 text-muted-foreground dark:text-zinc-400" />
             </button>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h2 className="text-2xl font-black tracking-tight text-foreground dark:text-zinc-50 leading-tight">
-              {isEdit ? "Editar informe" : "Nuevo informe de memoria de labores"}
+              {isEdit
+                ? "Editar informe"
+                : "Nuevo informe de memoria de labores"}
             </h2>
             <p className="text-sm text-muted-foreground dark:text-zinc-400">
               Formulario de solicitud de información — Plan Trifinio
@@ -564,73 +809,53 @@ export default function ProyectosMemoriaForm({
       )}
 
       <div className={cn("space-y-6", isPublic && "space-y-4 sm:space-y-6")}>
+        {!isPublic && isSuper && (
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() =>
+                setForm((prev) => rellenoPruebaMemoriaLabores(prev))
+              }
+              className={cn(
+                sectionAddButtonBase,
+                sectionAddButtonStyle.avance,
+                "px-4",
+              )}
+            >
+              <Wand2 className="h-4 w-4 shrink-0" />
+              Autorelleno de prueba
+            </button>
+          </div>
+        )}
         <section
-          className={cn(
-            formSectionClass,
-            isPublic && "rounded-lg shadow-none sm:rounded-xl sm:shadow-sm",
-          )}
+          className={cn(formSectionClass, isPublic && "rounded-xl shadow-sm")}
         >
           <div className={sectionTitleClass}>
             <CalendarDays className="w-4 h-4" />
-            Datos del informe
+            Quien reporta
           </div>
           <div
             className={cn(
               formSectionBodyClass(isPublic),
-              "grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4",
+              "grid grid-cols-1 lg:grid-cols-[1fr_4fr] gap-3 sm:gap-4",
             )}
           >
-            <div className="grid gap-1.5 md:col-span-2">
-              <Label htmlFor="oficina">
-                Oficina / Unidad técnica o proyecto
-              </Label>
-              <TextInput
-                id="oficina"
-                value={form.oficina ?? ""}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, oficina: e.target.value }))
-                }
-                placeholder="ej. Unidad de Comunicación"
-              />
-              <FieldHint>
-                Área del Plan Trifinio que reporta esta memoria (unidad técnica,
-                oficina o proyecto desde el cual se envía el informe).
-              </FieldHint>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="cargo">Cargo</Label>
-              <TextInput
-                id="cargo"
-                value={form.cargo ?? ""}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, cargo: e.target.value }))
-                }
-                placeholder="ej. Técnico de proyectos"
-              />
-              <FieldHint>
-                Puesto o función de la persona que completa y envía el
-                formulario.
-              </FieldHint>
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="nombre">Nombre</Label>
-              <TextInput
-                id="nombre"
-                value={form.nombre ?? ""}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, nombre: e.target.value }))
-                }
-                placeholder="ej. Juan Pérez"
-              />
-              <FieldHint>
-                Nombre completo de quien reporta (no es el nombre del proyecto).
-              </FieldHint>
-            </div>
+            <DatoSoloLectura
+              label="Nombre"
+              value={informanteNombre}
+              loading={informanteLoading}
+            />
+            <DatoSoloLectura
+              label="Dependencia jerárquica"
+              value={textoDependenciaJerarquica(informanteOficina, informanteCargo)}
+              loading={informanteLoading}
+            />
           </div>
         </section>
 
         <ProyectosEjecutadosSection
           items={form.proyectos}
+          imagenes={form.imagenes ?? []}
           onChange={updateProyecto}
           onBeneficiarioChange={updateProyectoBeneficiario}
           onAvanceChange={updateProyectoAvance}
@@ -641,6 +866,8 @@ export default function ProyectosMemoriaForm({
           onListaRemove={removeProyectoListaItem}
           onAdd={addProyecto}
           onRemove={removeProyecto}
+          onImagenAdd={addProyectoImagen}
+          onImagenRemove={removeProyectoImagen}
           sectionTitleClass={sectionTitleClass}
           isPublic={isPublic}
           isEdit={isEdit}
@@ -655,6 +882,7 @@ export default function ProyectosMemoriaForm({
 
 function ProyectosEjecutadosSection({
   items,
+  imagenes,
   onChange,
   onBeneficiarioChange,
   onAvanceChange,
@@ -665,6 +893,8 @@ function ProyectosEjecutadosSection({
   onListaRemove,
   onAdd,
   onRemove,
+  onImagenAdd,
+  onImagenRemove,
   sectionTitleClass,
   isPublic,
   isEdit,
@@ -673,6 +903,7 @@ function ProyectosEjecutadosSection({
   onReview,
 }: {
   items: ProyectoItem[];
+  imagenes: string[][];
   onChange: (
     index: number,
     field: "nombre" | "mes" | "descripcion",
@@ -706,6 +937,8 @@ function ProyectosEjecutadosSection({
   ) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
+  onImagenAdd: (proyectoIndex: number, path: string) => void;
+  onImagenRemove: (proyectoIndex: number, path: string) => void;
   sectionTitleClass: string;
   isPublic: boolean;
   isEdit: boolean;
@@ -715,148 +948,167 @@ function ProyectosEjecutadosSection({
 }) {
   return (
     <section
-      className={cn(
-        formSectionClass,
-        isPublic && "rounded-lg shadow-none sm:rounded-xl sm:shadow-sm",
-      )}
+      className={cn(formSectionClass, isPublic && "rounded-xl shadow-sm")}
     >
       <div className={sectionTitleClass}>
-        <ListChecks className="w-4 h-4" />
-        Proyectos ejecutados por mes
+        <ListChecks className="w-4 h-4 shrink-0" />
+        <span>
+          <span className="font-bold">Proyectos ejecutados por mes:</span>{" "}
+          <span className="font-normal text-white/90">
+            Agregue un bloque por cada proyecto del período con mes,
+            descripción, avances, resultados y efectos.
+          </span>
+        </span>
       </div>
-      <div className={proyectosListBodyClass(isPublic)}>
-        {items.map((item, i) => (
-          <div key={i} className={proyectoCardClass(isPublic)}>
-            <div className="flex items-center justify-between gap-2">
-              <span
-                className={cn(
-                  "text-sm font-black truncate",
-                  sectionAddButtonColor.proyecto,
-                )}
-              >
-                {item.nombre.trim() || `Proyecto ${i + 1}`}
-              </span>
-              {items.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => onRemove(i)}
-                  className="h-8 w-8 shrink-0 flex items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-red-950/40 dark:hover:text-red-400 transition-colors cursor-pointer"
-                  aria-label="Eliminar proyecto"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-start gap-3">
-                <div className="flex-1 min-w-0 grid gap-1.5">
-                  <Label htmlFor={`proyecto-nombre-${i}`}>
-                    Nombre del proyecto
-                  </Label>
-                  <TextInput
-                    id={`proyecto-nombre-${i}`}
-                    value={item.nombre}
-                    onChange={(e) => onChange(i, "nombre", e.target.value)}
-                    placeholder="ej. Fortalecimiento comunitario en la frontera"
-                  />
-                  <FieldHint>
-                    Título o nombre con el que se identifica este proyecto
-                    dentro del informe.
-                  </FieldHint>
+      <div className={proyectosListBodyClass}>
+        <AnimatePresence mode="popLayout" initial={false}>
+          {items.map((item, i) => (
+            <motion.div
+              key={i}
+              {...listItemMotionProps}
+              className={proyectoCardClass(isPublic)}
+            >
+              <div className="space-y-4 p-4">
+                <div className="space-y-2">
+                  {items.length > 1 && (
+                    <div className="flex justify-end">
+                      <ProyectoRemoveButton onClick={() => onRemove(i)} />
+                    </div>
+                  )}
+                  <span
+                    className={cn(
+                      "block text-sm font-black leading-snug break-words",
+                      sectionTitleColor.proyecto,
+                    )}
+                  >
+                    {item.nombre.trim() || `Proyecto ${i + 1}`}
+                  </span>
                 </div>
-                <div className="w-full sm:w-40 shrink-0 grid gap-1.5">
-                  <Label htmlFor={`proyecto-mes-${i}`}>Mes</Label>
-                  <TextInput
-                    id={`proyecto-mes-${i}`}
-                    type="month"
-                    value={item.mes}
-                    onChange={(e) => onChange(i, "mes", e.target.value)}
-                    className="min-w-0 px-2"
-                  />
-                  <FieldHint>Mes de ejecución o reporte.</FieldHint>
+
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-3">
+                    <div className="flex-1 min-w-0 grid gap-1.5">
+                      <FieldLabelWithHint
+                        htmlFor={`proyecto-nombre-${i}`}
+                        label="Nombre del proyecto"
+                        hint="título o nombre con el que se identifica este proyecto dentro del informe"
+                      />
+                      <TextInput
+                        id={`proyecto-nombre-${i}`}
+                        seccion="proyecto"
+                        value={item.nombre}
+                        onChange={(e) => onChange(i, "nombre", e.target.value)}
+                        placeholder="ej. Fortalecimiento comunitario en la frontera"
+                      />
+                    </div>
+                    <div className="w-full sm:w-44 shrink-0 grid gap-1.5">
+                      <Label htmlFor={`proyecto-mes-${i}`}>
+                        Mes de ejecución
+                      </Label>
+                      <TextInput
+                        id={`proyecto-mes-${i}`}
+                        type="month"
+                        seccion="proyecto"
+                        value={item.mes}
+                        onChange={(e) => onChange(i, "mes", e.target.value)}
+                        className="min-w-0"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <FieldLabelWithHint
+                      label="Descripción del proyecto"
+                      hint="resumen de qué consistió el proyecto y las actividades realizadas en ese mes"
+                    />
+                    <Field
+                      rows={2}
+                      seccion="proyecto"
+                      value={item.descripcion}
+                      onChange={(e) =>
+                        onChange(i, "descripcion", e.target.value)
+                      }
+                      placeholder="Descripción del proyecto"
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="grid gap-1.5">
-                <Label>Descripción del proyecto</Label>
-                <Field
-                  rows={2}
-                  value={item.descripcion}
-                  onChange={(e) => onChange(i, "descripcion", e.target.value)}
-                  placeholder="Descripción del proyecto"
+
+              <div className="flex flex-col gap-4">
+                <ProyectoAvancesLista
+                  items={item.avances}
+                  compact={isPublic}
+                  flush
+                  onChange={(j, field, value) =>
+                    onAvanceChange(i, j, field, value)
+                  }
+                  onAdd={() => onAvanceAdd(i)}
+                  onRemove={(j) => onAvanceRemove(i, j)}
                 />
-                <FieldHint>
-                  Resumen de qué consistió el proyecto y las actividades
-                  realizadas en ese mes.
-                </FieldHint>
+
+                <ProyectoListaInterna
+                  titulo="Principales resultados del período"
+                  ayuda="logros concretos obtenidos con este proyecto durante el período reportado."
+                  icon={<ListChecks className="w-3.5 h-3.5" />}
+                  items={item.resultados}
+                  placeholder="Descripción por proyecto"
+                  addLabel="Agregar resultado"
+                  addColor="resultado"
+                  itemLabel="Descripción del resultado"
+                  flush
+                  compact={isPublic}
+                  onChange={(j, v) => onListaChange(i, "resultados", j, v)}
+                  onAdd={() => onListaAdd(i, "resultados")}
+                  onRemove={(j) => onListaRemove(i, "resultados", j)}
+                />
+
+                <ProyectoListaInterna
+                  titulo="Efectos alcanzados"
+                  ayuda="cambios o impactos en comunidad: expansión de teoría, aplicación práctica o réplica de lo aprendido."
+                  icon={<Sparkles className="w-3.5 h-3.5" />}
+                  items={item.efectos}
+                  compact={isPublic}
+                  placeholder="Descripción de expansión de teoría / aplicación y réplica en comunidad"
+                  addLabel="Agregar efecto alcanzado"
+                  addColor="efecto"
+                  itemLabel="Descripción del efecto"
+                  flush
+                  onChange={(j, v) => onListaChange(i, "efectos", j, v)}
+                  onAdd={() => onListaAdd(i, "efectos")}
+                  onRemove={(j) => onListaRemove(i, "efectos", j)}
+                />
+
+                <ProyectoBeneficiariosFields
+                  proyectoIndex={i}
+                  beneficiarios={item.beneficiarios}
+                  compact={isPublic}
+                  flush
+                  onChange={onBeneficiarioChange}
+                />
+
+                <ProyectoImagenesFields
+                  proyectoIndex={i}
+                  paths={imagenes[i] ?? []}
+                  disabled={isPending}
+                  onAdd={onImagenAdd}
+                  onRemove={onImagenRemove}
+                />
               </div>
-            </div>
-
-            <ProyectoAvancesLista
-              items={item.avances}
-              compact={isPublic}
-              onChange={(j, field, value) =>
-                onAvanceChange(i, j, field, value)
-              }
-              onAdd={() => onAvanceAdd(i)}
-              onRemove={(j) => onAvanceRemove(i, j)}
-            />
-
-            <ProyectoListaInterna
-              titulo="Principales resultados del período"
-              ayuda="Logros concretos obtenidos con este proyecto durante el período reportado."
-              icon={<ListChecks className="w-3.5 h-3.5" />}
-              items={item.resultados}
-              placeholder="Descripción por proyecto"
-              addLabel="Agregar resultado"
-              removeLabel="Eliminar resultado"
-              addColor="resultado"
-              compact={isPublic}
-              onChange={(j, v) => onListaChange(i, "resultados", j, v)}
-              onAdd={() => onListaAdd(i, "resultados")}
-              onRemove={(j) => onListaRemove(i, "resultados", j)}
-            />
-
-            <ProyectoListaInterna
-              titulo="Efectos alcanzados"
-              ayuda="Cambios o impactos en comunidad: expansión de teoría, aplicación práctica o réplica de lo aprendido."
-              icon={<Sparkles className="w-3.5 h-3.5" />}
-              items={item.efectos}
-              compact={isPublic}
-              placeholder="Descripción de expansión de teoría / aplicación y réplica en comunidad"
-              addLabel="Agregar efecto alcanzado"
-              removeLabel="Eliminar efecto alcanzado"
-              addColor="efecto"
-              onChange={(j, v) => onListaChange(i, "efectos", j, v)}
-              onAdd={() => onListaAdd(i, "efectos")}
-              onRemove={(j) => onListaRemove(i, "efectos", j)}
-            />
-
-            <ProyectoBeneficiariosFields
-              proyectoIndex={i}
-              beneficiarios={item.beneficiarios}
-              compact={isPublic}
-              onChange={onBeneficiarioChange}
-            />
-          </div>
-        ))}
+            </motion.div>
+          ))}
+        </AnimatePresence>
         <SectionAddButton
           label="Agregar proyecto"
           color="proyecto"
           onClick={onAdd}
+          className="px-4"
         />
-        <FieldHint>
-          Agregue un bloque por cada proyecto ejecutado en el período. Cada
-          bloque agrupa mes, descripción, avances medibles, resultados y
-          efectos de ese proyecto.
-        </FieldHint>
 
-        <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3 pt-4 mt-2 border-t border-border dark:border-zinc-700">
+        <div className="mt-2 flex flex-col-reverse items-stretch gap-3 border-t border-border pt-6 pb-8 dark:border-zinc-700 sm:flex-row sm:items-center sm:justify-center">
           {!isPublic && onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="h-11 px-5 rounded-xl border border-border bg-background text-foreground font-bold uppercase text-[10px] tracking-widest hover:bg-muted/50 transition-all cursor-pointer dark:border-zinc-700 dark:bg-zinc-900"
+              className="inline-flex h-11 items-center justify-center rounded-xl border-0 bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 cursor-pointer dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
             >
               Cancelar
             </button>
@@ -864,22 +1116,16 @@ function ProyectosEjecutadosSection({
           <button
             type="submit"
             disabled={isPending}
-            className="h-11 px-6 rounded-xl bg-azul-trifinio text-white font-bold uppercase text-[10px] tracking-widest hover:opacity-90 transition-all active:scale-95 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border-0 bg-emerald-200 px-6 text-[10px] font-bold uppercase tracking-widest text-emerald-900 transition-colors hover:bg-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer dark:bg-emerald-800/70 dark:text-emerald-50 dark:hover:bg-emerald-700/80"
           >
-            {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : isPublic && onReview ? (
-              <ArrowRight className="w-4 h-4" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
             {isPublic && onReview
               ? "Revisar informe"
               : isPublic
                 ? "Enviar informe"
                 : isEdit
                   ? "Guardar cambios"
-                  : "Registrar memoria"}
+                  : "Registrar avances"}
           </button>
         </div>
       </div>
@@ -892,6 +1138,7 @@ function ProyectoBeneficiariosFields({
   beneficiarios,
   onChange,
   compact = false,
+  flush = false,
 }: {
   proyectoIndex: number;
   beneficiarios: Beneficiarios;
@@ -902,62 +1149,93 @@ function ProyectoBeneficiariosFields({
     value: number,
   ) => void;
   compact?: boolean;
+  flush?: boolean;
 }) {
+  const grupos = [
+    { key: "directos" as const, titulo: "Beneficiarios directos" },
+    { key: "indirectos" as const, titulo: "Beneficiarios indirectos" },
+  ];
+
   return (
     <ProyectoSubseccion
       seccion="beneficiarios"
       title="Beneficiarios alcanzados"
       icon={<Users className="w-3.5 h-3.5" />}
+      hint="personas alcanzadas por este proyecto. Directos: participaron de forma activa. Indirectos: se beneficiaron sin participación directa."
       compact={compact}
+      flush={flush}
     >
-      {(["directos", "indirectos"] as const).map((grupo) => (
-        <div
-          key={grupo}
-          className={cn(
-            grupo === "indirectos" &&
-              "mt-5 border-t border-border pt-5 dark:border-zinc-700",
-          )}
-        >
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground dark:text-zinc-400 mb-2">
-            Beneficiarios {grupo}
-          </p>
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-6">
+        {grupos.map((grupo) => (
           <div
-            className={cn(
-              "grid gap-2 sm:gap-3",
-              compact ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-1 sm:grid-cols-3",
-            )}
+            key={grupo.key}
+            className={cn("min-w-0 flex-1", nestedItemShellClass)}
           >
-            {(["hombres", "mujeres", "jovenes"] as const).map((campo) => (
-              <div
-                key={campo}
-                className={cn(
-                  "grid gap-1.5",
-                  compact && campo === "jovenes" && "col-span-2 sm:col-span-1",
-                )}
-              >
-                <Label
-                  className="capitalize normal-case tracking-normal text-[10px]"
-                  htmlFor={`p${proyectoIndex}-${grupo}-${campo}`}
+            <p
+              className={cn(
+                "mb-2 text-center text-[10px] font-bold uppercase tracking-widest",
+                sectionTitleColor.beneficiarios,
+              )}
+            >
+              {grupo.titulo}
+            </p>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {(["hombres", "mujeres", "jovenes"] as const).map((campo) => (
+                <div
+                  key={campo}
+                  className="grid min-w-0 justify-items-center gap-1.5"
                 >
-                  {campo === "jovenes" ? "Jóvenes" : campo}
-                </Label>
-                <NumericInput
-                  id={`p${proyectoIndex}-${grupo}-${campo}`}
-                  value={beneficiarios[grupo][campo]}
-                  onValueChange={(n) =>
-                    onChange(proyectoIndex, grupo, campo, n)
-                  }
-                />
-              </div>
-            ))}
+                  <Label
+                    className="text-center normal-case tracking-normal text-[10px]"
+                    htmlFor={`p${proyectoIndex}-${grupo.key}-${campo}`}
+                  >
+                    {campo === "jovenes" ? "Jóvenes" : campo}
+                  </Label>
+                  <NumericInput
+                    id={`p${proyectoIndex}-${grupo.key}-${campo}`}
+                    seccion="beneficiarios"
+                    value={beneficiarios[grupo.key][campo]}
+                    onValueChange={(n) =>
+                      onChange(proyectoIndex, grupo.key, campo, n)
+                    }
+                  />
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
-      <FieldHint>
-        Personas alcanzadas por este proyecto. Directos: participaron de forma
-        activa. Indirectos: se beneficiaron sin participación directa. Jóvenes
-        según criterio del proyecto (ej. 15–29 años).
-      </FieldHint>
+        ))}
+      </div>
+    </ProyectoSubseccion>
+  );
+}
+
+function ProyectoImagenesFields({
+  proyectoIndex,
+  paths,
+  disabled,
+  onAdd,
+  onRemove,
+}: {
+  proyectoIndex: number;
+  paths: string[];
+  disabled?: boolean;
+  onAdd: (proyectoIndex: number, path: string) => void;
+  onRemove: (proyectoIndex: number, path: string) => void;
+}) {
+  return (
+    <ProyectoSubseccion
+      seccion="proyecto"
+      title="Imágenes del proyecto"
+      icon={<Images className="w-3.5 h-3.5" />}
+      hint="hasta 4 fotografías del proyecto. En el teléfono puede tomar la foto con la cámara."
+      flush
+    >
+      <ProyectoImagenes
+        paths={paths}
+        disabled={disabled}
+        onAdd={(path) => onAdd(proyectoIndex, path)}
+        onRemove={(path) => onRemove(proyectoIndex, path)}
+      />
     </ProyectoSubseccion>
   );
 }
@@ -968,6 +1246,7 @@ function ProyectoAvancesLista({
   onAdd,
   onRemove,
   compact = false,
+  flush = false,
 }: {
   items: ProyectoAvance[];
   onChange: (
@@ -978,123 +1257,97 @@ function ProyectoAvancesLista({
   onAdd: () => void;
   onRemove: (index: number) => void;
   compact?: boolean;
+  flush?: boolean;
 }) {
   return (
     <ProyectoSubseccion
       seccion="avance"
       title="Avances por proyecto"
       icon={<TrendingUp className="w-3.5 h-3.5" />}
+      hint="indicadores medibles del avance. Usted define la escala: puede ser 7 de 10, 15 de 20, 80 de 100, etc"
       compact={compact}
+      flush={flush}
     >
-      {items.map((avance, j) => (
-          <div key={j} className={nestedItemShellClass(compact)}>
-            <div className="flex items-start gap-2">
-              <div
-                className={cn(
-                  "flex h-9 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-sm font-black text-muted-foreground dark:bg-zinc-800 dark:text-zinc-300 sm:h-10",
-                  compact && "hidden sm:flex",
-                )}
-              >
-                {j + 1}
-              </div>
-              <div className="min-w-0 flex-1 space-y-2">
-                <div className="grid gap-1.5">
-                  <div className="flex items-center gap-2">
-                    {compact ? (
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-xs font-black text-muted-foreground dark:bg-zinc-800 dark:text-zinc-300 sm:hidden">
-                        {j + 1}
-                      </span>
-                    ) : null}
-                    <Label className="normal-case tracking-normal text-[10px] flex-1">
-                      Descripción del indicador
-                    </Label>
-                  </div>
-                  <Field
-                    rows={2}
-                    value={avance.descripcion}
-                    onChange={(e) => onChange(j, "descripcion", e.target.value)}
-                    placeholder="ej. Talleres de capacitación realizados"
+      <AnimatePresence mode="popLayout" initial={false}>
+        {items.map((avance, j) => (
+          <motion.div
+            key={j}
+            {...listItemMotionProps}
+            className={nestedItemShellClass}
+          >
+            <ListaItemDosLineas index={j + 1} label="Descripción del indicador">
+              <Field
+                rows={2}
+                seccion="avance"
+                value={avance.descripcion}
+                onChange={(e) => onChange(j, "descripcion", e.target.value)}
+                placeholder="ej. Talleres de capacitación realizados"
+                className="w-full min-h-10"
+              />
+            </ListaItemDosLineas>
+            <div className="flex items-end justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-end justify-start gap-3">
+                <div className="grid justify-items-center gap-1.5">
+                  <Label className="text-center normal-case tracking-normal text-[10px]">
+                    Logrado
+                  </Label>
+                  <NumericInput
+                    seccion="avance"
+                    value={avance.logrado}
+                    onValueChange={(n) => onChange(j, "logrado", n)}
+                    placeholder="7"
+                    className="w-[3.25rem]"
                   />
                 </div>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_auto_1fr_auto] sm:items-end">
-                  <div className="grid gap-1.5">
-                    <Label className="normal-case tracking-normal text-[10px]">
-                      Logrado
-                    </Label>
-                    <NumericInput
-                      value={avance.logrado}
-                      onValueChange={(n) => onChange(j, "logrado", n)}
-                      placeholder="ej. 7"
-                    />
-                  </div>
-                  <span className="hidden pb-2.5 text-lg font-black text-muted-foreground dark:text-zinc-500 sm:block">
-                    /
-                  </span>
-                  <div className="grid gap-1.5">
-                    <Label className="normal-case tracking-normal text-[10px]">
-                      Meta
-                    </Label>
-                    <NumericInput
-                      value={avance.meta}
-                      onValueChange={(n) => onChange(j, "meta", n)}
-                      placeholder="ej. 10"
-                    />
-                  </div>
-                  <div className="col-span-2 flex justify-center sm:col-span-1 sm:col-start-4 sm:row-start-1">
-                    <div className="w-full rounded-lg bg-amber-500/10 px-3 h-10 flex items-center justify-center text-sm font-black text-amber-600 dark:text-amber-400 sm:min-w-[4rem] sm:w-auto">
-                      {avance.meta > 0
-                        ? `${avance.logrado}/${avance.meta}`
-                        : "—"}
-                    </div>
-                  </div>
+                <span className="pb-2 text-center text-base font-black text-muted-foreground dark:text-zinc-500">
+                  /
+                </span>
+                <div className="grid justify-items-center gap-1.5">
+                  <Label className="text-center normal-case tracking-normal text-[10px]">
+                    Meta
+                  </Label>
+                  <NumericInput
+                    seccion="avance"
+                    value={avance.meta}
+                    onValueChange={(n) => onChange(j, "meta", n)}
+                    placeholder="10"
+                    className="w-[3.25rem]"
+                  />
                 </div>
-                <div className="space-y-1 pt-1">
-                  <FieldHint>
-                    <span className="font-semibold text-foreground/70 dark:text-zinc-400">
-                      Indicador:
-                    </span>{" "}
-                    Qué se está midiendo (ej. talleres impartidos, familias
-                    capacitadas, instituciones fortalecidas).
-                  </FieldHint>
-                  <FieldHint>
-                    <span className="font-semibold text-foreground/70 dark:text-zinc-400">
-                      Logrado:
-                    </span>{" "}
-                    Cantidad alcanzada hasta la fecha en este indicador.
-                  </FieldHint>
-                  <FieldHint>
-                    <span className="font-semibold text-foreground/70 dark:text-zinc-400">
-                      Meta:
-                    </span>{" "}
-                    Objetivo total planificado. Puede ser cualquier número que
-                    usted defina (10, 50, 100…). La escala no está limitada a
-                    10.
-                  </FieldHint>
+                <div className="grid justify-items-center gap-1.5">
+                  <Label className="text-center normal-case tracking-normal text-[10px]">
+                    KPI
+                  </Label>
+                  <div className="flex h-9 w-[3.25rem] items-center justify-center rounded-lg bg-amber-100 px-1 text-xs font-black text-amber-700 dark:bg-amber-950 dark:text-amber-400">
+                    {avance.meta > 0
+                      ? `${Math.min(100, Math.round((avance.logrado / avance.meta) * 100))}%`
+                      : "—"}
+                  </div>
                 </div>
               </div>
+              <SectionRemoveButton
+                onClick={() => onRemove(j)}
+                className="shrink-0 self-end pb-0.5"
+              />
             </div>
-            <SectionRemoveButton
-              onClick={() => onRemove(j)}
-              label="Eliminar avance"
-            />
-          </div>
+            <FieldHint className="hidden text-[10px] leading-snug sm:block sm:text-right">
+              <span className="font-semibold text-foreground/70 dark:text-zinc-400">
+                Logrado:
+              </span>{" "}
+              Cantidad alcanzada ·{" "}
+              <span className="font-semibold text-foreground/70 dark:text-zinc-400">
+                Meta:
+              </span>{" "}
+              Objetivo planificado (cualquier escala).
+            </FieldHint>
+          </motion.div>
         ))}
-        <div
-          className={cn(
-            compact &&
-              "mt-5 border-t border-border pt-4 dark:border-zinc-700 sm:mt-3 sm:border-t-0 sm:pt-0",
-          )}
-        >
-          <SectionAddButton
-            label="Agregar avance por proyecto"
-            color="avance"
-            onClick={onAdd}
-          />
-          <FieldHint className="mt-3">
-            Indicadores medibles del avance. Usted define la escala: puede ser 7
-            de 10, 15 de 20, 80 de 100, etc.
-          </FieldHint>
-        </div>
+      </AnimatePresence>
+      <SectionAddButton
+        label="Agregar avance por proyecto"
+        color="avance"
+        onClick={onAdd}
+      />
     </ProyectoSubseccion>
   );
 }
@@ -1106,12 +1359,13 @@ function ProyectoListaInterna({
   items,
   placeholder,
   addLabel,
-  removeLabel,
   addColor,
+  itemLabel,
   onChange,
   onAdd,
   onRemove,
   compact = false,
+  flush = false,
 }: {
   titulo: string;
   ayuda?: string;
@@ -1119,49 +1373,50 @@ function ProyectoListaInterna({
   items: string[];
   placeholder: string;
   addLabel: string;
-  removeLabel: string;
   addColor: Exclude<ProyectoSeccionKey, "proyecto" | "beneficiarios">;
+  itemLabel: string;
   onChange: (index: number, value: string) => void;
   onAdd: () => void;
   onRemove: (index: number) => void;
   compact?: boolean;
+  flush?: boolean;
 }) {
   return (
     <ProyectoSubseccion
       seccion={addColor}
       title={titulo}
       icon={icon}
+      hint={ayuda}
       compact={compact}
+      flush={flush}
     >
-      {items.map((value, j) => (
-          <div key={j} className={nestedItemShellClass(compact)}>
-            <div className="flex items-start gap-1.5 sm:gap-2">
-              <div className="flex h-9 w-7 shrink-0 items-center justify-center rounded-lg bg-muted/60 text-sm font-black text-muted-foreground dark:bg-zinc-800 dark:text-zinc-300 sm:h-10 sm:w-8">
-                {j + 1}
-              </div>
+      <AnimatePresence mode="popLayout" initial={false}>
+        {items.map((value, j) => (
+          <motion.div
+            key={j}
+            {...listItemMotionProps}
+            className={nestedItemShellClass}
+          >
+            <ListaItemDosLineas index={j + 1} label={itemLabel}>
               <Field
                 rows={2}
+                seccion={addColor}
                 value={value}
                 onChange={(e) => onChange(j, e.target.value)}
                 placeholder={placeholder}
-                className="min-w-0 flex-1"
+                className="w-full"
+              />
+            </ListaItemDosLineas>
+            <div className="flex justify-end">
+              <SectionRemoveButton
+                onClick={() => onRemove(j)}
+                className="pb-0.5"
               />
             </div>
-            <SectionRemoveButton
-              onClick={() => onRemove(j)}
-              label={removeLabel}
-            />
-          </div>
+          </motion.div>
         ))}
-      <div
-        className={cn(
-          compact &&
-            "mt-5 border-t border-border pt-4 dark:border-zinc-700 sm:mt-3 sm:border-t-0 sm:pt-0",
-        )}
-      >
-        <SectionAddButton label={addLabel} color={addColor} onClick={onAdd} />
-        {ayuda ? <FieldHint className="mt-3">{ayuda}</FieldHint> : null}
-      </div>
+      </AnimatePresence>
+      <SectionAddButton label={addLabel} color={addColor} onClick={onAdd} />
     </ProyectoSubseccion>
   );
 }

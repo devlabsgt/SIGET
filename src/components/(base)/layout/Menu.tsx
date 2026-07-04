@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Swal from "sweetalert2";
 import {
   BookOpen,
+  Building2,
   ChevronDown,
   FileText,
   Globe,
@@ -43,6 +44,7 @@ const MENU_OPTION_ICONS: Record<string, LucideIcon> = {
   "movilidad-humana": Globe,
   "mi-perfil": User,
   "ingreso-seguro": KeyRound,
+  "organizacion-administrativa": Building2,
   dispositivos: Smartphone,
   usuarios: Users,
   configuraciones: Settings,
@@ -535,24 +537,16 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
       {mounted &&
         createPortal(
           <>
-            {isOpen && (
-              <div
-                className="fixed inset-0 z-[99] bg-background/40"
-                onClick={() => setIsOpen(false)}
-                aria-hidden="true"
-              />
-            )}
-
             <aside
               className={cn(
-                "fixed right-0 z-[110] pointer-events-auto w-full sm:w-100 bg-zinc-100/95 dark:bg-zinc-950 border-l border-border/50 transition-transform duration-500 overflow-y-auto flex flex-col",
+                "fixed right-0 z-[110] pointer-events-auto w-full sm:w-100 bg-zinc-100 dark:bg-zinc-800 border-l border-border/50 transition-transform duration-500 overflow-y-auto flex flex-col",
                 menuTop,
                 menuHeight,
                 isOpen ? "translate-x-0" : "translate-x-full pointer-events-none",
               )}
             >
         {user ? (
-          <div className="shrink-0 border-b border-celeste-trifinio/15 bg-gradient-to-b from-celeste-trifinio/12 via-celeste-trifinio/5 to-transparent dark:from-celeste-trifinio/20 dark:via-celeste-trifinio/8 dark:to-transparent">
+          <div className="shrink-0 border-b border-border/40 bg-zinc-100 dark:bg-zinc-800">
             <div className="flex w-full items-center justify-between px-5 h-[var(--mobile-breadcrumb-height)] md:h-auto md:pt-5 md:pb-3">
               <button
                 type="button"
@@ -568,7 +562,7 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
             </div>
 
             <div className="px-5 pb-4">
-              <div className="rounded-2xl bg-white/90 dark:bg-zinc-900/90 p-4 shadow-sm ring-1 ring-white/60 dark:ring-zinc-700/60">
+              <div className="rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border/50">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                   <div className="min-w-0">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -596,7 +590,7 @@ export default function Menu({ isOpen, setIsOpen, user }: MenuProps) {
               <button
                 type="button"
                 onClick={() => setIsManualOpen(true)}
-                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-celeste-trifinio/40 bg-white/50 dark:bg-zinc-900/40 px-4 py-2.5 text-left transition-colors duration-200 hover:border-celeste-trifinio hover:bg-white/80 dark:hover:bg-zinc-900/70 cursor-pointer active:scale-[0.99]"
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-celeste-trifinio/40 bg-card px-4 py-2.5 text-left transition-colors duration-200 hover:border-celeste-trifinio hover:bg-muted cursor-pointer active:scale-[0.99]"
               >
                 <BookOpen className="size-4 text-celeste-trifinio shrink-0" strokeWidth={2.25} />
                 <span className="text-xs font-bold text-celeste-trifinio">Manual de Usuario</span>

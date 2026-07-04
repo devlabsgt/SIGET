@@ -27,24 +27,27 @@ export async function AdminPanel() {
     : 0;
 
   return (
-    <div className="relative w-full min-h-[calc(100vh-4rem)] px-4 md:px-8 lg:px-12 pt-4 md:pt-28 pb-16">
+    <div className="relative w-full px-4 md:px-8 lg:px-12 pt-4 md:pt-6 pb-8">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] bg-size-[24px_24px] opacity-50 dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] dark:opacity-40" />
 
-      <div className="relative z-10 mx-auto w-full max-w-6xl space-y-8">
-        <div className="space-y-2">
-          <div>
+      <div className="relative z-10 mx-auto w-full max-w-[min(100%,1600px)] space-y-6">
+        <div className="flex items-start gap-4 min-w-0">
+          <div className="flex size-20 md:size-24 shrink-0 items-center justify-center rounded-2xl border border-celeste-trifinio/25 bg-celeste-trifinio/10 dark:rounded-2xl dark:bg-white">
+            <AnimatedIcon iconKey="plusmrxr" size={64} speed={1.5} />
+          </div>
+          <div className="space-y-2 min-w-0">
             <p className="text-[10px] font-black uppercase tracking-widest text-celeste-trifinio">
-              Panel admin
+              Panel administrativo
             </p>
             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
               Administración
             </h1>
+            <p className="text-sm md:text-base text-muted-foreground max-w-2xl">
+              {isSuperOrAdmin
+                ? "Gestione dispositivos, usuarios y configuraciones del sistema SIGET desde un solo lugar."
+                : "Gestione usuarios del sistema SIGET."}
+            </p>
           </div>
-          <p className="text-sm md:text-base text-muted-foreground max-w-2xl pl-0.5">
-            {isSuperOrAdmin
-              ? "Gestione dispositivos, usuarios y configuraciones del sistema SIGET desde un solo lugar."
-              : "Gestione usuarios del sistema SIGET."}
-          </p>
         </div>
 
         {isSuperOrAdmin && pendingDevices > 0 && (

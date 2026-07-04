@@ -82,6 +82,13 @@ export function getPerfilMenuOptions(enablePasskeys: boolean) {
 
 export const ADMIN_MENU_OPTIONS = [
   {
+    id: "organizacion-administrativa",
+    title: "Organización Administrativa",
+    desc: "Estructura jerárquica del Plan Trifinio.",
+    href: "/siget/admin/organizacion-administrativa",
+    animatedIcon: "sagolbcs",
+  },
+  {
     id: "dispositivos",
     title: "Dispositivos",
     desc: "Autorizar o rechazar acceso por dispositivo.",

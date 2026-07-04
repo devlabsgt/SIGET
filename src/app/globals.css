@@ -16,53 +16,80 @@
     }
   }
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --background: oklch(0.985 0 0);
+  --foreground: oklch(0.141 0.005 286);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.141 0.005 286);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.141 0.005 286);
+  --primary: oklch(0.21 0.006 286);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.967 0.001 286);
+  --secondary-foreground: oklch(0.21 0.006 286);
+  --muted: oklch(0.967 0.001 286);
+  --muted-foreground: oklch(0.552 0.016 286);
+  --accent: oklch(0.967 0.001 286);
+  --accent-foreground: oklch(0.21 0.006 286);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: 0 0% 98%;
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --border: oklch(0.92 0.004 286);
+  --input: oklch(0.92 0.004 286);
+  --ring: oklch(0.705 0.015 286);
   --radius: 0.625rem;
+  --azul-trifinio: #2c5f9b;
+  --estructura-card-surface: #f4f4f5;
+  --modal-surface: #f4f4f5;
+
+  --toastify-toast-shadow: none;
+  --toastify-toast-bd-radius: 0.75rem;
+  --toastify-toast-min-height: 3rem;
+  --toastify-toast-padding: 0.875rem 1rem;
+  --toastify-z-index: 10000;
+  --toastify-color-success: #059669;
+  --toastify-color-error: #dc2626;
+  --toastify-color-warning: #f59e0b;
+  --toastify-text-color-success: #ffffff;
+  --toastify-text-color-error: #ffffff;
+  --toastify-text-color-warning: #0f172a;
+  --toastify-icon-color-success: #ffffff;
+  --toastify-icon-color-error: #ffffff;
+  --toastify-icon-color-warning: #0f172a;
+  --toastify-color-progress-success: rgb(255 255 255 / 0.35);
+  --toastify-color-progress-error: rgb(255 255 255 / 0.35);
+  --toastify-color-progress-warning: rgb(15 23 42 / 0.2);
 }
 
 .dark {
-  /* Paleta inspirada en VS Code Dark+ — grises suaves, bajo contraste */
-  --background: oklch(30% 0 0);
-  --foreground: oklch(84% 0 0);
-  --card: oklch(33% 0 0);
-  --card-foreground: oklch(84% 0 0);
-  --popover: oklch(35% 0 0);
-  --popover-foreground: oklch(84% 0 0);
-  --primary: oklch(84% 0 0);
-  --primary-foreground: oklch(30% 0 0);
-  --secondary: oklch(35% 0 0);
-  --secondary-foreground: oklch(84% 0 0);
-  --muted: oklch(35% 0 0);
-  --muted-foreground: oklch(62% 0 0);
-  --accent: oklch(38% 0 0);
-  --accent-foreground: oklch(84% 0 0);
-  --destructive: oklch(60% 0.15 25);
-  --destructive-foreground: oklch(98% 0 0);
-  --border: oklch(42% 0 0);
-  --input: oklch(36% 0 0);
-  --ring: oklch(52% 0 0);
+  --background: oklch(0.141 0.005 286);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.21 0.006 286);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.21 0.006 286);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.141 0.005 286);
+  --secondary: oklch(0.21 0.006 286);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.21 0.006 286);
+  --muted-foreground: oklch(0.705 0.015 286);
+  --accent: oklch(0.274 0.006 286);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.6 0.15 25);
+  --destructive-foreground: oklch(0.985 0 0);
+  --border: oklch(0.274 0.006 286);
+  --input: oklch(0.274 0.006 286);
+  --ring: oklch(0.442 0.017 286);
+  --azul-trifinio: #6f9fd4;
+  --estructura-card-surface: #27272a;
+  --modal-surface: #27272a;
+
+  --toastify-color-success: #10b981;
+  --toastify-color-error: #ef4444;
+  --toastify-color-warning: #fbbf24;
 }
 
 @theme inline {
-  --color-azul-trifinio: #2c5f9b;
+  --color-azul-trifinio: var(--azul-trifinio);
   --color-celeste-trifinio: #1a95d3;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -165,56 +192,9 @@
   z-index: 2;
 }
 
-/* React Toastify — tema claro/oscuro observatorio */
-.obs-toast-container {
-  width: 95% !important;
-  max-width: 520px !important;
-  margin-top: 0.5rem !important;
-  z-index: 10000 !important;
-}
-
-.obs-toast {
-  border-radius: 0.75rem !important;
+/* React Toastify v11 — theme colored, sin sombra */
+.Toastify__toast {
+  box-shadow: none !important;
   font-weight: 700 !important;
   font-size: 0.8125rem !important;
-  padding: 0.875rem 1rem !important;
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1) !important;
-  border: 1px solid rgb(226 232 240) !important;
-  background: #ffffff !important;
-  color: #0f172a !important;
-}
-
-.dark .obs-toast {
-  border-color: oklch(36% 0 0) !important;
-  background: oklch(26% 0 0) !important;
-  color: oklch(84% 0 0) !important;
-  box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.35) !important;
-}
-
-.obs-toast.Toastify__toast--success {
-  border-color: rgb(167 243 208) !important;
-}
-
-.dark .obs-toast.Toastify__toast--success {
-  border-color: rgb(6 78 59 / 0.6) !important;
-}
-
-.obs-toast.Toastify__toast--error {
-  border-color: rgb(254 202 202) !important;
-}
-
-.dark .obs-toast.Toastify__toast--error {
-  border-color: rgb(127 29 29 / 0.6) !important;
-}
-
-.obs-toast.Toastify__toast--warning {
-  border-color: rgb(253 230 138) !important;
-}
-
-.dark .obs-toast.Toastify__toast--warning {
-  border-color: rgb(120 53 15 / 0.6) !important;
-}
-
-.obs-toast-progress {
-  background: rgb(5 150 105) !important;
 }

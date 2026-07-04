@@ -1,12 +1,12 @@
-import { toast, type ToastOptions } from "react-toastify";
+import { toast } from "react-toastify";
 
-const MANUAL_TOAST_OPTIONS: ToastOptions = {
-  position: "top-center",
-  className: "obs-toast",
-  progressClassName: "obs-toast-progress",
-  autoClose: 5000,
-  style: { zIndex: 10000 },
-};
+export function showManualToastError(message: string) {
+  toast.error(message);
+}
+
+export function showManualToastSuccess(message: string) {
+  toast.success(message);
+}
 
 export function parseManualActionError(err: unknown): string {
   const raw =
@@ -26,12 +26,4 @@ export function parseManualActionError(err: unknown): string {
   if (raw && raw !== "[object Object]") return raw;
 
   return "No se pudo completar la operación. Intente de nuevo.";
-}
-
-export function showManualToastError(message: string) {
-  toast.error(message, MANUAL_TOAST_OPTIONS);
-}
-
-export function showManualToastSuccess(message: string) {
-  toast.success(message, MANUAL_TOAST_OPTIONS);
 }
