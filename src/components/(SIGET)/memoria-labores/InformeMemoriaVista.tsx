@@ -117,7 +117,6 @@ function DonutChart({
               animationDuration={reduceMotion ? 0 : donutFillDurationMs}
               animationBegin={reduceMotion ? 0 : donutFillBeginMs}
               animationEasing="ease-out"
-              activeIndex={activeIndex ?? undefined}
               onMouseEnter={(_, index) => setActiveIndex(index)}
               onMouseLeave={() => setActiveIndex(null)}
             >
@@ -438,6 +437,7 @@ export function InformeMemoriaEncabezado({
   onToggle?: () => void;
 }) {
   const informe = {
+    id: "",
     proyectos,
     periodo: periodo ?? "",
     imagenes: [],

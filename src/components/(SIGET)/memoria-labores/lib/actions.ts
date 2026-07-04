@@ -87,11 +87,12 @@ async function rutaDepartamentoIterativa(
 
   while (actualId && !visitados.has(actualId)) {
     visitados.add(actualId);
-    const { data: dep } = await supabase
+    const { data } = await supabase
       .from("departamentos")
       .select("nombre, parent_id")
       .eq("id", actualId)
       .maybeSingle();
+    const dep = data as { nombre: string | null; parent_id: string | null } | null;
     if (!dep) break;
     partes.unshift(String(dep.nombre ?? ""));
     actualId = (dep.parent_id as string | null) ?? null;
