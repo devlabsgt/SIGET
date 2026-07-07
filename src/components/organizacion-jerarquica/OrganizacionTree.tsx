@@ -155,11 +155,13 @@ function NodoItem({
   depth = 0,
   variant = "default",
   admin,
+  espaciadoVertical = false,
 }: {
   nodo: NodoOrganizacion;
   depth?: number;
   variant?: "root" | "default";
   admin?: AdminHandlers;
+  espaciadoVertical?: boolean;
 }) {
   const { isExpanded, toggle, allExpanded, setAllExpanded } = useTreeExpansion();
   const expanded = isExpanded(nodo.id);
@@ -444,7 +446,14 @@ function NodoItem({
             }}
             className="overflow-hidden"
           >
-            <div className="mt-1 space-y-1 pb-0.5 md:mt-3 md:space-y-3">
+            <div
+              className={cn(
+                "pb-0.5",
+                espaciadoVertical
+                  ? "mt-2 space-y-2.5 md:mt-6 md:space-y-5"
+                  : "mt-1 space-y-1 md:mt-3 md:space-y-3",
+              )}
+            >
               {nodo.hijos!.map((hijo, index) => (
                 <motion.div
                   key={hijo.id}
@@ -457,7 +466,12 @@ function NodoItem({
                     ease: ACCORDION_EASE,
                   }}
                 >
-                  <NodoItem nodo={hijo} depth={depth + 1} admin={admin} />
+                  <NodoItem
+                    nodo={hijo}
+                    depth={depth + 1}
+                    admin={admin}
+                    espaciadoVertical={espaciadoVertical}
+                  />
                 </motion.div>
               ))}
             </div>
@@ -490,14 +504,21 @@ export function contarNodos(
 export function OrganizacionTree({
   estructura,
   admin,
+  espaciadoVertical = false,
 }: {
   estructura: NodoOrganizacion;
   admin?: AdminHandlers;
+  espaciadoVertical?: boolean;
 }) {
   return (
     <TreeExpansionProvider estructura={estructura}>
       <div className="w-full">
-        <NodoItem nodo={estructura} variant="root" admin={admin} />
+        <NodoItem
+          nodo={estructura}
+          variant="root"
+          admin={admin}
+          espaciadoVertical={espaciadoVertical}
+        />
       </div>
     </TreeExpansionProvider>
   );

@@ -16,13 +16,14 @@ const adminOptions = [
     id: "organizacion-administrativa",
     href: "/siget/admin/organizacion-administrativa",
     title: "Organización Administrativa",
-    desc: "Estructura jerárquica institucional del Plan Trifinio.",
-    tag: "Plan Trifinio · Estructura regional",
+    desc: "Estructura jerárquica institucional.",
+    tag: "Estructura administrativa",
     iconKey: "giblkgwf",
     gradientFrom: "#059669",
     gradientTo: "#34d399",
     accent: "text-emerald-600 dark:text-emerald-400",
-    accentHover: "group-hover:text-emerald-600 dark:group-hover:text-emerald-400",
+    accentHover:
+      "group-hover:text-emerald-600 dark:group-hover:text-emerald-400",
     activeBorder: "ring-emerald-500/40",
     tagDot: "bg-emerald-500",
     bento: "md:col-span-2 xl:col-span-2 xl:row-span-2",
@@ -165,7 +166,11 @@ export function AdminCards({
             <MagicCard
               className={cn(
                 "h-full w-full rounded-2xl xl:rounded-3xl border-0 shadow-sm shadow-black/5 overflow-hidden flex flex-col [--magic-inner:#f4f4f5] dark:shadow-none dark:[--magic-inner:#18181b]",
-                isActive && cn("ring-2 ring-offset-2 ring-offset-background", opt.activeBorder),
+                isActive &&
+                  cn(
+                    "ring-2 ring-offset-2 ring-offset-background",
+                    opt.activeBorder,
+                  ),
               )}
               innerClassName="bg-[var(--magic-inner)]"
               gradientFrom={opt.gradientFrom}
@@ -229,7 +234,12 @@ export function AdminCards({
                     </p>
                     {tag && tagDot && (
                       <div className="mt-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground/70 md:text-xs">
-                        <span className={cn("size-1.5 shrink-0 rounded-full", tagDot)} />
+                        <span
+                          className={cn(
+                            "size-1.5 shrink-0 rounded-full",
+                            tagDot,
+                          )}
+                        />
                         {tag}
                       </div>
                     )}

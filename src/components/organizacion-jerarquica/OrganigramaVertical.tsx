@@ -62,6 +62,26 @@ const ORG_CARD_H_TITULAR = 80;
 const ORG_GAP_X = 16;
 const ORG_GAP_Y = 12;
 const ORG_FORK_BOOST = 20;
+const ORG_SEP_SIBLINGS = 1.1;
+const ORG_SEP_NON_SIBLINGS = 1.15;
+
+const ORG_LAYOUT_COMPACT = {
+  gapX: ORG_GAP_X,
+  gapY: ORG_GAP_Y,
+  forkBoost: ORG_FORK_BOOST,
+  sepSiblings: ORG_SEP_SIBLINGS,
+  sepNonSiblings: ORG_SEP_NON_SIBLINGS,
+} as const;
+
+const ORG_LAYOUT_AMPLIO = {
+  gapX: ORG_GAP_X,
+  gapY: 34,
+  forkBoost: ORG_FORK_BOOST,
+  sepSiblings: ORG_SEP_SIBLINGS,
+  sepNonSiblings: ORG_SEP_NON_SIBLINGS,
+} as const;
+
+type OrgLayoutConfig = typeof ORG_LAYOUT_COMPACT;
 const ORG_NODE_X = ORG_CARD_W + ORG_GAP_X;
 const ORG_NODE_Y = ORG_CARD_H + ORG_GAP_Y;
 const ORG_FO_W = ORG_CARD_W;
@@ -93,19 +113,19 @@ const ORG_ACTIONS_EASE = [0.33, 1, 0.68, 1] as const;
 const ORG_MODAL_MS = 320;
 const ORG_CARD_ANIM_MS = 360;
 
-function orgNodeStrideY(mostrarNombres: boolean) {
+function orgNodeStrideY(mostrarNombres: boolean, gapY = ORG_GAP_Y) {
   if (!mostrarNombres) {
-    return ORG_CARD_H + ORG_GAP_Y;
+    return ORG_CARD_H + gapY;
   }
-  return ORG_CARD_H_TITULAR / 2 + ORG_GAP_Y + ORG_CARD_H / 2;
+  return ORG_CARD_H_TITULAR / 2 + gapY + ORG_CARD_H / 2;
 }
 
 function easeOrgOut(t: number) {
   return 1 - (1 - t) ** 3;
 }
 
-function useAnimatedOrgStrideY(mostrarNombres: boolean) {
-  const target = orgNodeStrideY(mostrarNombres);
+function useAnimatedOrgStrideY(mostrarNombres: boolean, gapY = ORG_GAP_Y) {
+  const target = orgNodeStrideY(mostrarNombres, gapY);
   const [strideY, setStrideY] = useState(target);
   const strideRef = useRef(strideY);
 
@@ -145,24 +165,27 @@ type OrgHierarchyPoint = {
   children?: OrgHierarchyPoint[];
 };
 
-function forkOffset(node: OrgHierarchyPoint | null | undefined): number {
+function forkOffset(
+  node: OrgHierarchyPoint | null | undefined,
+  forkBoost: number,
+): number {
   if (!node?.parent) return 0;
   let offset = 0;
   let current: OrgHierarchyPoint | null | undefined = node.parent;
   while (current) {
     if ((current.children?.length ?? 0) > 1) {
-      offset += ORG_FORK_BOOST;
+      offset += forkBoost;
     }
     current = current.parent ?? null;
   }
   return offset;
 }
 
-function orgStepPath(link: TreeLinkDatum) {
+function orgStepPath(link: TreeLinkDatum, forkBoost: number) {
   const source = link.source as OrgHierarchyPoint;
   const target = link.target as OrgHierarchyPoint;
-  const sy = source.y + forkOffset(source);
-  const ty = target.y + forkOffset(target);
+  const sy = source.y + forkOffset(source, forkBoost);
+  const ty = target.y + forkOffset(target, forkBoost);
   const midY = sy + (ty - sy) / 2;
   return `M${source.x},${sy}V${midY}H${target.x}V${ty}`;
 }
@@ -352,6 +375,8 @@ function renderOrgNode(
   mostrarNombres = true,
   nodeStrideY = ORG_NODE_Y,
   logoHref: string | null = null,
+  usarLogoRaiz = true,
+  layout: OrgLayoutConfig = ORG_LAYOUT_COMPACT,
 ) {
   return (
     <OrgNode
@@ -360,6 +385,8 @@ function renderOrgNode(
       mostrarNombres={mostrarNombres}
       nodeStrideY={nodeStrideY}
       logoHref={logoHref}
+      usarLogoRaiz={usarLogoRaiz}
+      layout={layout}
     />
   );
 }
@@ -438,11 +465,15 @@ function OrgNode({
   mostrarNombres = true,
   nodeStrideY = ORG_NODE_Y,
   logoHref = null,
+  usarLogoRaiz = true,
+  layout = ORG_LAYOUT_COMPACT,
 }: CustomNodeElementProps & {
   admin?: AdminHandlers;
   mostrarNombres?: boolean;
   nodeStrideY?: number;
   logoHref?: string | null;
+  usarLogoRaiz?: boolean;
+  layout?: OrgLayoutConfig;
 }) {
   "use no memo";
 
@@ -455,8 +486,6 @@ function OrgNode({
   const attrs = nodeDatum.attributes ?? {};
   const tipo = String(attrs.tipo ?? "");
   const nodoId = String(attrs.id ?? "");
-  const forkLift = forkOffset(hierarchyPointNode as OrgHierarchyPoint);
-
   const esJefatura = String(attrs.jefatura ?? "") === "1";
   const tieneTitular = String(attrs.titular ?? "") === "1";
   const titularNombre = String(attrs.titularNombre ?? "");
@@ -465,6 +494,11 @@ function OrgNode({
   const isRaiz = tipo === "raiz";
   const isDependencia = tipo === "nivel";
   const isPuesto = tipo === "unidad";
+  const forkLift = forkOffset(
+    hierarchyPointNode as OrgHierarchyPoint,
+    layout.forkBoost,
+  );
+  const mostrarLogoRaiz = isRaiz && usarLogoRaiz && Boolean(logoHref);
 
   const titularCorto = titularNombre
     ? nombrePersonaCorto(titularNombre)
@@ -641,9 +675,9 @@ function OrgNode({
           mostrarTitular && "min-h-0 flex-1",
         )}
       >
-        {isRaiz && logoHref ? (
+        {mostrarLogoRaiz ? (
           <img
-            src={logoHref}
+            src={logoHref!}
             alt={nodeDatum.name}
             title={nodeDatum.name}
             width={ORG_RAIZ_LOGO_W}
@@ -657,6 +691,7 @@ function OrgNode({
               "w-full min-w-0 break-words leading-snug tracking-tight",
               textTone,
               mostrarTitular ? "line-clamp-2" : "line-clamp-3",
+              isRaiz && "text-sm font-black md:text-base",
               isDependencia && "text-xs font-bold",
               isPuesto && "text-[0.75rem] font-semibold",
             )}
@@ -677,7 +712,7 @@ function OrgNode({
     const px = parent.x - node.x;
     const parentLeftX = px - ORG_CARD_W / 2;
     const parentLeftMidY =
-      parent.y - node.y + (forkOffset(parent) - forkLift);
+      parent.y - node.y + (forkOffset(parent, layout.forkBoost) - forkLift);
     return `M ${parentLeftX},${parentLeftMidY} H ${ORG_RAIL_X} V ${railTopY}`;
   })();
 
@@ -854,9 +889,18 @@ export const OrganigramaVertical = forwardRef<
     fullHeight?: boolean;
     admin?: AdminHandlers;
     mostrarNombres?: boolean;
+    usarLogoRaiz?: boolean;
+    espaciadoAmplio?: boolean;
   }
 >(function OrganigramaVertical(
-  { estructura, fullHeight = false, admin, mostrarNombres = true },
+  {
+    estructura,
+    fullHeight = false,
+    admin,
+    mostrarNombres = true,
+    usarLogoRaiz = true,
+    espaciadoAmplio = false,
+  },
   ref,
 ) {
   const [mounted, setMounted] = useState(false);
@@ -883,18 +927,28 @@ export const OrganigramaVertical = forwardRef<
     [closeAllMenus],
   );
 
-  const nodeStrideY = useAnimatedOrgStrideY(mostrarNombres);
+  const layout = espaciadoAmplio ? ORG_LAYOUT_AMPLIO : ORG_LAYOUT_COMPACT;
+  const nodeSizeX = ORG_CARD_W + layout.gapX;
+  const animatedStrideY = useAnimatedOrgStrideY(mostrarNombres, layout.gapY);
   const [logoHref, setLogoHref] = useState<string | null>(null);
 
   const stepPath = useCallback(
-    (link: TreeLinkDatum) => orgStepPath(link),
-    [],
+    (link: TreeLinkDatum) => orgStepPath(link, layout.forkBoost),
+    [layout.forkBoost],
   );
 
   const renderNode = useCallback(
     (props: CustomNodeElementProps) =>
-      renderOrgNode(props, admin, mostrarNombres, nodeStrideY, logoHref),
-    [admin, mostrarNombres, nodeStrideY, logoHref],
+      renderOrgNode(
+        props,
+        admin,
+        mostrarNombres,
+        animatedStrideY,
+        logoHref,
+        usarLogoRaiz,
+        layout,
+      ),
+    [admin, mostrarNombres, animatedStrideY, logoHref, usarLogoRaiz, layout],
   );
 
   useEffect(() => {
@@ -902,6 +956,10 @@ export const OrganigramaVertical = forwardRef<
   }, []);
 
   useEffect(() => {
+    if (!usarLogoRaiz) {
+      setLogoHref(null);
+      return;
+    }
     let active = true;
     loadLogoDataUrl()
       .then((url) => {
@@ -911,7 +969,7 @@ export const OrganigramaVertical = forwardRef<
     return () => {
       active = false;
     };
-  }, []);
+  }, [usarLogoRaiz]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -989,8 +1047,11 @@ export const OrganigramaVertical = forwardRef<
             orientation="vertical"
             translate={translate}
             pathFunc={stepPath}
-            nodeSize={{ x: ORG_NODE_X, y: nodeStrideY }}
-            separation={{ siblings: 1.1, nonSiblings: 1.15 }}
+            nodeSize={{ x: nodeSizeX, y: animatedStrideY }}
+            separation={{
+              siblings: layout.sepSiblings,
+              nonSiblings: layout.sepNonSiblings,
+            }}
             renderCustomNodeElement={renderNode}
             collapsible={false}
             zoomable
@@ -1044,11 +1105,15 @@ export function OrganigramaModal({
   onClose,
   estructura,
   admin,
+  usarLogoRaiz = true,
+  espaciadoAmplio = false,
 }: {
   open: boolean;
   onClose: () => void;
   estructura: NodoOrganizacion;
   admin?: AdminHandlers;
+  usarLogoRaiz?: boolean;
+  espaciadoAmplio?: boolean;
 }) {
   const [mounted, setMounted] = useState(false);
   const [mostrarNombres, setMostrarNombres] = useState(true);
@@ -1236,6 +1301,8 @@ export function OrganigramaModal({
               fullHeight
               admin={admin}
               mostrarNombres={mostrarNombres}
+              usarLogoRaiz={usarLogoRaiz}
+              espaciadoAmplio={espaciadoAmplio}
             />
           </div>
         </motion.div>

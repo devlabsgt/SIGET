@@ -44,8 +44,8 @@ export async function AdminPanel() {
             </h1>
             <p className="text-sm md:text-base text-muted-foreground max-w-2xl">
               {isSuperOrAdmin
-                ? "Gestione dispositivos, usuarios y configuraciones del sistema SIGET desde un solo lugar."
-                : "Gestione usuarios del sistema SIGET."}
+                ? "Gestione dispositivos, usuarios y configuraciones del sistema desde un solo lugar."
+                : "Gestione usuarios del sistema."}
             </p>
           </div>
         </div>
@@ -60,8 +60,7 @@ export async function AdminPanel() {
                 Solicitudes pendientes
               </p>
               <p className="text-sm text-amber-900/80 dark:text-amber-200/90 leading-snug">
-                Hay{" "}
-                <span className="font-black">{pendingDevices}</span>{" "}
+                Hay <span className="font-black">{pendingDevices}</span>{" "}
                 solicitud{pendingDevices !== 1 && "es"} de dispositivo
                 {pendingDevices !== 1 && "s"} esperando aprobación.
               </p>

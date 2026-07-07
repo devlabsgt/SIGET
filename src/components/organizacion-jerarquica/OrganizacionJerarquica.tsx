@@ -10,20 +10,25 @@ import {
   ListTree,
   ChevronsDown,
   Pencil,
+  FlaskConical,
+  RotateCcw,
 } from "lucide-react";
 import AnimatedIcon from "@/components/ui/AnimatedIcon";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
 import { isSuperOrAdminRole } from "@/components/(base)/dashboard/modules";
-import {
-  OrganizacionTree,
-  type AdminHandlers,
-} from "./OrganizacionTree";
+import { OrganizacionTree, type AdminHandlers } from "./OrganizacionTree";
 import { OrganigramaModal } from "./OrganigramaVertical";
 import { OrganigramaIcon } from "./OrganigramaIcon";
 import { OrganizacionSkeleton } from "./OrganizacionSkeleton";
-import { useEstructuraOrganizacional, usePuestos, useAsignarPersonaAPuesto } from "./lib/hooks";
+import {
+  useEstructuraOrganizacional,
+  usePuestos,
+  useAsignarPersonaAPuesto,
+} from "./lib/hooks";
 import { departamentoTieneJefe, puestosEnDepartamento } from "./lib/zod";
+import { ESTRUCTURA_SIMULADA } from "./lib/estructura-simulada";
 import { confirmarDesasignarPersona } from "./lib/swal";
 import { modalActionMessage } from "@/components/ui/modal-toast";
 import { CrearEstructura } from "./forms/Crear";
@@ -40,6 +45,11 @@ export function OrganizacionJerarquica() {
   const puedeEliminar = isSuperOrAdminRole(effectiveRole);
 
   const estructura = data ?? null;
+  const [modoSimulacion, setModoSimulacion] = useState(false);
+
+  const estructuraMostrada = modoSimulacion
+    ? ESTRUCTURA_SIMULADA
+    : estructura;
 
   const [crear, setCrear] = useState<{
     open: boolean;
@@ -109,13 +119,15 @@ export function OrganizacionJerarquica() {
     () => ({
       onAddDepartamento: (parentId) => abrirCrearDepartamento(parentId),
       onAddPuesto: (departamentoId) => {
-        const enDep = puestosEnDepartamento(puestos, departamentoId);
-        const tieneJefe = departamentoTieneJefe(puestos, departamentoId);
-        if (enDep.length > 0 && !tieneJefe) {
-          toast.warn(
-            "Debe existir un jefe en esta dependencia antes de agregar más puestos.",
-          );
-          return;
+        if (!modoSimulacion) {
+          const enDep = puestosEnDepartamento(puestos, departamentoId);
+          const tieneJefe = departamentoTieneJefe(puestos, departamentoId);
+          if (enDep.length > 0 && !tieneJefe) {
+            toast.warn(
+              "Debe existir un jefe en esta dependencia antes de agregar más puestos.",
+            );
+            return;
+          }
         }
         setCrear({
           open: true,
@@ -124,11 +136,25 @@ export function OrganizacionJerarquica() {
           departamentoId,
         });
       },
-      onAsignarPersona: (puestoId, puestoNombre) =>
-        setAsignar({ open: true, puestoId, puestoNombre }),
-      onDesasignarPersona: (puestoId, _puestoNombre, titularNombre) =>
-        void desasignarPersona(puestoId, titularNombre),
+      onAsignarPersona: (puestoId, puestoNombre) => {
+        if (modoSimulacion) {
+          toast.warn("Modo demo: la asignación de personas no está disponible.");
+          return;
+        }
+        setAsignar({ open: true, puestoId, puestoNombre });
+      },
+      onDesasignarPersona: (puestoId, _puestoNombre, titularNombre) => {
+        if (modoSimulacion) {
+          toast.warn("Modo demo: la asignación de personas no está disponible.");
+          return;
+        }
+        void desasignarPersona(puestoId, titularNombre);
+      },
       onReubicarPuesto: (puestoId, puestoNombre) => {
+        if (modoSimulacion) {
+          toast.warn("Modo demo: reubicar puestos no está disponible.");
+          return;
+        }
         const puesto = puestos.find((p) => p.id === puestoId);
         setReubicar({
           open: true,
@@ -139,11 +165,12 @@ export function OrganizacionJerarquica() {
       },
       onEdit: (tipo, id) => setEditar({ open: true, tipo, id }),
     }),
-    [puestos, desasignarPersona],
+    [puestos, desasignarPersona, modoSimulacion],
   );
 
   const estaVacio = Boolean(
-    estructura && (!estructura.hijos || estructura.hijos.length === 0),
+    estructuraMostrada &&
+      (!estructuraMostrada.hijos || estructuraMostrada.hijos.length === 0),
   );
 
   useEffect(() => {
@@ -160,36 +187,73 @@ export function OrganizacionJerarquica() {
     <div className="relative w-full min-h-0 px-0 pt-2 pb-12 md:min-h-[calc(100vh-4rem)] md:px-8 md:pt-6 md:pb-16 lg:px-12">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(#d1d5db_1px,transparent_1px)] bg-size-[24px_24px] opacity-50 dark:bg-[radial-gradient(oklch(36%_0_0)_1px,transparent_1px)] dark:opacity-40" />
 
-      <div className="relative z-10 mx-auto w-full max-w-[min(100%,1600px)] space-y-4 md:space-y-6">
+      <div
+        className={cn(
+          "relative z-10 mx-auto w-full max-w-[min(100%,1600px)]",
+          modoSimulacion ? "space-y-6 md:space-y-10" : "space-y-4 md:space-y-6",
+        )}
+      >
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-4 min-w-0 px-4 md:gap-5 md:px-0">
             <div className="flex size-14 md:size-24 shrink-0 items-center justify-center rounded-2xl border border-celeste-trifinio/30 bg-zinc-100 p-1.5 shadow-sm md:p-2 dark:bg-zinc-800">
-              <AnimatedIcon iconKey="sagolbcs" size={56} speed={1.5} />
+              <AnimatedIcon iconKey="giblkgwf" size={56} speed={1.5} />
             </div>
             <div className="space-y-2 min-w-0">
               <p className="text-[10px] font-black uppercase tracking-widest text-celeste-trifinio">
-                Plan Trifinio
+                {modoSimulacion
+                  ? "Simulación · Materiales de construcción"
+                  : "Plan Trifinio"}
               </p>
               <h1 className="text-2xl font-black tracking-tight text-foreground md:text-4xl">
-                Organización Administrativa
+                {modoSimulacion
+                  ? estructuraMostrada?.nombre ?? "Organización simulada"
+                  : "Organización Administrativa"}
               </h1>
               <p className="text-sm md:text-base text-muted-foreground max-w-3xl">
-                Visualización jerárquica de la estructura institucional del Plan
-                Trifinio entre los tres países de la región.
+                {modoSimulacion
+                  ? (estructuraMostrada?.descripcion ??
+                    "Estructura de ejemplo para visualizar la jerarquía de una empresa.")
+                  : "Visualización jerárquica de la estructura institucional del Plan Trifinio entre los tres países de la región."}
               </p>
             </div>
           </div>
 
-          {!isLoading && !isError && estructura && !estaVacio && (
-            <div className="shrink-0 w-full px-4 md:px-0 lg:w-auto">
+          {!isLoading && !isError && (estructura || modoSimulacion) && (
+            <div className="flex shrink-0 w-full flex-col gap-2 px-4 sm:flex-row sm:items-center md:px-0 lg:w-auto">
               <button
                 type="button"
-                onClick={() => setOrganigramaOpen(true)}
-                className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-celeste-trifinio/40 bg-card px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-celeste-trifinio transition-colors hover:bg-celeste-trifinio/10 lg:w-auto"
+                onClick={() => {
+                  setModoSimulacion((prev) => !prev);
+                  setOrganigramaOpen(false);
+                }}
+                className={
+                  modoSimulacion
+                    ? "inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-zinc-200 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-zinc-700 transition-colors hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600 sm:w-auto"
+                    : "inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-violet-100 px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-violet-700 transition-colors hover:bg-violet-200 dark:bg-violet-950 dark:text-violet-300 dark:hover:bg-violet-900 sm:w-auto"
+                }
               >
-                <OrganigramaIcon className="size-4" />
-                Ver organigrama
+                {modoSimulacion ? (
+                  <>
+                    <RotateCcw className="size-4" />
+                    Ver datos reales
+                  </>
+                ) : (
+                  <>
+                    <FlaskConical className="size-4" />
+                    Simular empresa
+                  </>
+                )}
               </button>
+              {!estaVacio && (
+                <button
+                  type="button"
+                  onClick={() => setOrganigramaOpen(true)}
+                  className="inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-celeste-trifinio/40 bg-card px-5 py-2.5 text-xs font-bold uppercase tracking-wider text-celeste-trifinio transition-colors hover:bg-celeste-trifinio/10 sm:w-auto"
+                >
+                  <OrganigramaIcon className="size-4" />
+                  Ver organigrama
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -214,7 +278,19 @@ export function OrganizacionJerarquica() {
             </div>
           )}
 
-          {!isLoading && !isError && estructura && (
+          {modoSimulacion && (
+            <div className="mb-4 rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 md:mx-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-violet-700 dark:text-violet-300">
+                Modo simulación · Construmax Materiales
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Empresa de venta de materiales de construcción. Puedes abrir los
+                modales de crear y editar; los cambios no se guardan.
+              </p>
+            </div>
+          )}
+
+          {!isLoading && !isError && estructuraMostrada && (
             <>
               {!estaVacio && (
                 <div className="mb-4 border-b border-border/50 px-4 pb-4 md:hidden">
@@ -242,18 +318,24 @@ export function OrganizacionJerarquica() {
                   </div>
                 </div>
               )}
-              <OrganizacionTree estructura={estructura} admin={admin} />
+              <OrganizacionTree
+                estructura={estructuraMostrada}
+                admin={admin}
+                espaciadoVertical={modoSimulacion}
+              />
             </>
           )}
         </div>
       </div>
 
-      {estructura && (
+      {estructuraMostrada && (
         <OrganigramaModal
           open={organigramaOpen}
           onClose={() => setOrganigramaOpen(false)}
-          estructura={estructura}
+          estructura={estructuraMostrada}
           admin={admin}
+          usarLogoRaiz={!modoSimulacion}
+          espaciadoAmplio={modoSimulacion}
         />
       )}
 
@@ -263,6 +345,8 @@ export function OrganizacionJerarquica() {
         tipo={crear.tipo}
         presetParentId={crear.parentId}
         presetDepartamentoId={crear.departamentoId}
+        modoDemo={modoSimulacion}
+        nombreEmpresaDemo={estructuraMostrada?.nombre}
       />
 
       <VerEditarEstructura
@@ -271,6 +355,8 @@ export function OrganizacionJerarquica() {
         tipo={editar.tipo}
         id={editar.id}
         puedeEliminar={puedeEliminar}
+        modoDemo={modoSimulacion}
+        estructuraDemo={modoSimulacion ? ESTRUCTURA_SIMULADA : undefined}
       />
 
       <AsignarPersonaPuesto
