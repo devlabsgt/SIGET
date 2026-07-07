@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useSignupLogic } from "./hooks";
 import { AnimatePresence, motion } from "framer-motion";
-import { generateStrongPassword } from "@/utils/general/password-generator";
+import { INITIAL_USER_PASSWORD } from "./schemas";
 import { AuroraText } from "@/components/ui/aurora-text";
 import { useUser, useUserContext } from "@/components/(base)/providers/UserProvider";
 import {
@@ -151,10 +151,9 @@ export default function SignUp({
   }, [logic.name]);
 
   const resetForm = () => {
-    const pass = generateStrongPassword();
     logic.setName("");
     logic.setUsername("");
-    logic.setPasswordValue(pass);
+    logic.setPasswordValue(INITIAL_USER_PASSWORD);
     logic.setRol(creatableRoles[0] || "user");
     logic.setOrganizacionId("");
     logic.setShowPassword(false);
@@ -399,7 +398,7 @@ export default function SignUp({
                         <Label htmlFor="password">Contraseña</Label>
                         <div className="flex items-center gap-1.5 animate-pulse">
                           <AuroraText className="text-sm font-bold">
-                            Autogenerada
+                            {INITIAL_USER_PASSWORD}
                           </AuroraText>
                           <Wand2
                             size={14}

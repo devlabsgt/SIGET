@@ -2,7 +2,7 @@
 
 import { createClient as createSupabaseAdmin } from "@supabase/supabase-js";
 import { createClient } from "@/utils/supabase/server";
-import { authSchema } from "./schemas";
+import { authSchema, INITIAL_USER_PASSWORD } from "./schemas";
 import { canAssignRole } from "@/components/(base)/(users)/usuarios/lib/permissions";
 
 export async function getOrganizaciones() {
@@ -59,7 +59,8 @@ export async function signup(
     };
   }
 
-  const { name, username, password, rol, organizacion_id } = validated.data;
+  const { name, username, rol, organizacion_id } = validated.data;
+  const password = INITIAL_USER_PASSWORD;
 
   const supabase = await createClient();
   const {

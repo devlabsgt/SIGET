@@ -67,6 +67,7 @@ function InformeMemoriaAccordion({
         imagenes={informe.imagenes}
         periodo={informe.periodo}
         createdAt={informe.created_at}
+        updatedAt={informe.updated_at}
         accordionOpen={open}
         onAccordionToggle={onToggle}
         footer={

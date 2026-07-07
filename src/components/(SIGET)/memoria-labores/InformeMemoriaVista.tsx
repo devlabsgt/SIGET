@@ -14,16 +14,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ProyectoImagenes } from "@/components/(base)/imgs";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  ResponsiveContainer,
-} from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
   formatMemoriaPeriodo,
   formatReporteRealizadoParts,
   formatReporteRealizadoText,
+  formatInformeFechaLinea,
+  formatUltimaActualizacionParts,
   formatoOrdinalCortoEs,
   sumBeneficiariosProyectos,
   type BeneficiariosGrupo,
@@ -424,6 +421,7 @@ export function InformeMemoriaEncabezado({
   proyectos,
   periodo,
   createdAt,
+  updatedAt,
   open,
   onToggle,
 }: {
@@ -433,6 +431,7 @@ export function InformeMemoriaEncabezado({
   proyectos: ProyectoItem[];
   periodo?: string;
   createdAt?: string | null;
+  updatedAt?: string | null;
   open?: boolean;
   onToggle?: () => void;
 }) {
@@ -445,13 +444,14 @@ export function InformeMemoriaEncabezado({
     created_at: createdAt ?? "",
     created_by: null,
     updated_by: null,
-    updated_at: null,
+    updated_at: updatedAt ?? null,
     nombre: nombre ?? null,
     cargo: cargo ?? null,
     oficina: oficina ?? null,
   } as ProyectosMemoria;
   const interactive = Boolean(onToggle);
   const reporteRealizado = formatReporteRealizadoParts(createdAt);
+  const ultimaActualizacion = formatUltimaActualizacionParts(updatedAt);
 
   const content = (
     <>
@@ -520,13 +520,29 @@ export function InformeMemoriaEncabezado({
           )}
         </div>
       </div>
-      {reporteRealizado && (
-        <p className="relative mt-2 text-right text-[10px] font-medium text-white/75 sm:absolute sm:bottom-4 sm:right-6 sm:mt-0 sm:text-[11px]">
-          Reporte realizado el{" "}
-          <span className="font-bold text-white/90">{reporteRealizado.fecha}</span>{" "}
-          a las{" "}
-          <span className="font-bold text-white/90">{reporteRealizado.hora}</span>
-        </p>
+      {(reporteRealizado || ultimaActualizacion) && (
+        <div className="relative mt-2 space-y-0.5 text-right text-[10px] font-medium text-white/75 sm:absolute sm:bottom-4 sm:right-6 sm:mt-0 sm:text-[11px]">
+          {reporteRealizado && (
+            <p>
+              Realizado:{" "}
+              <span className="font-bold text-white/90">
+                {formatInformeFechaLinea(reporteRealizado)}
+              </span>
+            </p>
+          )}
+          {ultimaActualizacion &&
+            (!reporteRealizado ||
+              ultimaActualizacion.dia !== reporteRealizado.dia ||
+              ultimaActualizacion.fecha !== reporteRealizado.fecha ||
+              ultimaActualizacion.hora !== reporteRealizado.hora) && (
+              <p>
+                Última actualización:{" "}
+                <span className="font-bold text-white/90">
+                  {formatInformeFechaLinea(ultimaActualizacion)}
+                </span>
+              </p>
+            )}
+        </div>
       )}
     </>
   );
@@ -628,6 +644,7 @@ export function InformeMemoriaVista({
   proyectos,
   imagenes = [],
   createdAt,
+  updatedAt,
   footer,
   className,
   periodo,
@@ -640,6 +657,7 @@ export function InformeMemoriaVista({
   proyectos: ProyectoItem[];
   imagenes?: string[][];
   createdAt?: string | null;
+  updatedAt?: string | null;
   footer?: React.ReactNode;
   className?: string;
   periodo?: string;
@@ -671,6 +689,7 @@ export function InformeMemoriaVista({
         proyectos={proyectos}
         periodo={periodo}
         createdAt={createdAt}
+        updatedAt={updatedAt}
         open={accordionOpen}
         onToggle={onAccordionToggle}
       />
@@ -780,11 +799,11 @@ function ProyectoInformeDetalle({
           </button>
         </div>
 
-      {proyecto.descripcion.trim() && (
-        <p className="mb-0 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          {proyecto.descripcion}
-        </p>
-      )}
+        {proyecto.descripcion.trim() && (
+          <p className="mb-0 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            {proyecto.descripcion}
+          </p>
+        )}
       </div>
 
       <div className="space-y-5">
@@ -802,7 +821,8 @@ function ProyectoInformeDetalle({
                   <div
                     key={j}
                     className={cn(
-                      isLastOdd && "md:col-span-2 md:mx-auto md:w-full md:max-w-xl",
+                      isLastOdd &&
+                        "md:col-span-2 md:mx-auto md:w-full md:max-w-xl",
                     )}
                   >
                     <AvanceProgreso
@@ -858,43 +878,43 @@ function ProyectoInformeDetalle({
         )}
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
-        {resultados.length > 0 && (
-          <SeccionPanel
-            title="Principales resultados"
-            icon={<ListChecks className="h-4 w-4" />}
-            tone="violet"
-          >
-            <ul className="space-y-3 text-base font-bold leading-relaxed text-foreground sm:text-lg">
-              {resultados.map((r, j) => (
-                <li key={j} className="flex gap-3">
-                  <span className="mt-0.5 flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-violet-500 px-1 text-[10px] font-black text-white">
-                    {formatoOrdinalCortoEs(j + 1)}
-                  </span>
-                  <span>{r}</span>
-                </li>
-              ))}
-            </ul>
-          </SeccionPanel>
-        )}
+          {resultados.length > 0 && (
+            <SeccionPanel
+              title="Principales resultados"
+              icon={<ListChecks className="h-4 w-4" />}
+              tone="violet"
+            >
+              <ul className="space-y-3 text-base font-bold leading-relaxed text-foreground sm:text-lg">
+                {resultados.map((r, j) => (
+                  <li key={j} className="flex gap-3">
+                    <span className="mt-0.5 flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-violet-500 px-1 text-[10px] font-black text-white">
+                      {formatoOrdinalCortoEs(j + 1)}
+                    </span>
+                    <span>{r}</span>
+                  </li>
+                ))}
+              </ul>
+            </SeccionPanel>
+          )}
 
-        {efectos.length > 0 && (
-          <SeccionPanel
-            title="Efectos alcanzados"
-            icon={<Sparkles className="h-4 w-4" />}
-            tone="emerald"
-          >
-            <ul className="space-y-3 text-base font-bold leading-relaxed text-foreground sm:text-lg">
-              {efectos.map((e, j) => (
-                <li key={j} className="flex gap-3">
-                  <span className="mt-0.5 flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-black text-white">
-                    {formatoOrdinalCortoEs(j + 1)}
-                  </span>
-                  <span>{e}</span>
-                </li>
-              ))}
-            </ul>
-          </SeccionPanel>
-        )}
+          {efectos.length > 0 && (
+            <SeccionPanel
+              title="Efectos alcanzados"
+              icon={<Sparkles className="h-4 w-4" />}
+              tone="emerald"
+            >
+              <ul className="space-y-3 text-base font-bold leading-relaxed text-foreground sm:text-lg">
+                {efectos.map((e, j) => (
+                  <li key={j} className="flex gap-3">
+                    <span className="mt-0.5 flex h-7 min-w-[1.75rem] shrink-0 items-center justify-center rounded-full bg-emerald-500 px-1 text-[10px] font-black text-white">
+                      {formatoOrdinalCortoEs(j + 1)}
+                    </span>
+                    <span>{e}</span>
+                  </li>
+                ))}
+              </ul>
+            </SeccionPanel>
+          )}
         </div>
       </div>
     </article>
@@ -914,8 +934,7 @@ const seccionToneStyles: Record<
     title: "text-amber-700 dark:text-amber-300",
   },
   sky: {
-    panel:
-      "border-2 border-celeste-trifinio bg-sky-50/40 dark:bg-sky-950/15",
+    panel: "border-2 border-celeste-trifinio bg-sky-50/40 dark:bg-sky-950/15",
     iconWrap: "bg-celeste-trifinio text-white",
     title: "text-sky-700 dark:text-sky-300",
   },
@@ -956,7 +975,12 @@ function SeccionPanel({
         >
           {icon}
         </span>
-        <h5 className={cn("text-base font-black tracking-tight sm:text-lg", styles.title)}>
+        <h5
+          className={cn(
+            "text-base font-black tracking-tight sm:text-lg",
+            styles.title,
+          )}
+        >
           {title}
         </h5>
       </div>

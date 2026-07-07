@@ -219,13 +219,22 @@ export function formatPeriodo(value: string | null | undefined): string {
   return `${MESES[Number(mes) - 1] ?? ""} ${anio}`.trim();
 }
 
+const DIAS_CORTOS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"] as const;
+
+export type FechaInformeParts = {
+  dia: string;
+  fecha: string;
+  hora: string;
+};
+
 export function formatReporteRealizadoParts(
   value: string | null | undefined,
-): { fecha: string; hora: string } | null {
+): FechaInformeParts | null {
   if (!value) return null;
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return null;
 
+  const dia = DIAS_CORTOS[d.getDay()] ?? "";
   const fecha = [
     String(d.getDate()).padStart(2, "0"),
     String(d.getMonth() + 1).padStart(2, "0"),
@@ -239,7 +248,11 @@ export function formatReporteRealizadoParts(
   if (hours === 0) hours = 12;
   const hora = `${String(hours).padStart(2, "0")}:${minutes} ${ampm}`;
 
-  return { fecha, hora };
+  return { dia, fecha, hora };
+}
+
+export function formatInformeFechaLinea(parts: FechaInformeParts): string {
+  return `${parts.dia} ${parts.fecha} a las ${parts.hora}`;
 }
 
 export function formatReporteRealizadoText(
@@ -247,7 +260,35 @@ export function formatReporteRealizadoText(
 ): string {
   const parts = formatReporteRealizadoParts(value);
   if (!parts) return "—";
-  return `Reporte realizado el ${parts.fecha} a las ${parts.hora}`;
+  return `Realizado: ${formatInformeFechaLinea(parts)}`;
+}
+
+export function formatUltimaActualizacionParts(
+  value: string | null | undefined,
+): FechaInformeParts | null {
+  return formatReporteRealizadoParts(value);
+}
+
+export function formatUltimaActualizacionText(
+  updatedAt: string | null | undefined,
+  createdAt?: string | null,
+): string | null {
+  if (!updatedAt) return null;
+  if (createdAt && updatedAt === createdAt) return null;
+
+  const updatedMs = new Date(updatedAt).getTime();
+  const createdMs = createdAt ? new Date(createdAt).getTime() : NaN;
+  if (
+    Number.isFinite(createdMs) &&
+    Number.isFinite(updatedMs) &&
+    Math.abs(updatedMs - createdMs) < 1000
+  ) {
+    return null;
+  }
+
+  const parts = formatReporteRealizadoParts(updatedAt);
+  if (!parts) return null;
+  return `Última actualización: ${formatInformeFechaLinea(parts)}`;
 }
 
 export function formatCreatedAt(value: string | null | undefined): string {

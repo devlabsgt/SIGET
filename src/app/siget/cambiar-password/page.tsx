@@ -9,6 +9,7 @@ import Swal from "sweetalert2";
 import { useTheme } from "next-themes";
 import { generateStrongPassword } from "@/utils/general/password-generator";
 import { AuroraText } from "@/components/ui/aurora-text";
+import type { User } from "@supabase/supabase-js";
 import {
   isPasswordStrong,
   PasswordRequirements,
@@ -26,7 +27,7 @@ export default function CambiarPasswordPage() {
   
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [lastChange, setLastChange] = useState<string | undefined>(undefined);
 
   const formatLastChange = (dateString: string | null | undefined) => {
@@ -60,6 +61,17 @@ export default function CambiarPasswordPage() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  const isSameAsCurrentPassword = async (password: string): Promise<boolean> => {
+    if (!user?.email) return false;
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password,
+    });
+
+    return !error;
+  };
+
   const handleSave = async () => {
     if (!isPasswordValid || formData.newPassword !== formData.confirmPassword) {
       return;
@@ -67,14 +79,23 @@ export default function CambiarPasswordPage() {
 
     setLoading(true);
     try {
-      // 1. Actualizar contraseña en Auth
+      if (await isSameAsCurrentPassword(formData.newPassword)) {
+        await Swal.fire({
+          icon: "warning",
+          title: "Contraseña repetida",
+          text: "La nueva contraseña debe ser diferente a la actual.",
+          background: theme === "dark" ? "#18181b" : "#fff",
+          color: theme === "dark" ? "#fff" : "#000",
+        });
+        return;
+      }
+
       const { error: authError } = await supabase.auth.updateUser({
-        password: formData.newPassword
+        password: formData.newPassword,
       });
       
       if (authError) throw authError;
 
-      // 2. Actualizar fecha en tabla profiles
       if (user) {
         const { error: profileError } = await supabase
           .from("profiles")
@@ -97,11 +118,15 @@ export default function CambiarPasswordPage() {
         router.refresh();
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "No se pudo actualizar la contraseña";
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: error.message || "No se pudo actualizar la contraseña",
+        text: message,
         background: theme === "dark" ? "#18181b" : "#fff",
         color: theme === "dark" ? "#fff" : "#000",
       });

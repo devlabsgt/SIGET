@@ -18,7 +18,7 @@ const adminOptions = [
     title: "Organización Administrativa",
     desc: "Estructura jerárquica institucional del Plan Trifinio.",
     tag: "Plan Trifinio · Estructura regional",
-    iconKey: "sagolbcs",
+    iconKey: "giblkgwf",
     gradientFrom: "#059669",
     gradientTo: "#34d399",
     accent: "text-emerald-600 dark:text-emerald-400",

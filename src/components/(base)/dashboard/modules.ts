@@ -86,7 +86,7 @@ export const ADMIN_MENU_OPTIONS = [
     title: "Organización Administrativa",
     desc: "Estructura jerárquica del Plan Trifinio.",
     href: "/siget/admin/organizacion-administrativa",
-    animatedIcon: "sagolbcs",
+    animatedIcon: "giblkgwf",
   },
   {
     id: "dispositivos",
