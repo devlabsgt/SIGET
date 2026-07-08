@@ -284,8 +284,8 @@ function DonutPanel({
 }) {
   return (
     <div className={beneficiarioSubPanel}>
-      <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center">
-        <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-6 lg:flex-row lg:items-center lg:gap-10">
+        <div className="flex flex-col items-center gap-2 lg:shrink-0">
           <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
             {title}
           </p>
@@ -298,7 +298,7 @@ function DonutPanel({
             animateFill={animateFill}
           />
         </div>
-        <div className="w-full sm:flex-1">
+        <div className="w-full lg:flex-1">
           <DonutLeyenda items={data} total={total} columns={legendColumns} />
         </div>
       </div>
@@ -368,46 +368,48 @@ function AvanceProgreso({
 }) {
   const pct = meta > 0 ? Math.min(100, Math.round((logrado / meta) * 100)) : 0;
   return (
-    <div className="flex h-full items-center gap-5 rounded-2xl bg-white p-5 dark:bg-zinc-900/60">
-      <div className="relative h-24 w-24 shrink-0 sm:h-28 sm:w-28">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={[
-                { name: "Logrado", value: logrado, color: "#f59e0b" },
-                {
-                  name: "Restante",
-                  value: Math.max(0, meta - logrado),
-                  color: "#fde68a",
-                },
-              ]}
-              cx="50%"
-              cy="50%"
-              innerRadius={32}
-              outerRadius={46}
-              startAngle={90}
-              endAngle={-270}
-              cornerRadius={8}
-              dataKey="value"
-              stroke="none"
-            >
-              <Cell fill="#f59e0b" />
-              <Cell fill="#fde68a" className="dark:opacity-30" />
-            </Pie>
-          </PieChart>
-        </ResponsiveContainer>
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-black text-amber-600 dark:text-amber-400">
-            {pct}%
-          </span>
+    <div className="flex w-full flex-col items-center gap-3 rounded-2xl bg-white p-4 dark:bg-zinc-900/60 md:flex-row md:items-center md:gap-6 md:p-4 lg:gap-8">
+      <div className="flex shrink-0 flex-col items-center gap-1.5">
+        <div className="relative h-52 w-52 sm:h-56 sm:w-56 md:h-60 md:w-60 lg:h-64 lg:w-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={[
+                  { name: "Logrado", value: logrado, color: "#f59e0b" },
+                  {
+                    name: "Restante",
+                    value: Math.max(0, meta - logrado),
+                    color: "#fde68a",
+                  },
+                ]}
+                cx="50%"
+                cy="50%"
+                innerRadius="34%"
+                outerRadius="46%"
+                startAngle={90}
+                endAngle={-270}
+                cornerRadius={8}
+                dataKey="value"
+                stroke="none"
+              >
+                <Cell fill="#f59e0b" />
+                <Cell fill="#fde68a" className="dark:opacity-30" />
+              </Pie>
+            </PieChart>
+          </ResponsiveContainer>
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+            <span className="text-xl font-black leading-none tabular-nums text-amber-600 sm:text-2xl lg:text-3xl dark:text-amber-400">
+              {pct}%
+            </span>
+          </div>
         </div>
+        <p className="text-center text-sm font-bold text-amber-600 sm:text-base dark:text-amber-400">
+          {logrado} de {meta} alcanzado
+        </p>
       </div>
-      <div className="min-w-0 flex-1">
+      <div className="flex w-full min-w-0 flex-1 items-center text-center md:text-left">
         <p className="text-base font-bold text-foreground break-words sm:text-lg">
           {descripcion.trim() || "Sin descripción"}
-        </p>
-        <p className="mt-1 text-sm font-bold text-amber-600 dark:text-amber-400">
-          {logrado} de {meta} alcanzado
         </p>
       </div>
     </div>
@@ -800,7 +802,7 @@ function ProyectoInformeDetalle({
         </div>
 
         {proyecto.descripcion.trim() && (
-          <p className="mb-0 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mb-0 w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
             {proyecto.descripcion}
           </p>
         )}
@@ -813,26 +815,15 @@ function ProyectoInformeDetalle({
             icon={<TrendingUp className="h-4 w-4" />}
             tone="amber"
           >
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              {avances.map((a, j) => {
-                const isLastOdd =
-                  j === avances.length - 1 && avances.length % 2 !== 0;
-                return (
-                  <div
-                    key={j}
-                    className={cn(
-                      isLastOdd &&
-                        "md:col-span-2 md:mx-auto md:w-full md:max-w-xl",
-                    )}
-                  >
-                    <AvanceProgreso
-                      descripcion={a.descripcion}
-                      logrado={a.logrado}
-                      meta={a.meta}
-                    />
-                  </div>
-                );
-              })}
+            <div className="flex w-full flex-col gap-3">
+              {avances.map((a, j) => (
+                <AvanceProgreso
+                  key={j}
+                  descripcion={a.descripcion}
+                  logrado={a.logrado}
+                  meta={a.meta}
+                />
+              ))}
             </div>
           </SeccionPanel>
         )}
@@ -844,20 +835,21 @@ function ProyectoInformeDetalle({
             tone="sky"
           >
             <div className="space-y-5">
-              <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-                <DonutPanel
-                  title="Por grupo"
-                  data={grupoData}
-                  total={totalBeneficiarios}
-                  animateFill={chartsAnimate}
-                />
-                <DonutPanel
-                  title="Directos vs indirectos"
-                  data={tipoData}
-                  total={totalBeneficiarios}
-                  animateFill={chartsAnimate}
-                />
-              </div>
+              <DonutPanel
+                title="Por grupo"
+                data={grupoData}
+                total={totalBeneficiarios}
+                legendColumns={2}
+                size={220}
+                animateFill={chartsAnimate}
+              />
+              <DonutPanel
+                title="Directos vs indirectos"
+                data={tipoData}
+                total={totalBeneficiarios}
+                size={220}
+                animateFill={chartsAnimate}
+              />
               <DonutDesglosePanel
                 data={desgloseData}
                 total={totalBeneficiarios}
@@ -877,7 +869,7 @@ function ProyectoInformeDetalle({
           </SeccionPanel>
         )}
 
-        <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+        <div className="flex w-full flex-col gap-5">
           {resultados.length > 0 && (
             <SeccionPanel
               title="Principales resultados"
@@ -965,8 +957,8 @@ function SeccionPanel({
 }) {
   const styles = seccionToneStyles[tone];
   return (
-    <section className={cn("rounded-2xl p-3 sm:p-5", styles.panel)}>
-      <div className="mb-4 flex items-center gap-2.5">
+    <section className={cn("rounded-2xl p-3 sm:p-4", styles.panel)}>
+      <div className="mb-3 flex items-center gap-2.5">
         <span
           className={cn(
             "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
