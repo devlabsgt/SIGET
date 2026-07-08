@@ -2,33 +2,63 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CheckCircle2, Loader2, Search } from "lucide-react";
+import { CalendarDays, CheckCircle2, Loader2, Search } from "lucide-react";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
-import { modalActionMessage } from "@/components/ui/modal-toast";
+import { actionErrorMessage } from "@/components/ui/modal-toast";
 import { useBuscarParticipante, useRegistrarAsistencia } from "./lib/hooks";
 import {
   DEPARTAMENTOS_GT,
   getMunicipiosPorDepartamento,
 } from "./lib/guatemala-locations";
+import { BusquedaSelect } from "./BusquedaSelect";
 import {
+  formatFechaActividad,
   normalizarDpiInput,
+  normalizarFechaInput,
   registroAsistenciaSchema,
   type ActividadRecord,
   type ParticipanteRecord,
 } from "./lib/zod";
 
-const selectClass =
-  "flex h-10 w-full rounded-lg border-2 border-celeste-trifinio bg-transparent px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-celeste-trifinio/30";
-
 const inputClass =
   "flex h-10 w-full rounded-lg border-2 border-celeste-trifinio bg-transparent px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-celeste-trifinio/30";
+
+const GENERO_STYLES = {
+  masculino: {
+    active:
+      "border-blue-600 bg-blue-100 text-blue-800 dark:border-blue-500 dark:bg-blue-950 dark:text-blue-200",
+    idle: "border-blue-300/50 text-muted-foreground hover:border-blue-500 dark:border-blue-800",
+  },
+  femenino: {
+    active:
+      "border-pink-500 bg-pink-100 text-pink-800 dark:border-pink-500 dark:bg-pink-950 dark:text-pink-200",
+    idle: "border-pink-300/50 text-muted-foreground hover:border-pink-500 dark:border-pink-800",
+  },
+} as const;
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
     <label className="text-sm font-semibold leading-none text-foreground/70">
       {children}
     </label>
+  );
+}
+
+function FormSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 rounded-xl bg-zinc-100/80 p-4 dark:bg-zinc-900/50">
+      <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+        {title}
+      </p>
+      <div className="space-y-4">{children}</div>
+    </section>
   );
 }
 
@@ -46,7 +76,7 @@ function aplicarParticipante(
   },
 ) {
   setters.setNombre(p.nombre);
-  setters.setFechaNacimiento(p.fecha_nacimiento);
+  setters.setFechaNacimiento(normalizarFechaInput(p.fecha_nacimiento));
   setters.setGenero(p.genero);
   setters.setDepartamento(p.departamento);
   setters.setMunicipio(p.municipio);
@@ -109,7 +139,13 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
     [departamento],
   );
 
+  const departamentosOpciones = useMemo(
+    () => DEPARTAMENTOS_GT.map((d) => d.nombre),
+    [],
+  );
+
   const dpiCompleto = dpi.length === 13;
+  const fechaActividad = formatFechaActividad(actividad.fecha_realizacion);
 
   const handleDpiChange = (value: string) => {
     setDpi(normalizarDpiInput(value));
@@ -173,12 +209,11 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
       setEnviado(true);
       toast.success("Asistencia registrada correctamente.");
     } else {
-      toast.error(
-        modalActionMessage(
-          res.error ?? undefined,
-          "No se pudo registrar la asistencia.",
-        ),
+      const mensaje = actionErrorMessage(
+        res,
+        "No se pudo registrar la asistencia.",
       );
+      toast.error(mensaje, { autoClose: res.detail ? 8000 : 3000 });
     }
   };
 
@@ -208,8 +243,12 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
         <p className="mt-2 text-sm font-semibold text-azul-trifinio">
           {actividad.nombre}
         </p>
+        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-800 dark:bg-sky-950 dark:text-sky-200">
+          <CalendarDays className="size-3.5 shrink-0" />
+          <span className="capitalize">{fechaActividad}</span>
+        </div>
         {actividad.descripcion && (
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-2 text-sm text-muted-foreground">
             {actividad.descripcion}
           </p>
         )}
@@ -225,21 +264,23 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
             transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
             className="space-y-4 rounded-2xl bg-zinc-50 p-5 dark:bg-zinc-800/60"
           >
-            <div className="space-y-2">
-              <FieldLabel>DPI</FieldLabel>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={dpi}
-                onChange={(e) => handleDpiChange(e.target.value)}
-                className={inputClass}
-                maxLength={13}
-                autoFocus
-              />
-              <p className="text-xs text-muted-foreground">
-                {dpi.length}/13 dígitos
-              </p>
-            </div>
+            <FormSection title="Identificación">
+              <div className="space-y-2">
+                <FieldLabel>DPI</FieldLabel>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={dpi}
+                  onChange={(e) => handleDpiChange(e.target.value)}
+                  className={inputClass}
+                  maxLength={13}
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  {dpi.length}/13 dígitos
+                </p>
+              </div>
+            </FormSection>
             <button
               type="button"
               onClick={handleBuscarDpi}
@@ -267,167 +308,166 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-            className="space-y-4 rounded-2xl bg-zinc-50 p-5 dark:bg-zinc-800/60"
+            className="space-y-4"
           >
-            <div className="flex items-center justify-between gap-2 rounded-xl bg-sky-50 px-3 py-2 dark:bg-sky-950/40">
-              <div>
-                <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                  DPI
-                </p>
-                <p className="font-mono text-sm font-bold tabular-nums">{dpi}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPaso("dpi")}
-                className="cursor-pointer text-xs font-bold text-azul-trifinio hover:underline"
-              >
-                Cambiar
-              </button>
-            </div>
-
-            {participanteEncontrado && (
-              <p className="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                Datos cargados desde registros anteriores. Puedes actualizarlos.
-              </p>
-            )}
-
-            <div className="space-y-2">
-              <FieldLabel>Nombre completo</FieldLabel>
-              <input
-                type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                className={inputClass}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <FieldLabel>¿Es parte de Trifinio?</FieldLabel>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { value: true, label: "Sí" },
-                  { value: false, label: "No" },
-                ].map((opt) => (
-                  <button
-                    key={String(opt.value)}
-                    type="button"
-                    onClick={() => handleEsTrifinio(opt.value)}
-                    className={cn(
-                      "h-10 cursor-pointer rounded-lg border-2 text-sm font-bold transition-colors",
-                      esTrifinio === opt.value
-                        ? "border-celeste-trifinio bg-celeste-trifinio/10 text-foreground"
-                        : "border-celeste-trifinio/40 bg-transparent text-muted-foreground hover:border-celeste-trifinio",
-                    )}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <AnimatePresence initial={false}>
-              {esTrifinio === true && (
-                <motion.div
-                  key="trifinio-campos"
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                  className="space-y-4 overflow-hidden"
+            <FormSection title="Identificación">
+              <div className="flex items-center justify-between gap-2 rounded-xl bg-sky-50 px-3 py-2 dark:bg-sky-950/40">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                    DPI
+                  </p>
+                  <p className="font-mono text-sm font-bold tabular-nums">{dpi}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPaso("dpi")}
+                  className="cursor-pointer text-xs font-bold text-azul-trifinio hover:underline"
                 >
-                  <div className="space-y-2">
-                    <FieldLabel>Puesto (opcional)</FieldLabel>
-                    <input
-                      type="text"
-                      value={puesto}
-                      onChange={(e) => setPuesto(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <FieldLabel>Dirección administrativa (opcional)</FieldLabel>
-                    <input
-                      type="text"
-                      value={direccionAdministrativa}
-                      onChange={(e) => setDireccionAdministrativa(e.target.value)}
-                      className={inputClass}
-                    />
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            <div className="space-y-2">
-              <FieldLabel>Fecha de nacimiento</FieldLabel>
-              <input
-                type="date"
-                value={fechaNacimiento}
-                onChange={(e) => setFechaNacimiento(e.target.value)}
-                className={inputClass}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <FieldLabel>Género</FieldLabel>
-              <div className="grid grid-cols-2 gap-2">
-                {(["masculino", "femenino"] as const).map((g) => (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() => setGenero(g)}
-                    className={cn(
-                      "h-10 cursor-pointer rounded-lg border-2 text-sm font-bold capitalize transition-colors",
-                      genero === g
-                        ? "border-celeste-trifinio bg-celeste-trifinio/10 text-foreground"
-                        : "border-celeste-trifinio/40 bg-transparent text-muted-foreground hover:border-celeste-trifinio",
-                    )}
-                  >
-                    {g === "masculino" ? "Masculino" : "Femenino"}
-                  </button>
-                ))}
+                  Cambiar
+                </button>
               </div>
-            </div>
 
-            <div className="space-y-2">
-              <FieldLabel>Departamento</FieldLabel>
-              <select
-                value={departamento}
-                onChange={(e) => handleDepartamento(e.target.value)}
-                className={selectClass}
-                required
-              >
-                <option value="" disabled>
-                  Seleccione…
-                </option>
-                {DEPARTAMENTOS_GT.map((d) => (
-                  <option key={d.codigo} value={d.nombre}>
-                    {d.nombre}
-                  </option>
-                ))}
-              </select>
-            </div>
+              {participanteEncontrado && (
+                <p className="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
+                  Datos cargados desde registros anteriores. Puedes actualizarlos.
+                </p>
+              )}
 
-            <div className="space-y-2">
-              <FieldLabel>Municipio</FieldLabel>
-              <select
-                value={municipio}
-                onChange={(e) => setMunicipio(e.target.value)}
-                className={selectClass}
-                required
-                disabled={!departamento}
-              >
-                <option value="" disabled>
-                  {departamento ? "Seleccione…" : "Primero elija departamento"}
-                </option>
-                {municipios.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div className="space-y-2">
+                <FieldLabel>Nombre completo</FieldLabel>
+                <input
+                  type="text"
+                  value={nombre}
+                  onChange={(e) => setNombre(e.target.value)}
+                  className={inputClass}
+                  required
+                />
+              </div>
+            </FormSection>
+
+            <FormSection title="Trifinio">
+              <div className="space-y-2">
+                <FieldLabel>¿Es parte de Trifinio?</FieldLabel>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { value: true, label: "Sí" },
+                    { value: false, label: "No" },
+                  ].map((opt) => (
+                    <button
+                      key={String(opt.value)}
+                      type="button"
+                      onClick={() => handleEsTrifinio(opt.value)}
+                      className={cn(
+                        "h-10 cursor-pointer rounded-lg border-2 text-sm font-bold transition-colors",
+                        esTrifinio === opt.value
+                          ? "border-celeste-trifinio bg-celeste-trifinio/10 text-foreground"
+                          : "border-celeste-trifinio/40 bg-transparent text-muted-foreground hover:border-celeste-trifinio",
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <AnimatePresence initial={false}>
+                {esTrifinio === true && (
+                  <motion.div
+                    key="trifinio-campos"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                    className="space-y-4 overflow-hidden"
+                  >
+                    <div className="space-y-2">
+                      <FieldLabel>Puesto (opcional)</FieldLabel>
+                      <input
+                        type="text"
+                        value={puesto}
+                        onChange={(e) => setPuesto(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <FieldLabel>Dirección administrativa (opcional)</FieldLabel>
+                      <input
+                        type="text"
+                        value={direccionAdministrativa}
+                        onChange={(e) => setDireccionAdministrativa(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </FormSection>
+
+            <FormSection title="Datos personales">
+              <div className="space-y-2">
+                <FieldLabel>Fecha de nacimiento</FieldLabel>
+                <input
+                  type="date"
+                  value={fechaNacimiento}
+                  onChange={(e) => setFechaNacimiento(e.target.value)}
+                  className={inputClass}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel>Género</FieldLabel>
+                <div className="grid grid-cols-2 gap-2">
+                  {(["masculino", "femenino"] as const).map((g) => (
+                    <button
+                      key={g}
+                      type="button"
+                      onClick={() => setGenero(g)}
+                      className={cn(
+                        "h-10 cursor-pointer rounded-lg border-2 text-sm font-bold transition-colors",
+                        genero === g
+                          ? GENERO_STYLES[g].active
+                          : GENERO_STYLES[g].idle,
+                      )}
+                    >
+                      {g === "masculino" ? "Masculino" : "Femenino"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </FormSection>
+
+            <FormSection title="Ubicación">
+              <div className="space-y-2">
+                <FieldLabel>Departamento</FieldLabel>
+                <BusquedaSelect
+                  value={departamento}
+                  onChange={handleDepartamento}
+                  options={departamentosOpciones}
+                  placeholder="Buscar departamento…"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel>Municipio</FieldLabel>
+                <BusquedaSelect
+                  value={municipio}
+                  onChange={setMunicipio}
+                  options={municipios}
+                  placeholder={
+                    departamento
+                      ? "Buscar municipio…"
+                      : "Primero elija departamento"
+                  }
+                  disabled={!departamento}
+                  emptyMessage={
+                    departamento
+                      ? "Sin municipios coincidentes"
+                      : "Seleccione un departamento"
+                  }
+                />
+              </div>
+            </FormSection>
 
             <button
               type="submit"

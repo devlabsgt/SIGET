@@ -20,18 +20,7 @@ import { confirmQuitarActividad } from "./lib/swal";
 import { CrearActividad } from "./forms/Crear";
 import { VerEditarActividad } from "./forms/VerEditar";
 import type { ActividadRecord } from "./lib/zod";
-
-function formatFecha(iso: string) {
-  try {
-    return new Date(iso).toLocaleDateString("es-GT", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  } catch {
-    return iso;
-  }
-}
+import { formatFechaActividad } from "./lib/zod";
 
 export default function ActividadesList() {
   const router = useRouter();
@@ -133,7 +122,10 @@ export default function ActividadesList() {
                         <Users className="size-3.5" />
                         {act.total_registros ?? 0} registros
                       </span>
-                      <span>{formatFecha(act.created_at)}</span>
+                      <span className="inline-flex items-center gap-1 capitalize">
+                        <CalendarCheck className="size-3.5" />
+                        {formatFechaActividad(act.fecha_realizacion)}
+                      </span>
                     </div>
                   </div>
                 </div>

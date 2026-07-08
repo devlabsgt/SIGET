@@ -9,6 +9,7 @@ create table if not exists public.asist_actividades (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   descripcion text,
+  fecha_realizacion date not null default current_date,
   activo boolean not null default true,
   created_by uuid references public.profiles (id) on delete set null,
   updated_by uuid references public.profiles (id) on delete set null,
@@ -16,27 +17,24 @@ create table if not exists public.asist_actividades (
   updated_at timestamptz
 );
 
-create table if not exists public.asist_participantes (
-  dpi text primary key check (dpi ~ '^\d{13}$'),
+create table if not exists public.asist_registros (
+  id uuid primary key default gen_random_uuid(),
+  actividad_id uuid not null references public.asist_actividades (id) on delete cascade,
+  dpi text,
   nombre text not null,
+  puesto text,
+  direccion_administrativa text,
   fecha_nacimiento date not null,
   genero text not null check (genero in ('masculino', 'femenino')),
   departamento text not null,
   municipio text not null,
   es_trifinio boolean not null default false,
-  puesto text,
-  direccion_administrativa text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz
+  created_at timestamptz not null default now()
 );
 
-create table if not exists public.asist_registros (
-  id uuid primary key default gen_random_uuid(),
-  actividad_id uuid not null references public.asist_actividades (id) on delete cascade,
-  dpi text not null references public.asist_participantes (dpi) on delete restrict,
-  created_at timestamptz not null default now(),
-  unique (actividad_id, dpi)
-);
+create unique index if not exists asist_registros_actividad_dpi_uidx
+  on public.asist_registros (actividad_id, dpi)
+  where dpi is not null;
 
 -- ── Índices ──────────────────────────────────────────────────────────────────
 
@@ -46,11 +44,11 @@ create index if not exists asist_actividades_created_at_idx
 create index if not exists asist_actividades_activo_idx
   on public.asist_actividades (activo);
 
-create index if not exists asist_participantes_nombre_idx
-  on public.asist_participantes (nombre);
+create index if not exists asist_registros_departamento_idx
+  on public.asist_registros (departamento);
 
-create index if not exists asist_participantes_departamento_idx
-  on public.asist_participantes (departamento);
+create index if not exists asist_registros_genero_idx
+  on public.asist_registros (genero);
 
 create index if not exists asist_registros_actividad_id_idx
   on public.asist_registros (actividad_id);
@@ -79,16 +77,9 @@ create trigger asist_actividades_set_updated_at
   for each row
   execute function public.asist_set_updated_at();
 
-drop trigger if exists asist_participantes_set_updated_at on public.asist_participantes;
-create trigger asist_participantes_set_updated_at
-  before update on public.asist_participantes
-  for each row
-  execute function public.asist_set_updated_at();
-
 -- ── RLS ──────────────────────────────────────────────────────────────────────
 
 alter table public.asist_actividades enable row level security;
-alter table public.asist_participantes enable row level security;
 alter table public.asist_registros enable row level security;
 
 -- asist_actividades
@@ -109,37 +100,6 @@ create policy asist_actividades_autenticado
   to authenticated
   using (true)
   with check (true);
-
--- asist_participantes
-drop policy if exists asist_participantes_publico on public.asist_participantes;
-drop policy if exists asist_participantes_autenticado on public.asist_participantes;
-
--- Público: consultar DPI y registrar/actualizar datos al inscribirse
-create policy asist_participantes_publico
-  on public.asist_participantes
-  for select
-  to anon, authenticated
-  using (true);
-
-create policy asist_participantes_publico_insert
-  on public.asist_participantes
-  for insert
-  to anon, authenticated
-  with check (true);
-
-create policy asist_participantes_publico_update
-  on public.asist_participantes
-  for update
-  to anon, authenticated
-  using (true)
-  with check (true);
-
--- Autenticado: eliminar participantes
-create policy asist_participantes_autenticado_delete
-  on public.asist_participantes
-  for delete
-  to authenticated
-  using (true);
 
 -- asist_registros
 drop policy if exists asist_registros_publico on public.asist_registros;
@@ -174,3 +134,15 @@ create policy asist_registros_autenticado_delete
   for delete
   to authenticated
   using (true);
+
+-- ── Migración desde esquema anterior ─────────────────────────────────────────
+-- Si ya tenías tablas creadas, ejecuta en Supabase:
+
+-- alter table public.asist_actividades
+--   add column if not exists fecha_realizacion date;
+-- update public.asist_actividades
+--   set fecha_realizacion = created_at::date
+--   where fecha_realizacion is null;
+-- alter table public.asist_actividades
+--   alter column fecha_realizacion set not null,
+--   alter column fecha_realizacion set default current_date;

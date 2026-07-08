@@ -27,11 +27,15 @@ export function CrearActividad({
   const crear = useCrearActividad();
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [fechaRealizacion, setFechaRealizacion] = useState(
+    () => new Date().toISOString().split("T")[0],
+  );
 
   const handleClose = () => {
     if (crear.isPending) return;
     setNombre("");
     setDescripcion("");
+    setFechaRealizacion(new Date().toISOString().split("T")[0]);
     onClose();
   };
 
@@ -40,6 +44,7 @@ export function CrearActividad({
     const parsed = actividadFormSchema.safeParse({
       nombre,
       descripcion,
+      fecha_realizacion: fechaRealizacion,
       activo: true,
     });
     if (!parsed.success) {
@@ -51,6 +56,7 @@ export function CrearActividad({
       toast.success("Actividad creada correctamente.");
       setNombre("");
       setDescripcion("");
+      setFechaRealizacion(new Date().toISOString().split("T")[0]);
       onCreated?.(res.id);
       onClose();
     } else {
@@ -74,6 +80,16 @@ export function CrearActividad({
             id="act-nombre"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <ModalLabel htmlFor="act-fecha">Fecha de la actividad</ModalLabel>
+          <ModalInput
+            id="act-fecha"
+            type="date"
+            value={fechaRealizacion}
+            onChange={(e) => setFechaRealizacion(e.target.value)}
             required
           />
         </div>

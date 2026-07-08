@@ -13,7 +13,7 @@ import {
   modalActionMessage,
 } from "@/components/ui/general-modal";
 import { useEditarActividad } from "../lib/hooks";
-import { actividadFormSchema, type ActividadRecord } from "../lib/zod";
+import { actividadFormSchema, normalizarFechaInput, type ActividadRecord } from "../lib/zod";
 
 export function VerEditarActividad({
   open,
@@ -27,12 +27,14 @@ export function VerEditarActividad({
   const editar = useEditarActividad();
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
+  const [fechaRealizacion, setFechaRealizacion] = useState("");
   const [activo, setActivo] = useState(true);
 
   useEffect(() => {
     if (actividad) {
       setNombre(actividad.nombre);
       setDescripcion(actividad.descripcion ?? "");
+      setFechaRealizacion(normalizarFechaInput(actividad.fecha_realizacion));
       setActivo(actividad.activo);
     }
   }, [actividad]);
@@ -48,6 +50,7 @@ export function VerEditarActividad({
     const parsed = actividadFormSchema.safeParse({
       nombre,
       descripcion,
+      fecha_realizacion: fechaRealizacion,
       activo,
     });
     if (!parsed.success) {
@@ -79,6 +82,16 @@ export function VerEditarActividad({
             id="edit-nombre"
             value={nombre}
             onChange={(e) => setNombre(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2">
+          <ModalLabel htmlFor="edit-fecha">Fecha de la actividad</ModalLabel>
+          <ModalInput
+            id="edit-fecha"
+            type="date"
+            value={fechaRealizacion}
+            onChange={(e) => setFechaRealizacion(e.target.value)}
             required
           />
         </div>

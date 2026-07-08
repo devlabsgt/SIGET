@@ -39,3 +39,11 @@ export function modalActionMessage(
   if (!code) return fallback;
   return extra?.[code] ?? MODAL_ACTION_ERRORS[code] ?? fallback;
 }
+
+export function actionErrorMessage(
+  result: { error?: string | null; detail?: string | null },
+  fallback: string,
+) {
+  if (result.detail?.trim()) return result.detail;
+  return modalActionMessage(result.error ?? undefined, fallback);
+}

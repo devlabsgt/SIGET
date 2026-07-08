@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Loader2, Pencil } from "lucide-react";
 import { useActividad, useRegistrosActividad } from "./lib/hooks";
+import { formatFechaActividad } from "./lib/zod";
 import {
   statsPorDepartamento,
   statsPorGenero,
@@ -71,6 +72,9 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
           <h1 className="text-2xl font-black text-foreground sm:text-3xl">
             {actividad.nombre}
           </h1>
+          <p className="mt-1 text-sm font-semibold capitalize text-celeste-trifinio">
+            {formatFechaActividad(actividad.fecha_realizacion)}
+          </p>
           {actividad.descripcion && (
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               {actividad.descripcion}

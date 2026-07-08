@@ -12,8 +12,34 @@ import {
   type RegistroAsistenciaValues,
 } from "./zod";
 
-type ActionResult = { success: boolean; error: string | null };
+type ActionResult = {
+  success: boolean;
+  error: string | null;
+  detail?: string | null;
+};
 type ActionResultWithId = ActionResult & { id?: string };
+
+function mapDbError(error: { code?: string; message?: string }): ActionResult {
+  if (error.code === "23505") {
+    return {
+      success: false,
+      error: "DUPLICATE",
+      detail: error.message ?? null,
+    };
+  }
+  if (error.code === "42501") {
+    return {
+      success: false,
+      error: "FORBIDDEN",
+      detail: error.message ?? "Sin permiso para esta operación.",
+    };
+  }
+  return {
+    success: false,
+    error: "DB_ERROR",
+    detail: error.message ?? "Error desconocido en la base de datos.",
+  };
+}
 
 async function requireAuth() {
   const supabase = await createClient();
@@ -29,6 +55,9 @@ function normalizarActividad(row: Record<string, unknown>): ActividadRecord {
     id: String(row.id),
     nombre: String(row.nombre ?? ""),
     descripcion: (row.descripcion as string | null) ?? null,
+    fecha_realizacion: String(
+      row.fecha_realizacion ?? row.created_at ?? "",
+    ).split("T")[0],
     activo: row.activo !== false,
     created_at: String(row.created_at ?? ""),
     updated_at: (row.updated_at as string | null) ?? null,
@@ -41,7 +70,7 @@ function normalizarParticipante(row: Record<string, unknown>): ParticipanteRecor
   return {
     dpi: String(row.dpi ?? ""),
     nombre: String(row.nombre ?? ""),
-    fecha_nacimiento: String(row.fecha_nacimiento ?? ""),
+    fecha_nacimiento: String(row.fecha_nacimiento ?? "").split("T")[0],
     genero: row.genero as ParticipanteRecord["genero"],
     departamento: String(row.departamento ?? ""),
     municipio: String(row.municipio ?? ""),
@@ -54,22 +83,27 @@ function normalizarParticipante(row: Record<string, unknown>): ParticipanteRecor
   };
 }
 
-function normalizarRegistro(row: Record<string, unknown>): RegistroAsistenciaRecord {
-  const participante = row.asist_participantes as Record<string, unknown> | null;
+function registroDesdeDpiRow(
+  data: Record<string, unknown>,
+  digits: string,
+): ParticipanteRecord {
+  return normalizarParticipante({ ...data, dpi: digits, updated_at: null });
+}
 
+function normalizarRegistro(row: Record<string, unknown>): RegistroAsistenciaRecord {
   return {
     id: String(row.id),
     actividad_id: String(row.actividad_id),
-    dpi: String(row.dpi ?? participante?.dpi ?? ""),
-    nombre: String(participante?.nombre ?? ""),
-    puesto: (participante?.puesto as string | null) ?? null,
+    dpi: String(row.dpi ?? ""),
+    nombre: String(row.nombre ?? ""),
+    puesto: (row.puesto as string | null) ?? null,
     direccion_administrativa:
-      (participante?.direccion_administrativa as string | null) ?? null,
-    fecha_nacimiento: String(participante?.fecha_nacimiento ?? ""),
-    genero: (participante?.genero ?? "masculino") as RegistroAsistenciaRecord["genero"],
-    departamento: String(participante?.departamento ?? ""),
-    municipio: String(participante?.municipio ?? ""),
-    es_trifinio: participante?.es_trifinio === true,
+      (row.direccion_administrativa as string | null) ?? null,
+    fecha_nacimiento: String(row.fecha_nacimiento ?? "").split("T")[0],
+    genero: (row.genero ?? "masculino") as RegistroAsistenciaRecord["genero"],
+    departamento: String(row.departamento ?? ""),
+    municipio: String(row.municipio ?? ""),
+    es_trifinio: row.es_trifinio === true,
     created_at: String(row.created_at ?? ""),
   };
 }
@@ -130,13 +164,16 @@ export async function getParticipantePorDpi(
 
   const supabase = createPublicClient();
   const { data, error } = await supabase
-    .from("asist_participantes")
+    .from("asist_registros")
     .select("*")
     .eq("dpi", digits)
+    .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (error || !data) return null;
-  return normalizarParticipante(data);
+
+  return registroDesdeDpiRow(data, digits);
 }
 
 export async function getRegistrosActividad(
@@ -147,7 +184,7 @@ export async function getRegistrosActividad(
 
   const { data, error } = await auth.supabase
     .from("asist_registros")
-    .select("*, asist_participantes(*)")
+    .select("*")
     .eq("actividad_id", actividadId)
     .order("created_at", { ascending: false });
 
@@ -169,13 +206,14 @@ export async function createActividad(
     .insert({
       nombre: parsed.data.nombre,
       descripcion: parsed.data.descripcion || null,
+      fecha_realizacion: parsed.data.fecha_realizacion,
       activo: parsed.data.activo,
       created_by: auth.user!.id,
     })
     .select("id")
     .single();
 
-  if (error) return { success: false, error: "DB_ERROR" };
+  if (error) return mapDbError(error);
   return { success: true, error: null, id: data.id };
 }
 
@@ -194,12 +232,13 @@ export async function updateActividad(
     .update({
       nombre: parsed.data.nombre,
       descripcion: parsed.data.descripcion || null,
+      fecha_realizacion: parsed.data.fecha_realizacion,
       activo: parsed.data.activo,
       updated_by: auth.user!.id,
     })
     .eq("id", id);
 
-  if (error) return { success: false, error: "DB_ERROR" };
+  if (error) return mapDbError(error);
   return { success: true, error: null };
 }
 
@@ -212,7 +251,7 @@ export async function deleteActividad(id: string): Promise<ActionResult> {
     .delete()
     .eq("id", id);
 
-  if (error) return { success: false, error: "DB_ERROR" };
+  if (error) return mapDbError(error);
   return { success: true, error: null };
 }
 
@@ -234,45 +273,45 @@ export async function registrarAsistencia(
 
   if (!actividad) return { success: false, error: "NOT_FOUND" };
 
-  const { data: existente } = await supabase
+  const { data: existente, error: dupError } = await supabase
     .from("asist_registros")
     .select("id")
     .eq("actividad_id", data.actividad_id)
     .eq("dpi", data.dpi)
     .maybeSingle();
 
-  if (existente) return { success: false, error: "DUPLICATE" };
+  if (dupError && !dupError.message.includes("dpi")) {
+    return mapDbError(dupError);
+  }
 
-  const participantePayload = {
+  if (existente) {
+    return {
+      success: false,
+      error: "DUPLICATE",
+      detail: "Este DPI ya está registrado en esta actividad.",
+    };
+  }
+
+  const registroPayload = {
+    actividad_id: data.actividad_id,
     dpi: data.dpi,
     nombre: data.nombre,
-    fecha_nacimiento: data.fecha_nacimiento,
+    fecha_nacimiento: data.fecha_nacimiento.split("T")[0],
     genero: data.genero,
     departamento: data.departamento,
     municipio: data.municipio,
     es_trifinio: data.es_trifinio,
-    puesto: data.es_trifinio ? data.puesto?.trim() || null : null,
+    puesto: data.es_trifinio ? data.puesto?.trim() || null : "",
     direccion_administrativa: data.es_trifinio
       ? data.direccion_administrativa?.trim() || null
-      : null,
-    updated_at: new Date().toISOString(),
+      : "",
   };
 
-  const { error: upsertError } = await supabase
-    .from("asist_participantes")
-    .upsert(participantePayload, { onConflict: "dpi" });
+  const { error } = await supabase
+    .from("asist_registros")
+    .insert(registroPayload);
 
-  if (upsertError) return { success: false, error: "DB_ERROR" };
-
-  const { error } = await supabase.from("asist_registros").insert({
-    actividad_id: data.actividad_id,
-    dpi: data.dpi,
-  });
-
-  if (error) {
-    if (error.code === "23505") return { success: false, error: "DUPLICATE" };
-    return { success: false, error: "DB_ERROR" };
-  }
+  if (error) return mapDbError(error);
 
   return { success: true, error: null };
 }
@@ -286,6 +325,6 @@ export async function deleteRegistro(id: string): Promise<ActionResult> {
     .delete()
     .eq("id", id);
 
-  if (error) return { success: false, error: "DB_ERROR" };
+  if (error) return mapDbError(error);
   return { success: true, error: null };
 }

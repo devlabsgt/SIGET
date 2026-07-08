@@ -12,6 +12,7 @@ const dpiSchema = z
 export const actividadFormSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
   descripcion: z.string().trim().max(500).optional().default(""),
+  fecha_realizacion: z.string().min(1, "La fecha de la actividad es obligatoria"),
   activo: z.boolean().default(true),
 });
 
@@ -59,6 +60,7 @@ export type ActividadRecord = {
   id: string;
   nombre: string;
   descripcion: string | null;
+  fecha_realizacion: string;
   activo: boolean;
   created_at: string;
   updated_at: string | null;
@@ -96,4 +98,24 @@ export type RegistroAsistenciaRecord = {
 
 export function normalizarDpiInput(value: string): string {
   return value.replace(/\D/g, "").slice(0, 13);
+}
+
+export function normalizarFechaInput(value: string): string {
+  if (!value) return "";
+  return value.split("T")[0];
+}
+
+export function formatFechaActividad(fecha: string): string {
+  try {
+    const [y, m, d] = normalizarFechaInput(fecha).split("-").map(Number);
+    if (!y || !m || !d) return fecha;
+    return new Date(y, m - 1, d).toLocaleDateString("es-GT", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  } catch {
+    return fecha;
+  }
 }
