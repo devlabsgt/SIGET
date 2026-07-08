@@ -6,7 +6,15 @@ export async function proxy(request: NextRequest) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const pathname = request.nextUrl.pathname;
+
+  const hostname = request.headers.get("host") || "";
+  let pathname = request.nextUrl.pathname;
+  const isAppRewrite =
+    hostname === "app.plantrifiniogt.com" && pathname === "/";
+
+  if (isAppRewrite) {
+    pathname = "/siget";
+  }
 
   if (!user && pathname.startsWith("/siget")) {
     const url = request.nextUrl.clone();
@@ -14,7 +22,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-if (user) {
+  if (user) {
     const { data: settings } = await supabase
       .from("app_settings")
       .select("require_device_authorization")
@@ -29,7 +37,6 @@ if (user) {
 
     const requireAuth = settings?.require_device_authorization ?? false;
 
-    // Verificar si el usuario es super administrador
     const metadata = user.user_metadata || {};
     const realRole = (metadata.rol || user.role || "user") as string;
     const isSuper = realRole === "super";
@@ -39,9 +46,8 @@ if (user) {
     const canAccessAdminPanel = isSuper || hasAdminInRole;
     const hasFullAdminAccess = isSuperOrAdmin;
 
-    // Verificación de cambio de contraseña (NO aplica para SUPER)
     let needsPasswordChange = false;
-    
+
     if (!isSuper) {
       if (!profile?.ultimo_cambio_password) {
         needsPasswordChange = true;
@@ -56,7 +62,10 @@ if (user) {
     }
 
     if (needsPasswordChange) {
-      if (pathname !== "/siget/cambiar-password" && !pathname.startsWith("/api/auth")) {
+      if (
+        pathname !== "/siget/cambiar-password" &&
+        !pathname.startsWith("/api/auth")
+      ) {
         const url = request.nextUrl.clone();
         url.pathname = "/siget/cambiar-password";
         return NextResponse.redirect(url);
@@ -99,7 +108,6 @@ if (user) {
     }
 
     if (pathname.startsWith("/siget")) {
-
       if (pathname.startsWith("/siget/admin")) {
         if (!canAccessAdminPanel) {
           const url = request.nextUrl.clone();
@@ -119,12 +127,10 @@ if (user) {
       }
 
       const canAccessObservatorio =
-        isSuperOrAdmin ||
-        realRole.includes("observatorio");
+        isSuperOrAdmin || realRole.includes("observatorio");
 
       const canAccessPlantillas =
-        isSuperOrAdmin ||
-        realRole === "admin-observatorio";
+        isSuperOrAdmin || realRole === "admin-observatorio";
 
       if (pathname.startsWith("/siget/observatorio/plantillas")) {
         if (!canAccessPlantillas) {
@@ -159,9 +165,15 @@ if (user) {
     }
   }
 
+  if (isAppRewrite) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/siget";
+    return NextResponse.rewrite(url, { headers: response.headers });
+  }
+
   return response;
 }
-// Exclusion de cobros por archivos estáticos
+
 export const config = {
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|csv|xlsx|woff|woff2|tff|otf|js|css)$).*)",
