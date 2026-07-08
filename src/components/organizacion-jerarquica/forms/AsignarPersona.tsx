@@ -18,6 +18,13 @@ import {
   modalActionMessage,
 } from "./EstructuraFormShell";
 
+function normalizeSearchText(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase();
+}
+
 function PersonaSearchField({
   personas,
   puestoId,
@@ -54,13 +61,13 @@ function PersonaSearchField({
   }, []);
 
   const filtered = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = normalizeSearchText(query.trim());
     if (term.length < 1) return [];
     return personas
       .filter(
         (p) =>
-          p.nombre.toLowerCase().includes(term) ||
-          (p.email?.toLowerCase().includes(term) ?? false),
+          normalizeSearchText(p.nombre).includes(term) ||
+          (p.email ? normalizeSearchText(p.email).includes(term) : false),
       )
       .slice(0, 8);
   }, [personas, query]);
@@ -74,7 +81,7 @@ function PersonaSearchField({
   };
 
   return (
-    <div ref={containerRef} className="relative space-y-2">
+    <div ref={containerRef} className="relative min-h-56 space-y-2">
       <FormLabel htmlFor="persona-puesto">Persona</FormLabel>
       <FormInput
         id="persona-puesto"
@@ -97,7 +104,7 @@ function PersonaSearchField({
         </button>
       )}
       {open && query.trim().length >= 1 && (
-        <ul className="absolute top-full z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border-2 border-celeste-trifinio/40 bg-zinc-100 shadow-md dark:bg-zinc-800">
+        <ul className="mt-1 max-h-52 w-full overflow-y-auto rounded-lg border-2 border-celeste-trifinio/40 bg-zinc-100 shadow-md dark:bg-zinc-800">
           {filtered.length === 0 ? (
             <li className="px-3 py-2 text-sm text-muted-foreground">
               Sin coincidencias
@@ -197,7 +204,7 @@ function AsignarPersonaBody({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="flex min-h-[22rem] flex-col space-y-4">
       <p className="text-sm text-muted-foreground">
         Puesto:{" "}
         <span className="font-semibold text-foreground">{puestoNombre}</span>

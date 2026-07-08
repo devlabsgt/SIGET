@@ -58,9 +58,9 @@ import "./organigrama.css";
 
 const ORG_CARD_W = 172;
 const ORG_CARD_H = 58;
-const ORG_CARD_H_TITULAR = 80;
+const ORG_CARD_H_TITULAR = 86;
 const ORG_GAP_X = 16;
-const ORG_GAP_Y = 12;
+const ORG_GAP_Y = 20;
 const ORG_FORK_BOOST = 20;
 const ORG_SEP_SIBLINGS = 1.1;
 const ORG_SEP_NON_SIBLINGS = 1.15;
@@ -75,7 +75,7 @@ const ORG_LAYOUT_COMPACT = {
 
 const ORG_LAYOUT_AMPLIO = {
   gapX: ORG_GAP_X,
-  gapY: 34,
+  gapY: 40,
   forkBoost: ORG_FORK_BOOST,
   sepSiblings: ORG_SEP_SIBLINGS,
   sepNonSiblings: ORG_SEP_NON_SIBLINGS,
@@ -89,7 +89,7 @@ type OrgLayoutConfig = {
   sepNonSiblings: number;
 };
 const ORG_NODE_X = ORG_CARD_W + ORG_GAP_X;
-const ORG_NODE_Y = ORG_CARD_H + ORG_GAP_Y;
+const ORG_NODE_Y = ORG_CARD_H_TITULAR + ORG_GAP_Y;
 const ORG_FO_W = ORG_CARD_W;
 const ORG_FO_X = -ORG_CARD_W / 2;
 const ORG_RAIL_X = -ORG_CARD_W / 2 - 16;
@@ -119,48 +119,8 @@ const ORG_ACTIONS_EASE = [0.33, 1, 0.68, 1] as const;
 const ORG_MODAL_MS = 320;
 const ORG_CARD_ANIM_MS = 360;
 
-function orgNodeStrideY(mostrarNombres: boolean, gapY = ORG_GAP_Y) {
-  if (!mostrarNombres) {
-    return ORG_CARD_H + gapY;
-  }
-  return ORG_CARD_H_TITULAR / 2 + gapY + ORG_CARD_H / 2;
-}
-
-function easeOrgOut(t: number) {
-  return 1 - (1 - t) ** 3;
-}
-
-function useAnimatedOrgStrideY(mostrarNombres: boolean, gapY = ORG_GAP_Y) {
-  const target = orgNodeStrideY(mostrarNombres, gapY);
-  const [strideY, setStrideY] = useState(target);
-  const strideRef = useRef(strideY);
-
-  useEffect(() => {
-    strideRef.current = strideY;
-  }, [strideY]);
-
-  useEffect(() => {
-    const from = strideRef.current;
-    const to = target;
-    if (Math.abs(from - to) < 0.5) {
-      setStrideY(to);
-      return;
-    }
-
-    const start = performance.now();
-    let frame = 0;
-
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / ORG_CARD_ANIM_MS);
-      setStrideY(from + (to - from) * easeOrgOut(t));
-      if (t < 1) frame = requestAnimationFrame(tick);
-    };
-
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [target]);
-
-  return strideY;
+function orgNodeStrideY(gapY = ORG_GAP_Y) {
+  return ORG_CARD_H_TITULAR + gapY;
 }
 
 type OrgHierarchyPoint = {
@@ -657,7 +617,7 @@ function OrgNode({
           className="w-full overflow-hidden"
         >
           <div className={cn("w-full shrink-0 border-t", separatorTone)} />
-          <div className="flex w-full min-w-0 shrink-0 items-center justify-center gap-1 pt-0.5">
+          <div className="flex w-full min-w-0 shrink-0 items-center justify-center gap-1 py-1">
             <UserRound className={cn("size-3 shrink-0", textTone)} />
             <p
               className={cn(
@@ -757,7 +717,7 @@ function OrgNode({
         style={{ overflow: "visible", pointerEvents: "none" }}
       >
         {puedeAnimarTitular ? (
-          <div className="flex h-full w-full items-center justify-center">
+          <div className="flex h-full w-full items-end justify-center">
             <motion.div
               ref={cardRef}
               data-org-card=""
@@ -935,7 +895,7 @@ export const OrganigramaVertical = forwardRef<
 
   const layout = espaciadoAmplio ? ORG_LAYOUT_AMPLIO : ORG_LAYOUT_COMPACT;
   const nodeSizeX = ORG_CARD_W + layout.gapX;
-  const animatedStrideY = useAnimatedOrgStrideY(mostrarNombres, layout.gapY);
+  const nodeStrideY = orgNodeStrideY(layout.gapY);
   const [logoHref, setLogoHref] = useState<string | null>(null);
 
   const stepPath = useCallback(
@@ -949,12 +909,12 @@ export const OrganigramaVertical = forwardRef<
         props,
         admin,
         mostrarNombres,
-        animatedStrideY,
+        nodeStrideY,
         logoHref,
         usarLogoRaiz,
         layout,
       ),
-    [admin, mostrarNombres, animatedStrideY, logoHref, usarLogoRaiz, layout],
+    [admin, mostrarNombres, nodeStrideY, logoHref, usarLogoRaiz, layout],
   );
 
   useEffect(() => {
@@ -1053,7 +1013,7 @@ export const OrganigramaVertical = forwardRef<
             orientation="vertical"
             translate={translate}
             pathFunc={stepPath}
-            nodeSize={{ x: nodeSizeX, y: animatedStrideY }}
+            nodeSize={{ x: nodeSizeX, y: nodeStrideY }}
             separation={{
               siblings: layout.sepSiblings,
               nonSiblings: layout.sepNonSiblings,
