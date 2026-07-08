@@ -9,6 +9,13 @@ export async function proxy(request: NextRequest) {
 
   const hostname = request.headers.get("host") || "";
   let pathname = request.nextUrl.pathname;
+
+  if (pathname === "/protected" || pathname.startsWith("/protected/")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/siget";
+    return NextResponse.redirect(url);
+  }
+
   const isAppRewrite =
     hostname === "app.plantrifiniogt.com" && pathname === "/";
 
@@ -81,7 +88,7 @@ export async function proxy(request: NextRequest) {
     if (pathname === "/esperando-acceso") {
       if (!requireAuth) {
         const url = request.nextUrl.clone();
-        url.pathname = "/siget ";
+        url.pathname = "/siget";
         return NextResponse.redirect(url);
       }
 

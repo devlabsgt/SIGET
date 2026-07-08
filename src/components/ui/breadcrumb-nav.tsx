@@ -11,17 +11,43 @@ import { cn } from "@/lib/utils";
 const crumbIconLink =
   "group flex items-center justify-center text-foreground hover:text-celeste-trifinio dark:text-white dark:hover:text-celeste-trifinio transition-colors duration-300 cursor-pointer active:scale-95";
 
-const crumbPanelLink =
-  "group flex items-center text-foreground hover:text-celeste-trifinio dark:text-white dark:hover:text-celeste-trifinio transition-colors duration-300 cursor-pointer active:scale-95 p-1 shrink-0";
-
 const crumbTextLink =
   "capitalize text-foreground hover:text-celeste-trifinio dark:text-white dark:hover:text-celeste-trifinio transition-all duration-300 truncate group/link hover:underline underline-offset-4";
 
 const crumbActive =
   "text-celeste-trifinio";
 
+const sigetCrumbLink =
+  "group flex items-center gap-1.5 shrink-0 normal-case text-azul-trifinio hover:text-celeste-trifinio dark:text-azul-trifinio dark:hover:text-celeste-trifinio transition-all duration-300";
+
+const sigetCrumbText =
+  "truncate group-hover:underline underline-offset-4";
+
+const sigetCrumbActive =
+  "flex items-center gap-1.5 shrink-0 normal-case text-azul-trifinio underline underline-offset-4 pointer-events-none text-xs md:text-lg";
+
 const iconMotion =
   "transition-transform duration-500 ease-out group-hover:scale-125";
+
+function SigetCrumb({ active = false }: { active?: boolean }) {
+  if (active) {
+    return (
+      <span className={sigetCrumbActive} title="Panel">
+        <LayoutDashboard className="size-4 md:size-5 shrink-0" />
+        <span>SIGET</span>
+      </span>
+    );
+  }
+
+  return (
+    <Link href="/siget" className={sigetCrumbLink} title="Ir al panel">
+      <LayoutDashboard
+        className="size-4 md:size-5 shrink-0 transition-transform duration-300 ease-out group-hover:-translate-y-0.5"
+      />
+      <span className={sigetCrumbText}>SIGET</span>
+    </Link>
+  );
+}
 
 export function BreadcrumbNav() {
   const pathname = usePathname();
@@ -37,16 +63,7 @@ export function BreadcrumbNav() {
           className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden md:pt-1"
         >
           <motion.div layout="position">
-            <Link
-              href="/siget"
-              className={cn(crumbPanelLink, "gap-2")}
-              title="Ir al panel"
-            >
-              <LayoutDashboard className={cn("size-4 md:size-5 shrink-0", iconMotion, "group-hover:translate-x-0.5")} />
-              <span className="text-sm font-bold transition-transform duration-500 ease-out group-hover:translate-x-0.5">
-                Ir al Panel
-              </span>
-            </Link>
+            <SigetCrumb />
           </motion.div>
         </motion.div>
       </LayoutGroup>
@@ -60,23 +77,8 @@ export function BreadcrumbNav() {
           layout
           className="flex items-center gap-2 text-[9px] md:text-base font-medium text-muted-foreground overflow-hidden md:pt-1"
         >
-          <motion.div layout="position">
-            <Link
-              href="/"
-              className={cn(crumbIconLink, "mr-1")}
-              title="Ir al inicio"
-            >
-              <ArrowLeft className={cn("size-4 md:size-5", iconMotion, "group-hover:-translate-x-1")} />
-            </Link>
-          </motion.div>
-
           <motion.div layout="position" className="flex items-center">
-            <span
-              className={cn(crumbActive, "p-1 shrink-0 flex items-center")}
-              title="Panel"
-            >
-              <LayoutDashboard className="size-4 md:size-5" />
-            </span>
+            <SigetCrumb active />
           </motion.div>
         </motion.div>
       </LayoutGroup>
@@ -85,8 +87,12 @@ export function BreadcrumbNav() {
 
   const segments = pathname.split("/").filter((item) => item !== "");
 
-  const parentPath =
-    segments.length > 1 ? `/${segments.slice(0, -1).join("/")}` : "/siget";
+  const parentPath = (() => {
+    if (segments.length <= 1) return "/siget";
+    const parent = `/${segments.slice(0, -1).join("/")}`;
+    if (parent === "/" || parent === "") return "/siget";
+    return parent;
+  })();
 
   return (
     <LayoutGroup id="breadcrumb">
@@ -105,13 +111,7 @@ export function BreadcrumbNav() {
         </motion.div>
 
         <motion.div layout="position" className="flex items-center">
-          <Link
-            href="/siget"
-            className={crumbPanelLink}
-            title="Ir al panel"
-          >
-            <LayoutDashboard className={cn("size-4 md:size-5", iconMotion)} />
-          </Link>
+          <SigetCrumb />
         </motion.div>
 
         <div className="flex items-center gap-1 overflow-hidden mask-gradient">

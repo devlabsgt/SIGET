@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { useUser } from "@/components/(base)/providers/UserProvider";
 import { BreadcrumbNav } from "@/components/ui/breadcrumb-nav";
-import { Menu as MenuIcon, X, RefreshCw, LogIn } from "lucide-react";
+import { Menu as MenuIcon, X, RefreshCw } from "lucide-react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import Menu from "./Menu";
 import { getPendingDevicesCount } from "@/components/(SIGET)/admin/lib/actions";
@@ -21,9 +21,7 @@ export default function Header() {
   const [isFullScreen, setIsFullScreen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const pathname = usePathname();
-  const isPublicHome = pathname === "/";
   const isLoginPage = pathname === "/login";
-  const showLoginButton = isPublicHome && !user;
   const showBreadcrumb = Boolean(user) && !isLoginPage;
   const showHamburger = Boolean(user);
 
@@ -130,18 +128,6 @@ export default function Header() {
             >
               <RefreshCw className="size-7 md:size-6" />
             </button>
-            {showLoginButton && (
-              <Link
-                href="/login"
-                className="group flex items-center gap-2 min-h-11 px-1.5 md:min-h-0 md:px-0 cursor-pointer active:scale-95"
-                title="Iniciar Sesión"
-              >
-                <LogIn className="size-7 md:size-5 lg:size-6 shrink-0 text-azul-trifinio group-hover:text-celeste-trifinio dark:text-white dark:group-hover:text-celeste-trifinio transition-colors duration-300" />
-                <span className="text-xs md:text-[11px] lg:text-xs font-extrabold text-celeste-trifinio group-hover:text-azul-trifinio dark:text-celeste-trifinio dark:group-hover:text-white tracking-tight transition-colors duration-300">
-                  SIGET
-                </span>
-              </Link>
-            )}
             {showHamburger && (
               <div className="relative">
                 <button
