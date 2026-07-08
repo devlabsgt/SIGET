@@ -5,12 +5,14 @@ import { createPublicClient } from "@/utils/supabase/public";
 import {
   actividadFormSchema,
   registroAsistenciaSchema,
+  registroPublicoSchema,
   registroEditSchema,
   type ActividadFormValues,
   type ActividadRecord,
   type ParticipanteRecord,
   type RegistroAsistenciaRecord,
   type RegistroAsistenciaValues,
+  type RegistroPublicoValues,
   type RegistroEditValues,
   resolverInstitucion,
 } from "./zod";
@@ -66,6 +68,9 @@ function normalizarActividad(row: Record<string, unknown>): ActividadRecord {
     fecha_realizacion: String(
       row.fecha_realizacion ?? row.created_at ?? "",
     ).split("T")[0],
+    direccion: String(row.direccion ?? ""),
+    departamento: String(row.departamento ?? ""),
+    municipio: String(row.municipio ?? ""),
     activo: row.activo !== false,
     created_at: String(row.created_at ?? ""),
     updated_at: (row.updated_at as string | null) ?? null,
@@ -255,6 +260,9 @@ export async function createActividad(
       nombre: parsed.data.nombre,
       descripcion: parsed.data.descripcion || null,
       fecha_realizacion: parsed.data.fecha_realizacion,
+      direccion: parsed.data.direccion,
+      departamento: parsed.data.departamento,
+      municipio: parsed.data.municipio,
       activo: parsed.data.activo,
       created_by: auth.user!.id,
     })
@@ -281,6 +289,9 @@ export async function updateActividad(
       nombre: parsed.data.nombre,
       descripcion: parsed.data.descripcion || null,
       fecha_realizacion: parsed.data.fecha_realizacion,
+      direccion: parsed.data.direccion,
+      departamento: parsed.data.departamento,
+      municipio: parsed.data.municipio,
       activo: parsed.data.activo,
       updated_by: auth.user!.id,
     })
@@ -304,9 +315,9 @@ export async function deleteActividad(id: string): Promise<ActionResult> {
 }
 
 export async function registrarAsistencia(
-  values: RegistroAsistenciaValues,
+  values: RegistroPublicoValues,
 ): Promise<ActionResult> {
-  const parsed = registroAsistenciaSchema.safeParse(values);
+  const parsed = registroPublicoSchema.safeParse(values);
   if (!parsed.success) return { success: false, error: "INVALID_INPUT" };
 
   const supabase = createPublicClient();
@@ -314,12 +325,22 @@ export async function registrarAsistencia(
 
   const { data: actividad } = await supabase
     .from("asist_actividades")
-    .select("id, activo")
+    .select("id, activo, departamento, municipio")
     .eq("id", data.actividad_id)
     .eq("activo", true)
     .maybeSingle();
 
   if (!actividad) return { success: false, error: "NOT_FOUND" };
+
+  const departamento = String(actividad.departamento ?? "");
+  const municipio = String(actividad.municipio ?? "");
+  if (!departamento || !municipio) {
+    return {
+      success: false,
+      error: "NOT_FOUND",
+      detail: "La actividad no tiene ubicación configurada.",
+    };
+  }
 
   const { data: existente, error: dupError } = await supabase
     .from("asist_registros")
@@ -346,8 +367,8 @@ export async function registrarAsistencia(
     nombre: data.nombre,
     fecha_nacimiento: data.fecha_nacimiento.split("T")[0],
     genero: data.genero,
-    departamento: data.departamento,
-    municipio: data.municipio,
+    departamento,
+    municipio,
     email: data.email?.trim() || null,
     telefono: data.telefono?.trim() || null,
     es_trifinio: data.es_trifinio,
@@ -405,8 +426,6 @@ export async function updateRegistro(
     nombre: data.nombre,
     fecha_nacimiento: data.fecha_nacimiento.split("T")[0],
     genero: data.genero,
-    departamento: data.departamento,
-    municipio: data.municipio,
     email: data.email?.trim() || null,
     telefono: data.telefono?.trim() || null,
     es_trifinio: data.es_trifinio,

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import { cn } from "@/lib/utils";
-import type { EdadGeneroBar, LugarDepartamentoStat, StatSegment } from "./lib/stats";
+import type { EdadGeneroBar, StatSegment } from "./lib/stats";
 
 type DonutDatum = { name: string; value: number; color: string };
 
@@ -269,110 +269,6 @@ function DonutPanel({
   );
 }
 
-const BAR_LUGAR_COLOR = "#0ea5e9";
-const BAR_MUNICIPIO_COLOR = "#38bdf8";
-
-function HorizontalBarFila({
-  nombre,
-  valor,
-  maximo,
-  color,
-  reduceMotion,
-  indentado = false,
-}: {
-  nombre: string;
-  valor: number;
-  maximo: number;
-  color: string;
-  reduceMotion: boolean | null;
-  indentado?: boolean;
-}) {
-  const ancho = maximo > 0 ? (valor / maximo) * 100 : 0;
-
-  return (
-    <div className={indentado ? "pl-5 sm:pl-6" : undefined}>
-      <p
-        className={cn(
-          "mb-0.5 text-left",
-          indentado
-            ? "text-xs font-medium text-muted-foreground"
-            : "text-sm font-semibold text-foreground",
-        )}
-      >
-        <span className="truncate">{nombre}</span>
-        <span className="font-black tabular-nums">: {valor.toLocaleString("es-GT")}</span>
-      </p>
-      <div
-        className={cn(
-          "relative w-full overflow-hidden rounded-full bg-slate-100 dark:bg-zinc-800",
-          indentado ? "h-2.5" : "h-3.5",
-        )}
-      >
-        <motion.div
-          className="absolute inset-y-0 left-0 rounded-full"
-          style={{ backgroundColor: color }}
-          initial={reduceMotion ? { width: `${ancho}%` } : { width: 0 }}
-          animate={{ width: `${ancho}%` }}
-          transition={{
-            duration: reduceMotion ? 0 : 0.55,
-            ease: [0.4, 0, 0.2, 1],
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function BarLugaresPanel({ lugares }: { lugares: LugarDepartamentoStat[] }) {
-  const reduceMotion = useReducedMotion();
-  const maximo = Math.max(
-    ...lugares.flatMap((d) => [
-      d.value,
-      ...d.municipios.map((m) => m.value),
-    ]),
-    1,
-  );
-
-  return (
-    <div className={panelClass}>
-      <p className="mb-4 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
-        Por lugares
-      </p>
-
-      {lugares.length === 0 ? (
-        <p className="py-6 text-center text-sm text-muted-foreground">
-          Sin datos
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {lugares.map((depto) => (
-            <div key={depto.name} className="space-y-1">
-              <HorizontalBarFila
-                nombre={depto.name}
-                valor={depto.value}
-                maximo={maximo}
-                color={BAR_LUGAR_COLOR}
-                reduceMotion={reduceMotion}
-              />
-              {depto.municipios.map((muni) => (
-                <HorizontalBarFila
-                  key={`${depto.name}-${muni.name}`}
-                  nombre={muni.name}
-                  valor={muni.value}
-                  maximo={maximo}
-                  color={BAR_MUNICIPIO_COLOR}
-                  reduceMotion={reduceMotion}
-                  indentado
-                />
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function BarEdadGeneroPanel({ data }: { data: EdadGeneroBar[] }) {
   const reduceMotion = useReducedMotion();
   const total = data.reduce((acc, d) => acc + d.masculino + d.femenino, 0);
@@ -475,20 +371,15 @@ export function BarEdadGeneroPanel({ data }: { data: EdadGeneroBar[] }) {
 
 export function GraficasAsistencia({
   porGenero,
-  lugares,
   porTrifinio,
 }: {
   porGenero: StatSegment[];
-  lugares: LugarDepartamentoStat[];
   porTrifinio: StatSegment[];
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <DonutPanel title="Por género" data={porGenero} />
-        <DonutPanel title="Trifinio" data={porTrifinio} />
-      </div>
-      <BarLugaresPanel lugares={lugares} />
+    <div className="grid gap-4 sm:grid-cols-2">
+      <DonutPanel title="Por género" data={porGenero} />
+      <DonutPanel title="Trifinio" data={porTrifinio} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -13,12 +13,7 @@ import {
   ModalFooter,
 } from "@/components/ui/general-modal";
 import { actionErrorMessage } from "@/components/ui/modal-toast";
-import { BusquedaSelect } from "../BusquedaSelect";
 import { useEditarRegistro } from "../lib/hooks";
-import {
-  DEPARTAMENTOS_GT,
-  getMunicipiosPorDepartamento,
-} from "../lib/guatemala-locations";
 import {
   institucionDesdeRegistro,
   normalizarDpiInput,
@@ -50,21 +45,9 @@ export function EditarRegistro({
   const [direccionAdministrativa, setDireccionAdministrativa] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [genero, setGenero] = useState<"masculino" | "femenino" | "">("");
-  const [departamento, setDepartamento] = useState("");
-  const [municipio, setMunicipio] = useState("");
   const [esTrifinio, setEsTrifinio] = useState<boolean | null>(null);
   const [tipoInstitucion, setTipoInstitucion] = useState<TipoInstitucion>("sin");
   const [institucionOtra, setInstitucionOtra] = useState("");
-
-  const municipios = useMemo(
-    () => getMunicipiosPorDepartamento(departamento),
-    [departamento],
-  );
-
-  const departamentosOpciones = useMemo(
-    () => DEPARTAMENTOS_GT.map((d) => d.nombre),
-    [],
-  );
 
   useEffect(() => {
     if (!registro) return;
@@ -76,8 +59,6 @@ export function EditarRegistro({
     setDireccionAdministrativa(registro.direccion_administrativa ?? "");
     setFechaNacimiento(normalizarFechaInput(registro.fecha_nacimiento));
     setGenero(registro.genero);
-    setDepartamento(registro.departamento);
-    setMunicipio(registro.municipio);
     setEsTrifinio(registro.es_trifinio);
     const { tipo, otra } = institucionDesdeRegistro(
       registro.institucion,
@@ -109,11 +90,6 @@ export function EditarRegistro({
     if (value !== "otras") setInstitucionOtra("");
   };
 
-  const handleDepartamento = (value: string) => {
-    setDepartamento(value);
-    setMunicipio("");
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!registro || esTrifinio === null) {
@@ -134,8 +110,6 @@ export function EditarRegistro({
       institucion_otra: institucionOtra,
       fecha_nacimiento: fechaNacimiento,
       genero,
-      departamento,
-      municipio,
       es_trifinio: esTrifinio,
     });
 
@@ -348,40 +322,12 @@ export function EditarRegistro({
           </div>
         </div>
 
-        <div className="space-y-2">
-          <ModalLabel>Departamento</ModalLabel>
-          <BusquedaSelect
-            value={departamento}
-            onChange={handleDepartamento}
-            options={departamentosOpciones}
-            placeholder="Buscar departamento…"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <ModalLabel>Municipio</ModalLabel>
-          <BusquedaSelect
-            value={municipio}
-            onChange={setMunicipio}
-            options={municipios}
-            placeholder={
-              departamento ? "Buscar municipio…" : "Primero elija departamento"
-            }
-            disabled={!departamento}
-            emptyMessage={
-              departamento
-                ? "Sin municipios coincidentes"
-                : "Seleccione un departamento"
-            }
-          />
-        </div>
-
         <ModalFooter>
           <button
             type="button"
             onClick={handleClose}
             disabled={editar.isPending}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xl border-0 bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+            className="flex h-11 cursor-pointer items-center justify-center rounded-xl border-0 bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
           >
             Cancelar
           </button>

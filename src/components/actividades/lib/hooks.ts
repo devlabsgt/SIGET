@@ -14,7 +14,7 @@ import {
   updateActividad,
   updateRegistro,
 } from "./actions";
-import type { ActividadFormValues, RegistroAsistenciaValues, RegistroEditValues } from "./zod";
+import type { ActividadFormValues, RegistroPublicoValues, RegistroEditValues } from "./zod";
 
 const ACTIVIDADES_KEY = ["asist-actividades"];
 
@@ -95,7 +95,7 @@ export function useDpisSugerencias(query: string) {
 
 export function useRegistrarAsistencia() {
   return useMutation({
-    mutationFn: (values: RegistroAsistenciaValues) => registrarAsistencia(values),
+    mutationFn: (values: RegistroPublicoValues) => registrarAsistencia(values),
   });
 }
 

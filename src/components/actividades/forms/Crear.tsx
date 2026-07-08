@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/general-modal";
 import { useCrearActividad } from "../lib/hooks";
 import { actividadFormSchema } from "../lib/zod";
+import { CamposUbicacionActividad } from "./CamposUbicacionActividad";
 
 export function CrearActividad({
   open,
@@ -30,12 +31,22 @@ export function CrearActividad({
   const [fechaRealizacion, setFechaRealizacion] = useState(
     () => new Date().toISOString().split("T")[0],
   );
+  const [direccion, setDireccion] = useState("");
+  const [departamento, setDepartamento] = useState("");
+  const [municipio, setMunicipio] = useState("");
 
-  const handleClose = () => {
-    if (crear.isPending) return;
+  const resetForm = () => {
     setNombre("");
     setDescripcion("");
     setFechaRealizacion(new Date().toISOString().split("T")[0]);
+    setDireccion("");
+    setDepartamento("");
+    setMunicipio("");
+  };
+
+  const handleClose = () => {
+    if (crear.isPending) return;
+    resetForm();
     onClose();
   };
 
@@ -45,6 +56,9 @@ export function CrearActividad({
       nombre,
       descripcion,
       fecha_realizacion: fechaRealizacion,
+      direccion,
+      departamento,
+      municipio,
       activo: true,
     });
     if (!parsed.success) {
@@ -54,9 +68,7 @@ export function CrearActividad({
     const res = await crear.mutateAsync(parsed.data);
     if (res.success && res.id) {
       toast.success("Actividad creada correctamente.");
-      setNombre("");
-      setDescripcion("");
-      setFechaRealizacion(new Date().toISOString().split("T")[0]);
+      resetForm();
       onCreated?.(res.id);
       onClose();
     } else {
@@ -72,6 +84,7 @@ export function CrearActividad({
       onClose={handleClose}
       title="Nueva actividad"
       subtitle="Registro de asistencia"
+      maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -93,6 +106,15 @@ export function CrearActividad({
             required
           />
         </div>
+        <CamposUbicacionActividad
+          idPrefix="act"
+          direccion={direccion}
+          departamento={departamento}
+          municipio={municipio}
+          onDireccionChange={setDireccion}
+          onDepartamentoChange={setDepartamento}
+          onMunicipioChange={setMunicipio}
+        />
         <div className="space-y-2">
           <ModalLabel htmlFor="act-desc">Descripción (opcional)</ModalLabel>
           <ModalTextarea
@@ -107,7 +129,7 @@ export function CrearActividad({
             type="button"
             onClick={handleClose}
             disabled={crear.isPending}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xl bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+            className="flex h-11 cursor-pointer items-center justify-center rounded-xl border-0 bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
           >
             Cancelar
           </button>

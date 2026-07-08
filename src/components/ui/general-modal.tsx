@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { Children, useCallback, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   AnimatePresence,
@@ -73,7 +73,7 @@ export function ModalSubmit({
       type="submit"
       {...props}
       className={cn(
-        "inline-flex h-11 min-w-36 cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-emerald-200 px-6 text-[10px] font-bold uppercase tracking-widest text-emerald-900 transition-colors hover:bg-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-800/70 dark:text-emerald-50 dark:hover:bg-emerald-700/80",
+        "flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-emerald-200 px-6 text-[10px] font-bold uppercase tracking-widest text-emerald-900 transition-colors hover:bg-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-800/70 dark:text-emerald-50 dark:hover:bg-emerald-700/80",
         className,
       )}
     />
@@ -87,10 +87,15 @@ export function ModalFooter({
   className?: string;
   children: React.ReactNode;
 }) {
+  const multiAction = Children.count(children) > 1;
+
   return (
     <div
       className={cn(
-        "mt-5 -mx-4 md:-mx-6 -mb-4 md:-mb-6 flex justify-center bg-zinc-100 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-zinc-800 md:px-6 md:pb-6",
+        "mt-5 -mx-4 md:-mx-6 -mb-4 md:-mb-6 flex w-full gap-3 bg-zinc-100 px-4 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))] dark:bg-zinc-800 md:px-6 md:pb-6",
+        multiAction
+          ? "[&>*]:flex [&>*]:min-w-0 [&>*]:flex-1 [&>*]:justify-center"
+          : "justify-center",
         className,
       )}
     >

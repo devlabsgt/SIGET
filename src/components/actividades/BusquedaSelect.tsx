@@ -75,7 +75,9 @@ export function BusquedaSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-[var(--radix-popover-trigger-width)] border-celeste-trifinio/30 bg-zinc-100 p-0 dark:bg-zinc-900"
+        side="bottom"
+        collisionPadding={12}
+        className="z-[210] w-[var(--radix-popover-trigger-width)] border-celeste-trifinio/30 bg-zinc-100 p-0 dark:bg-zinc-900"
       >
         <div className="border-b border-border p-2 dark:border-zinc-700">
           <div className="relative">

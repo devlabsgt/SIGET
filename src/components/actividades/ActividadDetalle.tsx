@@ -4,10 +4,9 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Loader2, Pencil } from "lucide-react";
 import { useActividad, useRegistrosActividad } from "./lib/hooks";
-import { formatFechaActividad } from "./lib/zod";
+import { formatFechaActividad, formatUbicacionActividad } from "./lib/zod";
 import {
   statsEdadPorGenero,
-  statsLugaresJerarquia,
   statsPorGenero,
   statsPorTrifinio,
 } from "./lib/stats";
@@ -23,7 +22,6 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
   const [editarOpen, setEditarOpen] = useState(false);
 
   const porGenero = useMemo(() => statsPorGenero(registros), [registros]);
-  const lugares = useMemo(() => statsLugaresJerarquia(registros), [registros]);
   const edadPorGenero = useMemo(
     () => statsEdadPorGenero(registros),
     [registros],
@@ -75,6 +73,11 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
           <p className="mt-1 text-sm font-semibold capitalize text-celeste-trifinio">
             {formatFechaActividad(actividad.fecha_realizacion)}
           </p>
+          {(actividad.direccion || actividad.departamento) && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {formatUbicacionActividad(actividad)}
+            </p>
+          )}
           {actividad.descripcion && (
             <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
               {actividad.descripcion}
@@ -119,11 +122,7 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
       </div>
 
       <div className="mb-8 w-full">
-        <GraficasAsistencia
-          porGenero={porGenero}
-          lugares={lugares}
-          porTrifinio={porTrifinio}
-        />
+        <GraficasAsistencia porGenero={porGenero} porTrifinio={porTrifinio} />
       </div>
 
       <div className="rounded-3xl border border-slate-200/70 bg-white p-5 dark:border-zinc-800 dark:bg-card sm:p-6">

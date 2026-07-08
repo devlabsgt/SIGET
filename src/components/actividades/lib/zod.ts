@@ -46,18 +46,19 @@ export const actividadFormSchema = z.object({
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
   descripcion: z.string().trim().max(500).optional().default(""),
   fecha_realizacion: z.string().min(1, "La fecha de la actividad es obligatoria"),
+  direccion: z.string().trim().min(1, "La dirección es obligatoria"),
+  departamento: z.string().trim().min(1, "Seleccione un departamento"),
+  municipio: z.string().trim().min(1, "Seleccione un municipio"),
   activo: z.boolean().default(true),
 });
 
 export type ActividadFormValues = z.infer<typeof actividadFormSchema>;
 
-export const participanteSchema = z.object({
+export const participanteCamposSchema = z.object({
   dpi: dpiSchema,
   nombre: z.string().trim().min(1, "El nombre es obligatorio"),
   fecha_nacimiento: z.string().min(1, "La fecha de nacimiento es obligatoria"),
   genero: z.enum(GENEROS, { message: "Seleccione un género" }),
-  departamento: z.string().trim().min(1, "Seleccione un departamento"),
-  municipio: z.string().trim().min(1, "Seleccione un municipio"),
   email: z
     .string()
     .trim()
@@ -82,43 +83,72 @@ export const participanteSchema = z.object({
   direccion_administrativa: z.string().trim().optional().default(""),
 });
 
+const registroCamposRefine = (
+  data: {
+    es_trifinio: boolean;
+    direccion_administrativa?: string;
+    tipo_institucion?: TipoInstitucion;
+    institucion_otra?: string;
+  },
+  ctx: z.RefinementCtx,
+) => {
+  if (data.es_trifinio) return;
+  if (data.direccion_administrativa?.trim()) {
+    ctx.addIssue({
+      code: "custom",
+      message: "No aplica dirección si no es parte de Trifinio",
+      path: ["direccion_administrativa"],
+    });
+  }
+  if (data.tipo_institucion === "otras" && !data.institucion_otra?.trim()) {
+    ctx.addIssue({
+      code: "custom",
+      message: "Indique el nombre de la institución",
+      path: ["institucion_otra"],
+    });
+  }
+};
+
+export const registroPublicoSchema = participanteCamposSchema
+  .extend({
+    actividad_id: z.string().uuid("Actividad inválida"),
+  })
+  .superRefine(registroCamposRefine);
+
+export type RegistroPublicoValues = z.infer<typeof registroPublicoSchema>;
+
+export const registroEditSchema = participanteCamposSchema
+  .extend({
+    id: z.string().uuid(),
+    actividad_id: z.string().uuid(),
+  })
+  .superRefine(registroCamposRefine);
+
+export type RegistroEditValues = z.infer<typeof registroEditSchema>;
+
+export const participanteSchema = participanteCamposSchema.extend({
+  departamento: z.string().trim().min(1, "Seleccione un departamento"),
+  municipio: z.string().trim().min(1, "Seleccione un municipio"),
+});
+
 export type ParticipanteValues = z.infer<typeof participanteSchema>;
 
 export const registroAsistenciaSchema = participanteSchema
   .extend({
     actividad_id: z.string().uuid("Actividad inválida"),
   })
-  .superRefine((data, ctx) => {
-    if (data.es_trifinio) return;
-    if (data.direccion_administrativa?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "No aplica dirección si no es parte de Trifinio",
-        path: ["direccion_administrativa"],
-      });
-    }
-    if (data.tipo_institucion === "otras" && !data.institucion_otra?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "Indique el nombre de la institución",
-        path: ["institucion_otra"],
-      });
-    }
-  });
+  .superRefine(registroCamposRefine);
 
 export type RegistroAsistenciaValues = z.infer<typeof registroAsistenciaSchema>;
-
-export const registroEditSchema = registroAsistenciaSchema.extend({
-  id: z.string().uuid(),
-});
-
-export type RegistroEditValues = z.infer<typeof registroEditSchema>;
 
 export type ActividadRecord = {
   id: string;
   nombre: string;
   descripcion: string | null;
   fecha_realizacion: string;
+  direccion: string;
+  departamento: string;
+  municipio: string;
   activo: boolean;
   created_at: string;
   updated_at: string | null;
@@ -192,6 +222,18 @@ export function formatoTelefonoGt(telefono: string | null): string {
 export function normalizarFechaInput(value: string): string {
   if (!value) return "";
   return value.split("T")[0];
+}
+
+export function formatUbicacionActividad(actividad: {
+  direccion: string;
+  departamento: string;
+  municipio: string;
+}): string {
+  const partes = [
+    actividad.direccion?.trim(),
+    [actividad.municipio, actividad.departamento].filter(Boolean).join(", "),
+  ].filter(Boolean);
+  return partes.join(" · ");
 }
 
 export function formatFechaActividad(fecha: string): string {

@@ -15,6 +15,15 @@ alter table public.asist_actividades
 alter table public.asist_actividades
   alter column fecha_realizacion set not null;
 
+alter table public.asist_actividades
+  add column if not exists direccion text;
+
+alter table public.asist_actividades
+  add column if not exists departamento text;
+
+alter table public.asist_actividades
+  add column if not exists municipio text;
+
 -- 2) Columnas nuevas en registros
 alter table public.asist_registros
   add column if not exists dpi text;

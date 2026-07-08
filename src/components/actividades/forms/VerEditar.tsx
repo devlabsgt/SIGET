@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/general-modal";
 import { useEditarActividad } from "../lib/hooks";
 import { actividadFormSchema, normalizarFechaInput, type ActividadRecord } from "../lib/zod";
+import { CamposUbicacionActividad } from "./CamposUbicacionActividad";
 
 export function VerEditarActividad({
   open,
@@ -28,6 +29,9 @@ export function VerEditarActividad({
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [fechaRealizacion, setFechaRealizacion] = useState("");
+  const [direccion, setDireccion] = useState("");
+  const [departamento, setDepartamento] = useState("");
+  const [municipio, setMunicipio] = useState("");
   const [activo, setActivo] = useState(true);
 
   useEffect(() => {
@@ -35,6 +39,9 @@ export function VerEditarActividad({
       setNombre(actividad.nombre);
       setDescripcion(actividad.descripcion ?? "");
       setFechaRealizacion(normalizarFechaInput(actividad.fecha_realizacion));
+      setDireccion(actividad.direccion ?? "");
+      setDepartamento(actividad.departamento ?? "");
+      setMunicipio(actividad.municipio ?? "");
       setActivo(actividad.activo);
     }
   }, [actividad]);
@@ -51,6 +58,9 @@ export function VerEditarActividad({
       nombre,
       descripcion,
       fecha_realizacion: fechaRealizacion,
+      direccion,
+      departamento,
+      municipio,
       activo,
     });
     if (!parsed.success) {
@@ -74,6 +84,7 @@ export function VerEditarActividad({
       onClose={handleClose}
       title="Editar actividad"
       subtitle="Registro de asistencia"
+      maxWidth="max-w-lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -95,6 +106,15 @@ export function VerEditarActividad({
             required
           />
         </div>
+        <CamposUbicacionActividad
+          idPrefix="edit"
+          direccion={direccion}
+          departamento={departamento}
+          municipio={municipio}
+          onDireccionChange={setDireccion}
+          onDepartamentoChange={setDepartamento}
+          onMunicipioChange={setMunicipio}
+        />
         <div className="space-y-2">
           <ModalLabel htmlFor="edit-desc">Descripción (opcional)</ModalLabel>
           <ModalTextarea
@@ -118,7 +138,7 @@ export function VerEditarActividad({
             type="button"
             onClick={handleClose}
             disabled={editar.isPending}
-            className="inline-flex h-11 cursor-pointer items-center justify-center rounded-xl bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
+            className="flex h-11 cursor-pointer items-center justify-center rounded-xl border-0 bg-zinc-200 px-6 text-[10px] font-bold uppercase tracking-widest text-zinc-700 transition-colors hover:bg-zinc-300 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600"
           >
             Cancelar
           </button>

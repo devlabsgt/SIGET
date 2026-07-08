@@ -1,26 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, CheckCircle2, Loader2, Search } from "lucide-react";
+import { CalendarDays, CheckCircle2, Loader2, MapPin, Search } from "lucide-react";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import { actionErrorMessage } from "@/components/ui/modal-toast";
 import { useBuscarParticipante, useRegistrarAsistencia } from "./lib/hooks";
 import type { DpiSugerencia } from "./lib/actions";
-import {
-  DEPARTAMENTOS_GT,
-  getMunicipiosPorDepartamento,
-} from "./lib/guatemala-locations";
-import { BusquedaSelect } from "./BusquedaSelect";
 import { BusquedaDpi } from "./BusquedaDpi";
 import {
   formatFechaActividad,
+  formatUbicacionActividad,
   institucionDesdeRegistro,
   normalizarDpiInput,
   normalizarFechaInput,
   normalizarTelefonoInput,
-  registroAsistenciaSchema,
+  registroPublicoSchema,
   type ActividadRecord,
   type ParticipanteRecord,
   type TipoInstitucion,
@@ -75,8 +71,6 @@ function aplicarParticipante(
     setTelefono: (v: string) => void;
     setFechaNacimiento: (v: string) => void;
     setGenero: (v: "masculino" | "femenino" | "") => void;
-    setDepartamento: (v: string) => void;
-    setMunicipio: (v: string) => void;
     setEsTrifinio: (v: boolean | null) => void;
     setTipoInstitucion: (v: TipoInstitucion) => void;
     setInstitucionOtra: (v: string) => void;
@@ -89,8 +83,6 @@ function aplicarParticipante(
   setters.setTelefono(p.telefono ?? "");
   setters.setFechaNacimiento(normalizarFechaInput(p.fecha_nacimiento));
   setters.setGenero(p.genero);
-  setters.setDepartamento(p.departamento);
-  setters.setMunicipio(p.municipio);
   setters.setEsTrifinio(p.es_trifinio);
   const { tipo, otra } = institucionDesdeRegistro(p.institucion, p.es_trifinio);
   setters.setTipoInstitucion(tipo);
@@ -105,8 +97,6 @@ function limpiarDatosPersonales(setters: {
   setTelefono: (v: string) => void;
   setFechaNacimiento: (v: string) => void;
   setGenero: (v: "masculino" | "femenino" | "") => void;
-  setDepartamento: (v: string) => void;
-  setMunicipio: (v: string) => void;
   setEsTrifinio: (v: boolean | null) => void;
   setTipoInstitucion: (v: TipoInstitucion) => void;
   setInstitucionOtra: (v: string) => void;
@@ -118,8 +108,6 @@ function limpiarDatosPersonales(setters: {
   setters.setTelefono("");
   setters.setFechaNacimiento("");
   setters.setGenero("");
-  setters.setDepartamento("");
-  setters.setMunicipio("");
   setters.setEsTrifinio(null);
   setters.setTipoInstitucion("sin");
   setters.setInstitucionOtra("");
@@ -143,8 +131,6 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
   const [direccionAdministrativa, setDireccionAdministrativa] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [genero, setGenero] = useState<"masculino" | "femenino" | "">("");
-  const [departamento, setDepartamento] = useState("");
-  const [municipio, setMunicipio] = useState("");
   const [esTrifinio, setEsTrifinio] = useState<boolean | null>(null);
   const [tipoInstitucion, setTipoInstitucion] = useState<TipoInstitucion>("sin");
   const [institucionOtra, setInstitucionOtra] = useState("");
@@ -155,8 +141,6 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
     setTelefono,
     setFechaNacimiento,
     setGenero,
-    setDepartamento,
-    setMunicipio,
     setEsTrifinio,
     setTipoInstitucion,
     setInstitucionOtra,
@@ -164,26 +148,12 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
     setDireccionAdministrativa,
   };
 
-  const municipios = useMemo(
-    () => getMunicipiosPorDepartamento(departamento),
-    [departamento],
-  );
-
-  const departamentosOpciones = useMemo(
-    () => DEPARTAMENTOS_GT.map((d) => d.nombre),
-    [],
-  );
-
   const dpiCompleto = dpi.length === 13;
   const fechaActividad = formatFechaActividad(actividad.fecha_realizacion);
+  const ubicacionActividad = formatUbicacionActividad(actividad);
 
   const handleDpiChange = (value: string) => {
     setDpi(normalizarDpiInput(value));
-  };
-
-  const handleDepartamento = (value: string) => {
-    setDepartamento(value);
-    setMunicipio("");
   };
 
   const handleEsTrifinio = (value: boolean) => {
@@ -242,7 +212,7 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
       toast.warn("Indica si eres parte de Trifinio.");
       return;
     }
-    const parsed = registroAsistenciaSchema.safeParse({
+    const parsed = registroPublicoSchema.safeParse({
       actividad_id: actividad.id,
       dpi,
       nombre,
@@ -254,8 +224,6 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
       institucion_otra: institucionOtra,
       fecha_nacimiento: fechaNacimiento,
       genero,
-      departamento,
-      municipio,
       es_trifinio: esTrifinio,
     });
     if (!parsed.success) {
@@ -305,6 +273,12 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
           <CalendarDays className="size-3.5 shrink-0" />
           <span className="capitalize">{fechaActividad}</span>
         </div>
+        {ubicacionActividad && (
+          <div className="mt-2 inline-flex max-w-full items-start gap-1.5 rounded-full bg-zinc-100 px-3 py-1.5 text-xs font-semibold text-muted-foreground dark:bg-zinc-800/80">
+            <MapPin className="mt-0.5 size-3.5 shrink-0 text-celeste-trifinio" />
+            <span>{ubicacionActividad}</span>
+          </div>
+        )}
         {actividad.descripcion && (
           <p className="mt-2 text-sm text-muted-foreground">
             {actividad.descripcion}
@@ -572,38 +546,6 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
                     </button>
                   ))}
                 </div>
-              </div>
-            </FormSection>
-
-            <FormSection title="Ubicación">
-              <div className="space-y-2">
-                <FieldLabel>Departamento</FieldLabel>
-                <BusquedaSelect
-                  value={departamento}
-                  onChange={handleDepartamento}
-                  options={departamentosOpciones}
-                  placeholder="Buscar departamento…"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <FieldLabel>Municipio</FieldLabel>
-                <BusquedaSelect
-                  value={municipio}
-                  onChange={setMunicipio}
-                  options={municipios}
-                  placeholder={
-                    departamento
-                      ? "Buscar municipio…"
-                      : "Primero elija departamento"
-                  }
-                  disabled={!departamento}
-                  emptyMessage={
-                    departamento
-                      ? "Sin municipios coincidentes"
-                      : "Seleccione un departamento"
-                  }
-                />
               </div>
             </FormSection>
 
