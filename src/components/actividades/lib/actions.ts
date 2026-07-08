@@ -15,6 +15,7 @@ import {
   type RegistroPublicoValues,
   type RegistroEditValues,
   resolverInstitucion,
+  esTrifinioDesdeTipo,
 } from "./zod";
 
 type ActionResult = {
@@ -371,16 +372,13 @@ export async function registrarAsistencia(
     municipio,
     email: data.email?.trim() || null,
     telefono: data.telefono?.trim() || null,
-    es_trifinio: data.es_trifinio,
+    es_trifinio: esTrifinioDesdeTipo(data.tipo_institucion),
     institucion: resolverInstitucion({
-      es_trifinio: data.es_trifinio,
       tipo_institucion: data.tipo_institucion,
       institucion_otra: data.institucion_otra,
     }),
     puesto: data.puesto?.trim() || null,
-    direccion_administrativa: data.es_trifinio
-      ? data.direccion_administrativa?.trim() || null
-      : null,
+    direccion_administrativa: null,
   };
 
   const { error } = await supabase
@@ -428,16 +426,13 @@ export async function updateRegistro(
     genero: data.genero,
     email: data.email?.trim() || null,
     telefono: data.telefono?.trim() || null,
-    es_trifinio: data.es_trifinio,
+    es_trifinio: esTrifinioDesdeTipo(data.tipo_institucion),
     institucion: resolverInstitucion({
-      es_trifinio: data.es_trifinio,
       tipo_institucion: data.tipo_institucion,
       institucion_otra: data.institucion_otra,
     }),
     puesto: data.puesto?.trim() || null,
-    direccion_administrativa: data.es_trifinio
-      ? data.direccion_administrativa?.trim() || null
-      : null,
+    direccion_administrativa: null,
   };
 
   const { error } = await auth.supabase

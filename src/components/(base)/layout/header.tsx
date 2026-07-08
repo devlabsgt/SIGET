@@ -10,7 +10,6 @@ import { Menu as MenuIcon, X, RefreshCw } from "lucide-react";
 import { AnimatedThemeToggler } from "@/components/ui/animated-theme-toggler";
 import Menu from "./Menu";
 import { getPendingDevicesCount } from "@/components/(SIGET)/admin/lib/actions";
-import Image from "next/image";
 import { createPortal } from "react-dom";
 import AnimacionLogoTrifinio from "@/components/(SIGET)/logo/AnimacionLogoTrifinio";
 
@@ -59,57 +58,28 @@ export default function Header() {
                 id="observatorio-header-brand"
                 className="flex min-w-0 max-w-full flex-row items-center gap-1.5 md:gap-3 cursor-pointer group overflow-hidden"
               >
-                {user ? (
-                  <>
-                    <motion.h1
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="shrink-0 text-lg sm:text-xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
-                    >
-                      SIGET
-                    </motion.h1>
-                    <motion.div
-                      initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
-                      animate={{ opacity: 1, clipPath: "inset(0 0 0 0)" }}
-                      transition={{
-                        duration: 0.8,
-                        delay: 0.2,
-                        ease: [0.25, 1, 0.5, 1],
-                      }}
-                      className="min-w-0 text-[7px] sm:text-[10px] md:text-sm font-black uppercase tracking-[0.08em] sm:tracking-[0.12em] md:tracking-widest leading-[1.05] md:leading-[1.15] text-celeste-trifinio border-l border-border/60 pl-1.5 md:pl-3 transition-transform duration-300 group-hover:scale-[1.02] origin-left group-hover:text-azul-trifinio dark:group-hover:text-[#FFFDD0]"
-                    >
-                      SISTEMA INTEGRAL DE
-                      <br />
-                      GESTIÓN ESTRATÉGICA TRIFINIO
-                    </motion.div>
-                  </>
-                ) : (
-                  <>
-                    <motion.div
-                      initial={{ opacity: 0, y: -20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="flex flex-col gap-0 leading-none text-sm md:text-lg lg:text-xl font-extrabold tracking-tight"
-                    >
-                      <span className="text-azul-trifinio dark:text-white">
-                        Observatorio
-                      </span>
-                      <span className="inline-flex items-baseline gap-1">
-                        <span className="text-azul-trifinio dark:text-white">
-                          Web
-                        </span>
-                        <span className="font-light text-border/80">|</span>
-                        <span
-                          className="text-xs md:text-base lg:text-lg font-semibold text-celeste-trifinio tracking-normal"
-                          style={{ fontFamily: "Arial, sans-serif" }}
-                        >
-                          Plan Trifinio
-                        </span>
-                      </span>
-                    </motion.div>
-                  </>
-                )}
+                <motion.h1
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="shrink-0 text-lg sm:text-xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
+                >
+                  SIGET
+                </motion.h1>
+                <motion.div
+                  initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
+                  animate={{ opacity: 1, clipPath: "inset(0 0 0 0)" }}
+                  transition={{
+                    duration: 0.8,
+                    delay: 0.2,
+                    ease: [0.25, 1, 0.5, 1],
+                  }}
+                  className="min-w-0 text-[7px] sm:text-[10px] md:text-sm font-black uppercase tracking-[0.08em] sm:tracking-[0.12em] md:tracking-widest leading-[1.05] md:leading-[1.15] text-celeste-trifinio border-l border-border/60 pl-1.5 md:pl-3 transition-transform duration-300 group-hover:scale-[1.02] origin-left group-hover:text-azul-trifinio dark:group-hover:text-[#FFFDD0]"
+                >
+                  SISTEMA INTEGRAL DE
+                  <br />
+                  GESTIÓN ESTRATÉGICA TRIFINIO
+                </motion.div>
               </Link>
             </div>
             {showBreadcrumb && (

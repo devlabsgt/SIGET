@@ -9,6 +9,7 @@ import { actionErrorMessage } from "@/components/ui/modal-toast";
 import { useBuscarParticipante, useRegistrarAsistencia } from "./lib/hooks";
 import type { DpiSugerencia } from "./lib/actions";
 import { BusquedaDpi } from "./BusquedaDpi";
+import { CamposInstitucionPuesto } from "./forms/CamposInstitucionPuesto";
 import {
   formatFechaActividad,
   formatUbicacionActividad,
@@ -71,11 +72,9 @@ function aplicarParticipante(
     setTelefono: (v: string) => void;
     setFechaNacimiento: (v: string) => void;
     setGenero: (v: "masculino" | "femenino" | "") => void;
-    setEsTrifinio: (v: boolean | null) => void;
     setTipoInstitucion: (v: TipoInstitucion) => void;
     setInstitucionOtra: (v: string) => void;
     setPuesto: (v: string) => void;
-    setDireccionAdministrativa: (v: string) => void;
   },
 ) {
   setters.setNombre(p.nombre);
@@ -83,12 +82,10 @@ function aplicarParticipante(
   setters.setTelefono(p.telefono ?? "");
   setters.setFechaNacimiento(normalizarFechaInput(p.fecha_nacimiento));
   setters.setGenero(p.genero);
-  setters.setEsTrifinio(p.es_trifinio);
-  const { tipo, otra } = institucionDesdeRegistro(p.institucion, p.es_trifinio);
+  const { tipo, otra } = institucionDesdeRegistro(p.institucion);
   setters.setTipoInstitucion(tipo);
   setters.setInstitucionOtra(otra);
   setters.setPuesto(p.puesto ?? "");
-  setters.setDireccionAdministrativa(p.direccion_administrativa ?? "");
 }
 
 function limpiarDatosPersonales(setters: {
@@ -97,22 +94,18 @@ function limpiarDatosPersonales(setters: {
   setTelefono: (v: string) => void;
   setFechaNacimiento: (v: string) => void;
   setGenero: (v: "masculino" | "femenino" | "") => void;
-  setEsTrifinio: (v: boolean | null) => void;
   setTipoInstitucion: (v: TipoInstitucion) => void;
   setInstitucionOtra: (v: string) => void;
   setPuesto: (v: string) => void;
-  setDireccionAdministrativa: (v: string) => void;
 }) {
   setters.setNombre("");
   setters.setEmail("");
   setters.setTelefono("");
   setters.setFechaNacimiento("");
   setters.setGenero("");
-  setters.setEsTrifinio(null);
   setters.setTipoInstitucion("sin");
   setters.setInstitucionOtra("");
   setters.setPuesto("");
-  setters.setDireccionAdministrativa("");
 }
 
 export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
@@ -128,10 +121,8 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
   const [puesto, setPuesto] = useState("");
-  const [direccionAdministrativa, setDireccionAdministrativa] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [genero, setGenero] = useState<"masculino" | "femenino" | "">("");
-  const [esTrifinio, setEsTrifinio] = useState<boolean | null>(null);
   const [tipoInstitucion, setTipoInstitucion] = useState<TipoInstitucion>("sin");
   const [institucionOtra, setInstitucionOtra] = useState("");
 
@@ -141,11 +132,9 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
     setTelefono,
     setFechaNacimiento,
     setGenero,
-    setEsTrifinio,
     setTipoInstitucion,
     setInstitucionOtra,
     setPuesto,
-    setDireccionAdministrativa,
   };
 
   const dpiCompleto = dpi.length === 13;
@@ -154,23 +143,6 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
 
   const handleDpiChange = (value: string) => {
     setDpi(normalizarDpiInput(value));
-  };
-
-  const handleEsTrifinio = (value: boolean) => {
-    setEsTrifinio(value);
-    if (value) {
-      setTipoInstitucion("sin");
-      setInstitucionOtra("");
-    } else {
-      setDireccionAdministrativa("");
-      setTipoInstitucion("sin");
-      setInstitucionOtra("");
-    }
-  };
-
-  const handleTipoInstitucion = (value: TipoInstitucion) => {
-    setTipoInstitucion(value);
-    if (value !== "otras") setInstitucionOtra("");
   };
 
   const handleBuscarDpi = async (dpiValor = dpi) => {
@@ -208,10 +180,6 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (esTrifinio === null) {
-      toast.warn("Indica si eres parte de Trifinio.");
-      return;
-    }
     const parsed = registroPublicoSchema.safeParse({
       actividad_id: actividad.id,
       dpi,
@@ -219,12 +187,10 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
       email,
       telefono,
       puesto,
-      direccion_administrativa: direccionAdministrativa,
       tipo_institucion: tipoInstitucion,
       institucion_otra: institucionOtra,
       fecha_nacimiento: fechaNacimiento,
       genero,
-      es_trifinio: esTrifinio,
     });
     if (!parsed.success) {
       toast.warn("Revisa los datos del formulario.");
@@ -401,118 +367,15 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
               </div>
             </FormSection>
 
-            <FormSection title="Trifinio">
-              <div className="space-y-2">
-                <FieldLabel>¿Es parte de Trifinio?</FieldLabel>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { value: true, label: "Sí" },
-                    { value: false, label: "No" },
-                  ].map((opt) => (
-                    <button
-                      key={String(opt.value)}
-                      type="button"
-                      onClick={() => handleEsTrifinio(opt.value)}
-                      className={cn(
-                        "h-10 cursor-pointer rounded-lg border-2 text-sm font-bold transition-colors",
-                        esTrifinio === opt.value
-                          ? "border-celeste-trifinio bg-celeste-trifinio/10 text-foreground"
-                          : "border-celeste-trifinio/40 bg-transparent text-muted-foreground hover:border-celeste-trifinio",
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <AnimatePresence initial={false}>
-                {esTrifinio === true && (
-                  <motion.div
-                    key="trifinio-campos"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                    className="space-y-4 overflow-hidden"
-                  >
-                    <div className="space-y-2">
-                      <FieldLabel>Puesto (opcional)</FieldLabel>
-                      <input
-                        type="text"
-                        value={puesto}
-                        onChange={(e) => setPuesto(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <FieldLabel>Dirección administrativa (opcional)</FieldLabel>
-                      <input
-                        type="text"
-                        value={direccionAdministrativa}
-                        onChange={(e) => setDireccionAdministrativa(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-
-                {esTrifinio === false && (
-                  <motion.div
-                    key="externo-campos"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                    className="space-y-4 overflow-hidden"
-                  >
-                    <div className="space-y-2">
-                      <FieldLabel>Institución</FieldLabel>
-                      <select
-                        value={tipoInstitucion}
-                        onChange={(e) =>
-                          handleTipoInstitucion(e.target.value as TipoInstitucion)
-                        }
-                        className={inputClass}
-                      >
-                        <option value="sin">Sin Institución</option>
-                        <option value="plan_trifinio">Plan Trifinio</option>
-                        <option value="otras">Otras Instituciones</option>
-                      </select>
-                    </div>
-
-                    {tipoInstitucion === "otras" && (
-                      <motion.div
-                        key="institucion-otra"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, height: 0 }}
-                        transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
-                        className="space-y-2 overflow-hidden"
-                      >
-                        <FieldLabel>Nombre de la institución</FieldLabel>
-                        <input
-                          type="text"
-                          value={institucionOtra}
-                          onChange={(e) => setInstitucionOtra(e.target.value)}
-                          className={inputClass}
-                          required
-                        />
-                      </motion.div>
-                    )}
-
-                    <div className="space-y-2">
-                      <FieldLabel>Puesto (opcional)</FieldLabel>
-                      <input
-                        type="text"
-                        value={puesto}
-                        onChange={(e) => setPuesto(e.target.value)}
-                        className={inputClass}
-                      />
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+            <FormSection title="Institución">
+              <CamposInstitucionPuesto
+                tipoInstitucion={tipoInstitucion}
+                institucionOtra={institucionOtra}
+                puesto={puesto}
+                onTipoInstitucionChange={setTipoInstitucion}
+                onInstitucionOtraChange={setInstitucionOtra}
+                onPuestoChange={setPuesto}
+              />
             </FormSection>
 
             <FormSection title="Datos personales">
@@ -551,7 +414,7 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
 
             <button
               type="submit"
-              disabled={registrar.isPending || !genero || esTrifinio === null}
+              disabled={registrar.isPending || !genero}
               className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-emerald-200 text-[10px] font-bold uppercase tracking-widest text-emerald-900 transition-colors hover:bg-emerald-300 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-800/70 dark:text-emerald-50 dark:hover:bg-emerald-700/80"
             >
               {registrar.isPending ? (

@@ -10,11 +10,9 @@ export const TIPOS_INSTITUCION = ["sin", "plan_trifinio", "otras"] as const;
 export type TipoInstitucion = (typeof TIPOS_INSTITUCION)[number];
 
 export function resolverInstitucion(data: {
-  es_trifinio: boolean;
   tipo_institucion?: TipoInstitucion;
   institucion_otra?: string;
 }): string {
-  if (data.es_trifinio) return INSTITUCION_PLAN_TRIFINIO;
   if (data.tipo_institucion === "plan_trifinio") return INSTITUCION_PLAN_TRIFINIO;
   if (data.tipo_institucion === "otras") {
     return data.institucion_otra?.trim() || INSTITUCION_SIN;
@@ -22,11 +20,13 @@ export function resolverInstitucion(data: {
   return INSTITUCION_SIN;
 }
 
+export function esTrifinioDesdeTipo(tipo?: TipoInstitucion): boolean {
+  return tipo === "plan_trifinio";
+}
+
 export function institucionDesdeRegistro(
   institucion: string | null,
-  esTrifinio: boolean,
 ): { tipo: TipoInstitucion; otra: string } {
-  if (esTrifinio) return { tipo: "sin", otra: "" };
   if (!institucion || institucion === INSTITUCION_SIN) {
     return { tipo: "sin", otra: "" };
   }
@@ -76,30 +76,18 @@ export const participanteCamposSchema = z.object({
     .refine((v) => v === "" || v.length === 8, "El teléfono debe tener 8 dígitos")
     .optional()
     .default(""),
-  es_trifinio: z.boolean(),
   tipo_institucion: z.enum(TIPOS_INSTITUCION).optional().default("sin"),
   institucion_otra: z.string().trim().optional().default(""),
   puesto: z.string().trim().optional().default(""),
-  direccion_administrativa: z.string().trim().optional().default(""),
 });
 
 const registroCamposRefine = (
   data: {
-    es_trifinio: boolean;
-    direccion_administrativa?: string;
     tipo_institucion?: TipoInstitucion;
     institucion_otra?: string;
   },
   ctx: z.RefinementCtx,
 ) => {
-  if (data.es_trifinio) return;
-  if (data.direccion_administrativa?.trim()) {
-    ctx.addIssue({
-      code: "custom",
-      message: "No aplica dirección si no es parte de Trifinio",
-      path: ["direccion_administrativa"],
-    });
-  }
   if (data.tipo_institucion === "otras" && !data.institucion_otra?.trim()) {
     ctx.addIssue({
       code: "custom",
