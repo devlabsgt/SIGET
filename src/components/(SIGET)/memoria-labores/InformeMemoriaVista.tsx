@@ -55,6 +55,59 @@ const TIPO_COLORS = {
 
 type DonutDatum = { name: string; value: number; color: string };
 
+function formatCantidadLeyenda(value: number): {
+  display: string;
+  title: string;
+  textClass: string;
+  badgeClass: string;
+} {
+  const title = value.toLocaleString("es-GT");
+  if (value >= 1_000_000) {
+    const millones = value / 1_000_000;
+    const display = Number.isInteger(millones)
+      ? `${millones.toLocaleString("es-GT")}M`
+      : `${millones.toFixed(1).replace(".", ",")}M`;
+    return {
+      display,
+      title,
+      textClass: "text-[9px]",
+      badgeClass: "h-9 min-w-9 px-1.5",
+    };
+  }
+  if (value >= 10_000) {
+    const miles = Math.round(value / 1_000);
+    return {
+      display: `${miles.toLocaleString("es-GT")}K`,
+      title,
+      textClass: "text-[9px]",
+      badgeClass: "h-9 min-w-9 px-1.5",
+    };
+  }
+  const len = title.length;
+  if (len <= 3) {
+    return {
+      display: title,
+      title,
+      textClass: "text-[10px]",
+      badgeClass: "h-9 w-9",
+    };
+  }
+  if (len <= 5) {
+    return {
+      display: title,
+      title,
+      textClass: "text-[9px]",
+      badgeClass: "h-9 min-w-9 px-1",
+    };
+  }
+  return {
+    display: title,
+    title,
+    textClass: "text-[8px]",
+    badgeClass: "h-9 min-w-[2.75rem] px-1",
+  };
+}
+
 const donutDetailEase = [0.4, 0, 0.2, 1] as const;
 const donutFillDurationMs = 1400;
 const donutFillBeginMs = 280;
@@ -237,16 +290,22 @@ function DonutLeyenda({
     >
       {visibles.map((item) => {
         const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+        const cantidad = formatCantidadLeyenda(item.value);
         return (
           <div
             key={item.name}
             className="flex items-center gap-3 rounded-full bg-slate-50 py-1.5 pl-1.5 pr-4 dark:bg-zinc-800/60"
           >
             <span
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full px-0.5 text-[10px] font-black leading-none text-white"
+              title={cantidad.title}
+              className={cn(
+                "inline-flex shrink-0 items-center justify-center rounded-full font-black leading-none text-white tabular-nums",
+                cantidad.textClass,
+                cantidad.badgeClass,
+              )}
               style={{ backgroundColor: item.color }}
             >
-              {item.value.toLocaleString("es-GT")}
+              {cantidad.display}
             </span>
             <span className="flex-1 text-sm font-semibold text-foreground">
               {item.name}
