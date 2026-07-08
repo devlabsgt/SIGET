@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, CheckCircle2, Loader2, MapPin, Search } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Loader2,
+  MapPin,
+  Search,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import { actionErrorMessage } from "@/components/ui/modal-toast";
@@ -123,7 +129,8 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
   const [puesto, setPuesto] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [genero, setGenero] = useState<"masculino" | "femenino" | "">("");
-  const [tipoInstitucion, setTipoInstitucion] = useState<TipoInstitucion>("sin");
+  const [tipoInstitucion, setTipoInstitucion] =
+    useState<TipoInstitucion>("sin");
   const [institucionOtra, setInstitucionOtra] = useState("");
 
   const setters = {
@@ -272,7 +279,8 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
                   disabled={buscar.isPending}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {dpi.length}/13 dígitos · escribe al menos 3 para ver sugerencias
+                  {dpi.length}/13 dígitos · escribe al menos 3 para ver
+                  sugerencias
                 </p>
               </div>
             </FormSection>
@@ -311,7 +319,9 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                     DPI
                   </p>
-                  <p className="font-mono text-sm font-bold tabular-nums">{dpi}</p>
+                  <p className="font-mono text-sm font-bold tabular-nums">
+                    {dpi}
+                  </p>
                 </div>
                 <button
                   type="button"
@@ -324,7 +334,8 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
 
               {participanteEncontrado && (
                 <p className="rounded-lg bg-emerald-100 px-3 py-2 text-xs font-semibold text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200">
-                  Datos cargados desde registros anteriores. Puedes actualizarlos.
+                  Datos cargados desde registros anteriores. Puedes
+                  actualizarlos.
                 </p>
               )}
 
@@ -356,14 +367,14 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
                   type="tel"
                   inputMode="numeric"
                   value={telefono}
-                  onChange={(e) => setTelefono(normalizarTelefonoInput(e.target.value))}
+                  onChange={(e) =>
+                    setTelefono(normalizarTelefonoInput(e.target.value))
+                  }
                   className={inputClass}
                   autoComplete="tel"
                   maxLength={8}
                 />
-                <p className="text-xs text-muted-foreground">
-                  8 dígitos · se agrega +502 al contactar por WhatsApp
-                </p>
+                <p className="text-xs text-muted-foreground">8 dígitos</p>
               </div>
             </FormSection>
 

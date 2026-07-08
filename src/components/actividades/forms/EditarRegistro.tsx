@@ -134,7 +134,9 @@ export function EditarRegistro({
         </div>
 
         <div className="space-y-2">
-          <ModalLabel htmlFor="edit-email">Correo electrónico (opcional)</ModalLabel>
+          <ModalLabel htmlFor="edit-email">
+            Correo electrónico (opcional)
+          </ModalLabel>
           <ModalInput
             id="edit-email"
             type="email"
@@ -150,12 +152,12 @@ export function EditarRegistro({
             type="tel"
             inputMode="numeric"
             value={telefono}
-            onChange={(e) => setTelefono(normalizarTelefonoInput(e.target.value))}
+            onChange={(e) =>
+              setTelefono(normalizarTelefonoInput(e.target.value))
+            }
             maxLength={8}
           />
-          <p className="text-xs text-muted-foreground">
-            8 dígitos · se agrega +502 al contactar por WhatsApp
-          </p>
+          <p className="text-xs text-muted-foreground">8 dígitos</p>
         </div>
 
         <CamposInstitucionPuesto
