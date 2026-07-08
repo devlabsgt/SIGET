@@ -5,17 +5,25 @@ import { createPublicClient } from "@/utils/supabase/public";
 import {
   actividadFormSchema,
   registroAsistenciaSchema,
+  registroEditSchema,
   type ActividadFormValues,
   type ActividadRecord,
   type ParticipanteRecord,
   type RegistroAsistenciaRecord,
   type RegistroAsistenciaValues,
+  type RegistroEditValues,
+  resolverInstitucion,
 } from "./zod";
 
 type ActionResult = {
   success: boolean;
   error: string | null;
   detail?: string | null;
+};
+
+export type DpiSugerencia = {
+  dpi: string;
+  nombre: string;
 };
 type ActionResultWithId = ActionResult & { id?: string };
 
@@ -74,7 +82,10 @@ function normalizarParticipante(row: Record<string, unknown>): ParticipanteRecor
     genero: row.genero as ParticipanteRecord["genero"],
     departamento: String(row.departamento ?? ""),
     municipio: String(row.municipio ?? ""),
+    email: (row.email as string | null) ?? null,
+    telefono: (row.telefono as string | null) ?? null,
     es_trifinio: row.es_trifinio === true,
+    institucion: (row.institucion as string | null) ?? null,
     puesto: (row.puesto as string | null) ?? null,
     direccion_administrativa:
       (row.direccion_administrativa as string | null) ?? null,
@@ -103,7 +114,10 @@ function normalizarRegistro(row: Record<string, unknown>): RegistroAsistenciaRec
     genero: (row.genero ?? "masculino") as RegistroAsistenciaRecord["genero"],
     departamento: String(row.departamento ?? ""),
     municipio: String(row.municipio ?? ""),
+    email: (row.email as string | null) ?? null,
+    telefono: (row.telefono as string | null) ?? null,
     es_trifinio: row.es_trifinio === true,
+    institucion: (row.institucion as string | null) ?? null,
     created_at: String(row.created_at ?? ""),
   };
 }
@@ -174,6 +188,40 @@ export async function getParticipantePorDpi(
   if (error || !data) return null;
 
   return registroDesdeDpiRow(data, digits);
+}
+
+export async function buscarDpisRegistrados(
+  query: string,
+): Promise<DpiSugerencia[]> {
+  const digits = query.replace(/\D/g, "");
+  if (digits.length < 3) return [];
+
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from("asist_registros")
+    .select("dpi, nombre, created_at")
+    .not("dpi", "is", null)
+    .like("dpi", `${digits}%`)
+    .order("created_at", { ascending: false })
+    .limit(60);
+
+  if (error || !data) return [];
+
+  const vistos = new Set<string>();
+  const resultado: DpiSugerencia[] = [];
+
+  for (const row of data) {
+    const dpi = String(row.dpi ?? "");
+    if (dpi.length !== 13 || vistos.has(dpi)) continue;
+    vistos.add(dpi);
+    resultado.push({
+      dpi,
+      nombre: String(row.nombre ?? ""),
+    });
+    if (resultado.length >= 8) break;
+  }
+
+  return resultado;
 }
 
 export async function getRegistrosActividad(
@@ -300,11 +348,18 @@ export async function registrarAsistencia(
     genero: data.genero,
     departamento: data.departamento,
     municipio: data.municipio,
+    email: data.email?.trim() || null,
+    telefono: data.telefono?.trim() || null,
     es_trifinio: data.es_trifinio,
-    puesto: data.es_trifinio ? data.puesto?.trim() || null : "",
+    institucion: resolverInstitucion({
+      es_trifinio: data.es_trifinio,
+      tipo_institucion: data.tipo_institucion,
+      institucion_otra: data.institucion_otra,
+    }),
+    puesto: data.puesto?.trim() || null,
     direccion_administrativa: data.es_trifinio
       ? data.direccion_administrativa?.trim() || null
-      : "",
+      : null,
   };
 
   const { error } = await supabase
@@ -313,6 +368,65 @@ export async function registrarAsistencia(
 
   if (error) return mapDbError(error);
 
+  return { success: true, error: null };
+}
+
+export async function updateRegistro(
+  values: RegistroEditValues,
+): Promise<ActionResult> {
+  const auth = await requireAuth();
+  if (!auth.supabase) return { success: false, error: auth.error };
+
+  const parsed = registroEditSchema.safeParse(values);
+  if (!parsed.success) return { success: false, error: "INVALID_INPUT" };
+
+  const data = parsed.data;
+
+  const { data: existente, error: dupError } = await auth.supabase
+    .from("asist_registros")
+    .select("id")
+    .eq("actividad_id", data.actividad_id)
+    .eq("dpi", data.dpi)
+    .neq("id", data.id)
+    .maybeSingle();
+
+  if (dupError) return mapDbError(dupError);
+
+  if (existente) {
+    return {
+      success: false,
+      error: "DUPLICATE",
+      detail: "Este DPI ya está registrado en esta actividad.",
+    };
+  }
+
+  const payload = {
+    dpi: data.dpi,
+    nombre: data.nombre,
+    fecha_nacimiento: data.fecha_nacimiento.split("T")[0],
+    genero: data.genero,
+    departamento: data.departamento,
+    municipio: data.municipio,
+    email: data.email?.trim() || null,
+    telefono: data.telefono?.trim() || null,
+    es_trifinio: data.es_trifinio,
+    institucion: resolverInstitucion({
+      es_trifinio: data.es_trifinio,
+      tipo_institucion: data.tipo_institucion,
+      institucion_otra: data.institucion_otra,
+    }),
+    puesto: data.puesto?.trim() || null,
+    direccion_administrativa: data.es_trifinio
+      ? data.direccion_administrativa?.trim() || null
+      : null,
+  };
+
+  const { error } = await auth.supabase
+    .from("asist_registros")
+    .update(payload)
+    .eq("id", data.id);
+
+  if (error) return mapDbError(error);
   return { success: true, error: null };
 }
 

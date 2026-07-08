@@ -9,10 +9,12 @@ import {
   getActividades,
   getParticipantePorDpi,
   getRegistrosActividad,
+  buscarDpisRegistrados,
   registrarAsistencia,
   updateActividad,
+  updateRegistro,
 } from "./actions";
-import type { ActividadFormValues, RegistroAsistenciaValues } from "./zod";
+import type { ActividadFormValues, RegistroAsistenciaValues, RegistroEditValues } from "./zod";
 
 const ACTIVIDADES_KEY = ["asist-actividades"];
 
@@ -81,6 +83,16 @@ export function useBuscarParticipante() {
   });
 }
 
+export function useDpisSugerencias(query: string) {
+  const digits = query.replace(/\D/g, "");
+  return useQuery({
+    queryKey: ["asist-dpis-sugerencias", digits],
+    queryFn: () => buscarDpisRegistrados(digits),
+    enabled: digits.length >= 3,
+    staleTime: 60_000,
+  });
+}
+
 export function useRegistrarAsistencia() {
   return useMutation({
     mutationFn: (values: RegistroAsistenciaValues) => registrarAsistencia(values),
@@ -91,6 +103,17 @@ export function useEliminarRegistro(actividadId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteRegistro(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["asist-registros", actividadId] });
+      qc.invalidateQueries({ queryKey: ACTIVIDADES_KEY });
+    },
+  });
+}
+
+export function useEditarRegistro(actividadId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (values: RegistroEditValues) => updateRegistro(values),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["asist-registros", actividadId] });
       qc.invalidateQueries({ queryKey: ACTIVIDADES_KEY });

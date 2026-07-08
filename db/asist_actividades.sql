@@ -28,6 +28,9 @@ create table if not exists public.asist_registros (
   genero text not null check (genero in ('masculino', 'femenino')),
   departamento text not null,
   municipio text not null,
+  email text,
+  telefono text,
+  institucion text,
   es_trifinio boolean not null default false,
   created_at timestamptz not null default now()
 );

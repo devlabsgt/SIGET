@@ -50,14 +50,14 @@ export default function Header() {
         }`}
       />
       <header className="w-full fixed left-0 transition-all bg-zinc-100 dark:bg-zinc-800 border-b border-border/40 z-[100] shadow-sm">
-        <div className="mx-auto flex h-14 md:h-16 items-center justify-between px-4 md:px-8 gap-4">
-          <div className="flex items-center h-full">
-            <div className="flex items-center shrink-0">
+        <div className="mx-auto flex h-14 md:h-16 items-center justify-between px-3 md:px-8 gap-2 md:gap-4">
+          <div className="flex min-w-0 flex-1 items-center h-full overflow-hidden pr-1">
+            <div className="flex min-w-0 items-center shrink">
               <Link
                 href={user ? "/siget" : "/"}
                 onClick={handleLogoClick}
                 id="observatorio-header-brand"
-                className="flex flex-row items-center shrink-0 group gap-2 md:gap-3 cursor-pointer"
+                className="flex min-w-0 max-w-full flex-row items-center gap-1.5 md:gap-3 cursor-pointer group overflow-hidden"
               >
                 {user ? (
                   <>
@@ -65,7 +65,7 @@ export default function Header() {
                       initial={{ opacity: 0, y: -20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.6, ease: "easeOut" }}
-                      className="text-2xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
+                      className="shrink-0 text-lg sm:text-xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
                     >
                       SIGET
                     </motion.h1>
@@ -77,7 +77,7 @@ export default function Header() {
                         delay: 0.2,
                         ease: [0.25, 1, 0.5, 1],
                       }}
-                      className="text-xs md:text-sm font-black uppercase tracking-widest leading-[1.15] md:leading-[1.15] text-celeste-trifinio border-l border-border/60 pl-2 md:pl-3 transition-transform duration-300 group-hover:scale-[1.02] origin-left group-hover:text-azul-trifinio dark:group-hover:text-[#FFFDD0]"
+                      className="min-w-0 text-[7px] sm:text-[10px] md:text-sm font-black uppercase tracking-[0.08em] sm:tracking-[0.12em] md:tracking-widest leading-[1.05] md:leading-[1.15] text-celeste-trifinio border-l border-border/60 pl-1.5 md:pl-3 transition-transform duration-300 group-hover:scale-[1.02] origin-left group-hover:text-azul-trifinio dark:group-hover:text-[#FFFDD0]"
                     >
                       SISTEMA INTEGRAL DE
                       <br />
@@ -119,14 +119,14 @@ export default function Header() {
             )}
           </div>
 
-          <div className="flex items-center gap-5 md:gap-4 shrink-0">
+          <div className="flex shrink-0 items-center gap-2.5 md:gap-4">
             <AnimatedThemeToggler />
             <button
               id="refresh-btn"
               onClick={() => window.location.reload()}
               className="flex items-center justify-center text-azul-trifinio hover:text-celeste-trifinio dark:text-white dark:hover:text-white/80 cursor-pointer transition-all hover:rotate-180 duration-500 active:scale-95"
             >
-              <RefreshCw className="size-7 md:size-6" />
+              <RefreshCw className="size-6 md:size-6" />
             </button>
             {showHamburger && (
               <div className="relative">
@@ -143,7 +143,7 @@ export default function Header() {
                         exit={{ opacity: 0, rotate: 90, scale: 0.8 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <X className="size-7 md:size-8" />
+                        <X className="size-6 md:size-8" />
                       </motion.div>
                     ) : (
                       <motion.div
@@ -153,7 +153,7 @@ export default function Header() {
                         exit={{ opacity: 0, rotate: -90, scale: 0.8 }}
                         transition={{ duration: 0.2 }}
                       >
-                        <MenuIcon className="size-7 md:size-8" />
+                        <MenuIcon className="size-6 md:size-8" />
                       </motion.div>
                     )}
                   </AnimatePresence>

@@ -7,18 +7,23 @@ import { toast } from "react-toastify";
 import { cn } from "@/lib/utils";
 import { actionErrorMessage } from "@/components/ui/modal-toast";
 import { useBuscarParticipante, useRegistrarAsistencia } from "./lib/hooks";
+import type { DpiSugerencia } from "./lib/actions";
 import {
   DEPARTAMENTOS_GT,
   getMunicipiosPorDepartamento,
 } from "./lib/guatemala-locations";
 import { BusquedaSelect } from "./BusquedaSelect";
+import { BusquedaDpi } from "./BusquedaDpi";
 import {
   formatFechaActividad,
+  institucionDesdeRegistro,
   normalizarDpiInput,
   normalizarFechaInput,
+  normalizarTelefonoInput,
   registroAsistenciaSchema,
   type ActividadRecord,
   type ParticipanteRecord,
+  type TipoInstitucion,
 } from "./lib/zod";
 
 const inputClass =
@@ -66,41 +71,58 @@ function aplicarParticipante(
   p: ParticipanteRecord,
   setters: {
     setNombre: (v: string) => void;
+    setEmail: (v: string) => void;
+    setTelefono: (v: string) => void;
     setFechaNacimiento: (v: string) => void;
     setGenero: (v: "masculino" | "femenino" | "") => void;
     setDepartamento: (v: string) => void;
     setMunicipio: (v: string) => void;
     setEsTrifinio: (v: boolean | null) => void;
+    setTipoInstitucion: (v: TipoInstitucion) => void;
+    setInstitucionOtra: (v: string) => void;
     setPuesto: (v: string) => void;
     setDireccionAdministrativa: (v: string) => void;
   },
 ) {
   setters.setNombre(p.nombre);
+  setters.setEmail(p.email ?? "");
+  setters.setTelefono(p.telefono ?? "");
   setters.setFechaNacimiento(normalizarFechaInput(p.fecha_nacimiento));
   setters.setGenero(p.genero);
   setters.setDepartamento(p.departamento);
   setters.setMunicipio(p.municipio);
   setters.setEsTrifinio(p.es_trifinio);
+  const { tipo, otra } = institucionDesdeRegistro(p.institucion, p.es_trifinio);
+  setters.setTipoInstitucion(tipo);
+  setters.setInstitucionOtra(otra);
   setters.setPuesto(p.puesto ?? "");
   setters.setDireccionAdministrativa(p.direccion_administrativa ?? "");
 }
 
 function limpiarDatosPersonales(setters: {
   setNombre: (v: string) => void;
+  setEmail: (v: string) => void;
+  setTelefono: (v: string) => void;
   setFechaNacimiento: (v: string) => void;
   setGenero: (v: "masculino" | "femenino" | "") => void;
   setDepartamento: (v: string) => void;
   setMunicipio: (v: string) => void;
   setEsTrifinio: (v: boolean | null) => void;
+  setTipoInstitucion: (v: TipoInstitucion) => void;
+  setInstitucionOtra: (v: string) => void;
   setPuesto: (v: string) => void;
   setDireccionAdministrativa: (v: string) => void;
 }) {
   setters.setNombre("");
+  setters.setEmail("");
+  setters.setTelefono("");
   setters.setFechaNacimiento("");
   setters.setGenero("");
   setters.setDepartamento("");
   setters.setMunicipio("");
   setters.setEsTrifinio(null);
+  setters.setTipoInstitucion("sin");
+  setters.setInstitucionOtra("");
   setters.setPuesto("");
   setters.setDireccionAdministrativa("");
 }
@@ -115,6 +137,8 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
   const [participanteEncontrado, setParticipanteEncontrado] = useState(false);
 
   const [nombre, setNombre] = useState("");
+  const [email, setEmail] = useState("");
+  const [telefono, setTelefono] = useState("");
   const [puesto, setPuesto] = useState("");
   const [direccionAdministrativa, setDireccionAdministrativa] = useState("");
   const [fechaNacimiento, setFechaNacimiento] = useState("");
@@ -122,14 +146,20 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
   const [departamento, setDepartamento] = useState("");
   const [municipio, setMunicipio] = useState("");
   const [esTrifinio, setEsTrifinio] = useState<boolean | null>(null);
+  const [tipoInstitucion, setTipoInstitucion] = useState<TipoInstitucion>("sin");
+  const [institucionOtra, setInstitucionOtra] = useState("");
 
   const setters = {
     setNombre,
+    setEmail,
+    setTelefono,
     setFechaNacimiento,
     setGenero,
     setDepartamento,
     setMunicipio,
     setEsTrifinio,
+    setTipoInstitucion,
+    setInstitucionOtra,
     setPuesto,
     setDireccionAdministrativa,
   };
@@ -158,18 +188,27 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
 
   const handleEsTrifinio = (value: boolean) => {
     setEsTrifinio(value);
-    if (!value) {
-      setPuesto("");
+    if (value) {
+      setTipoInstitucion("sin");
+      setInstitucionOtra("");
+    } else {
       setDireccionAdministrativa("");
+      setTipoInstitucion("sin");
+      setInstitucionOtra("");
     }
   };
 
-  const handleBuscarDpi = async () => {
-    if (!dpiCompleto) {
+  const handleTipoInstitucion = (value: TipoInstitucion) => {
+    setTipoInstitucion(value);
+    if (value !== "otras") setInstitucionOtra("");
+  };
+
+  const handleBuscarDpi = async (dpiValor = dpi) => {
+    if (dpiValor.length !== 13) {
       toast.warn("Ingresa un DPI válido de 13 dígitos.");
       return;
     }
-    const participante = await buscar.mutateAsync(dpi);
+    const participante = await buscar.mutateAsync(dpiValor);
     limpiarDatosPersonales(setters);
     if (participante) {
       aplicarParticipante(participante, setters);
@@ -182,6 +221,21 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
     setPaso("formulario");
   };
 
+  const handleSeleccionarDpi = async (sugerencia: DpiSugerencia) => {
+    setDpi(sugerencia.dpi);
+    const participante = await buscar.mutateAsync(sugerencia.dpi);
+    limpiarDatosPersonales(setters);
+    if (participante) {
+      aplicarParticipante(participante, setters);
+      setParticipanteEncontrado(true);
+    } else {
+      setNombre(sugerencia.nombre);
+      setParticipanteEncontrado(true);
+    }
+    setPaso("formulario");
+    toast.success("Datos cargados. Revisa y confirma.");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (esTrifinio === null) {
@@ -192,8 +246,12 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
       actividad_id: actividad.id,
       dpi,
       nombre,
+      email,
+      telefono,
       puesto,
       direccion_administrativa: direccionAdministrativa,
+      tipo_institucion: tipoInstitucion,
+      institucion_otra: institucionOtra,
       fecha_nacimiento: fechaNacimiento,
       genero,
       departamento,
@@ -267,23 +325,20 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
             <FormSection title="Identificación">
               <div className="space-y-2">
                 <FieldLabel>DPI</FieldLabel>
-                <input
-                  type="text"
-                  inputMode="numeric"
+                <BusquedaDpi
                   value={dpi}
-                  onChange={(e) => handleDpiChange(e.target.value)}
-                  className={inputClass}
-                  maxLength={13}
-                  autoFocus
+                  onChange={handleDpiChange}
+                  onSeleccionar={handleSeleccionarDpi}
+                  disabled={buscar.isPending}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {dpi.length}/13 dígitos
+                  {dpi.length}/13 dígitos · escribe al menos 3 para ver sugerencias
                 </p>
               </div>
             </FormSection>
             <button
               type="button"
-              onClick={handleBuscarDpi}
+              onClick={() => handleBuscarDpi()}
               disabled={!dpiCompleto || buscar.isPending}
               className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border-0 bg-azul-trifinio text-[10px] font-bold uppercase tracking-widest text-white transition-opacity hover:opacity-90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -343,6 +398,33 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
                   required
                 />
               </div>
+
+              <div className="space-y-2">
+                <FieldLabel>Correo electrónico (opcional)</FieldLabel>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputClass}
+                  autoComplete="email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <FieldLabel>Teléfono (opcional)</FieldLabel>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={telefono}
+                  onChange={(e) => setTelefono(normalizarTelefonoInput(e.target.value))}
+                  className={inputClass}
+                  autoComplete="tel"
+                  maxLength={8}
+                />
+                <p className="text-xs text-muted-foreground">
+                  8 dígitos · se agrega +502 al contactar por WhatsApp
+                </p>
+              </div>
             </FormSection>
 
             <FormSection title="Trifinio">
@@ -395,6 +477,62 @@ export function RegistroPublico({ actividad }: { actividad: ActividadRecord }) {
                         type="text"
                         value={direccionAdministrativa}
                         onChange={(e) => setDireccionAdministrativa(e.target.value)}
+                        className={inputClass}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {esTrifinio === false && (
+                  <motion.div
+                    key="externo-campos"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                    className="space-y-4 overflow-hidden"
+                  >
+                    <div className="space-y-2">
+                      <FieldLabel>Institución</FieldLabel>
+                      <select
+                        value={tipoInstitucion}
+                        onChange={(e) =>
+                          handleTipoInstitucion(e.target.value as TipoInstitucion)
+                        }
+                        className={inputClass}
+                      >
+                        <option value="sin">Sin Institución</option>
+                        <option value="plan_trifinio">Plan Trifinio</option>
+                        <option value="otras">Otras Instituciones</option>
+                      </select>
+                    </div>
+
+                    {tipoInstitucion === "otras" && (
+                      <motion.div
+                        key="institucion-otra"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.28, ease: [0.4, 0, 0.2, 1] }}
+                        className="space-y-2 overflow-hidden"
+                      >
+                        <FieldLabel>Nombre de la institución</FieldLabel>
+                        <input
+                          type="text"
+                          value={institucionOtra}
+                          onChange={(e) => setInstitucionOtra(e.target.value)}
+                          className={inputClass}
+                          required
+                        />
+                      </motion.div>
+                    )}
+
+                    <div className="space-y-2">
+                      <FieldLabel>Puesto (opcional)</FieldLabel>
+                      <input
+                        type="text"
+                        value={puesto}
+                        onChange={(e) => setPuesto(e.target.value)}
                         className={inputClass}
                       />
                     </div>

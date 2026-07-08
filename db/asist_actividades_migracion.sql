@@ -22,6 +22,15 @@ alter table public.asist_registros
 alter table public.asist_registros
   add column if not exists es_trifinio boolean not null default false;
 
+alter table public.asist_registros
+  add column if not exists email text;
+
+alter table public.asist_registros
+  add column if not exists institucion text;
+
+alter table public.asist_registros
+  add column if not exists telefono text;
+
 -- 3) Puesto y dirección opcionales (cuando no es Trifinio)
 alter table public.asist_registros
   alter column puesto drop not null;

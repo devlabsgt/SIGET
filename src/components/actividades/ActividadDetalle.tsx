@@ -6,13 +6,13 @@ import { ChevronLeft, Loader2, Pencil } from "lucide-react";
 import { useActividad, useRegistrosActividad } from "./lib/hooks";
 import { formatFechaActividad } from "./lib/zod";
 import {
-  statsPorDepartamento,
+  statsEdadPorGenero,
+  statsLugaresJerarquia,
   statsPorGenero,
-  statsPorRangoEdad,
   statsPorTrifinio,
 } from "./lib/stats";
 import { QrActividad } from "./QrActividad";
-import { GraficasAsistencia } from "./GraficasAsistencia";
+import { GraficasAsistencia, BarEdadGeneroPanel } from "./GraficasAsistencia";
 import { TablaRegistros } from "./TablaRegistros";
 import { VerEditarActividad } from "./forms/VerEditar";
 
@@ -23,11 +23,11 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
   const [editarOpen, setEditarOpen] = useState(false);
 
   const porGenero = useMemo(() => statsPorGenero(registros), [registros]);
-  const porDepartamento = useMemo(
-    () => statsPorDepartamento(registros),
+  const lugares = useMemo(() => statsLugaresJerarquia(registros), [registros]);
+  const edadPorGenero = useMemo(
+    () => statsEdadPorGenero(registros),
     [registros],
   );
-  const porRangoEdad = useMemo(() => statsPorRangoEdad(registros), [registros]);
   const porTrifinio = useMemo(() => statsPorTrifinio(registros), [registros]);
 
   if (loadingAct) {
@@ -55,7 +55,7 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
       <Link
         href="/siget/actividades"
         className="mb-6 inline-flex cursor-pointer items-center gap-1 text-sm font-bold text-azul-trifinio hover:underline"
@@ -101,37 +101,39 @@ export function ActividadDetalle({ actividadId }: { actividadId: string }) {
         </button>
       </div>
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-[auto_1fr]">
-        <div className="rounded-2xl bg-zinc-50 p-6 dark:bg-zinc-800/60">
-          <p className="mb-4 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+      <div className="mb-8 grid gap-4 lg:grid-cols-[minmax(260px,340px)_1fr] lg:items-stretch">
+        <div className="rounded-3xl border border-slate-200/70 bg-white p-4 dark:border-zinc-800 dark:bg-card">
+          <p className="mb-3 text-center text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
             Código QR de asistencia
           </p>
           <QrActividad
             actividadId={actividadId}
             nombreActividad={actividad.nombre}
-            size={220}
+            size={280}
           />
-          <p className="mt-4 text-center text-xs text-muted-foreground">
+          <p className="mt-3 text-center text-xs text-muted-foreground">
             Escanea para abrir el formulario público de registro.
           </p>
         </div>
-        <div>
-          <GraficasAsistencia
-            porGenero={porGenero}
-            porDepartamento={porDepartamento}
-            porRangoEdad={porRangoEdad}
-            porTrifinio={porTrifinio}
-          />
-        </div>
+        <BarEdadGeneroPanel data={edadPorGenero} />
       </div>
 
-      <div className="rounded-2xl bg-zinc-50 p-5 dark:bg-zinc-800/60">
+      <div className="mb-8 w-full">
+        <GraficasAsistencia
+          porGenero={porGenero}
+          lugares={lugares}
+          porTrifinio={porTrifinio}
+        />
+      </div>
+
+      <div className="rounded-3xl border border-slate-200/70 bg-white p-5 dark:border-zinc-800 dark:bg-card sm:p-6">
         <h2 className="mb-4 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
           Registros de asistencia
         </h2>
         <TablaRegistros
           registros={registros}
           actividadId={actividadId}
+          nombreActividad={actividad.nombre}
           isLoading={loadingReg}
         />
       </div>

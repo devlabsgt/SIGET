@@ -3,6 +3,39 @@ import { z } from "zod";
 export const GENEROS = ["masculino", "femenino"] as const;
 export type Genero = (typeof GENEROS)[number];
 
+export const INSTITUCION_PLAN_TRIFINIO = "Plan Trifinio";
+export const INSTITUCION_SIN = "Sin Institución";
+
+export const TIPOS_INSTITUCION = ["sin", "plan_trifinio", "otras"] as const;
+export type TipoInstitucion = (typeof TIPOS_INSTITUCION)[number];
+
+export function resolverInstitucion(data: {
+  es_trifinio: boolean;
+  tipo_institucion?: TipoInstitucion;
+  institucion_otra?: string;
+}): string {
+  if (data.es_trifinio) return INSTITUCION_PLAN_TRIFINIO;
+  if (data.tipo_institucion === "plan_trifinio") return INSTITUCION_PLAN_TRIFINIO;
+  if (data.tipo_institucion === "otras") {
+    return data.institucion_otra?.trim() || INSTITUCION_SIN;
+  }
+  return INSTITUCION_SIN;
+}
+
+export function institucionDesdeRegistro(
+  institucion: string | null,
+  esTrifinio: boolean,
+): { tipo: TipoInstitucion; otra: string } {
+  if (esTrifinio) return { tipo: "sin", otra: "" };
+  if (!institucion || institucion === INSTITUCION_SIN) {
+    return { tipo: "sin", otra: "" };
+  }
+  if (institucion === INSTITUCION_PLAN_TRIFINIO) {
+    return { tipo: "plan_trifinio", otra: "" };
+  }
+  return { tipo: "otras", otra: institucion };
+}
+
 const dpiSchema = z
   .string()
   .trim()
@@ -25,7 +58,26 @@ export const participanteSchema = z.object({
   genero: z.enum(GENEROS, { message: "Seleccione un género" }),
   departamento: z.string().trim().min(1, "Seleccione un departamento"),
   municipio: z.string().trim().min(1, "Seleccione un municipio"),
+  email: z
+    .string()
+    .trim()
+    .max(200)
+    .refine(
+      (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+      "Correo electrónico inválido",
+    )
+    .optional()
+    .default(""),
+  telefono: z
+    .string()
+    .trim()
+    .transform((v) => normalizarTelefonoInput(v))
+    .refine((v) => v === "" || v.length === 8, "El teléfono debe tener 8 dígitos")
+    .optional()
+    .default(""),
   es_trifinio: z.boolean(),
+  tipo_institucion: z.enum(TIPOS_INSTITUCION).optional().default("sin"),
+  institucion_otra: z.string().trim().optional().default(""),
   puesto: z.string().trim().optional().default(""),
   direccion_administrativa: z.string().trim().optional().default(""),
 });
@@ -38,13 +90,6 @@ export const registroAsistenciaSchema = participanteSchema
   })
   .superRefine((data, ctx) => {
     if (data.es_trifinio) return;
-    if (data.puesto?.trim()) {
-      ctx.addIssue({
-        code: "custom",
-        message: "No aplica puesto si no es parte de Trifinio",
-        path: ["puesto"],
-      });
-    }
     if (data.direccion_administrativa?.trim()) {
       ctx.addIssue({
         code: "custom",
@@ -52,9 +97,22 @@ export const registroAsistenciaSchema = participanteSchema
         path: ["direccion_administrativa"],
       });
     }
+    if (data.tipo_institucion === "otras" && !data.institucion_otra?.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Indique el nombre de la institución",
+        path: ["institucion_otra"],
+      });
+    }
   });
 
 export type RegistroAsistenciaValues = z.infer<typeof registroAsistenciaSchema>;
+
+export const registroEditSchema = registroAsistenciaSchema.extend({
+  id: z.string().uuid(),
+});
+
+export type RegistroEditValues = z.infer<typeof registroEditSchema>;
 
 export type ActividadRecord = {
   id: string;
@@ -74,7 +132,10 @@ export type ParticipanteRecord = {
   genero: Genero;
   departamento: string;
   municipio: string;
+  email: string | null;
+  telefono: string | null;
   es_trifinio: boolean;
+  institucion: string | null;
   puesto: string | null;
   direccion_administrativa: string | null;
   created_at: string;
@@ -92,12 +153,40 @@ export type RegistroAsistenciaRecord = {
   genero: Genero;
   departamento: string;
   municipio: string;
+  email: string | null;
+  telefono: string | null;
   es_trifinio: boolean;
+  institucion: string | null;
   created_at: string;
 };
 
 export function normalizarDpiInput(value: string): string {
   return value.replace(/\D/g, "").slice(0, 13);
+}
+
+export function normalizarTelefonoInput(value: string): string {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("502") && digits.length > 8) {
+    digits = digits.slice(3);
+  }
+  return digits.slice(0, 8);
+}
+
+export function telefonoLocalDigitos(telefono: string | null): string {
+  if (!telefono?.trim()) return "";
+  return normalizarTelefonoInput(telefono);
+}
+
+export function telefonoWhatsAppUrl(telefono: string | null): string | null {
+  const local = telefonoLocalDigitos(telefono);
+  if (local.length !== 8) return null;
+  return `https://wa.me/502${local}`;
+}
+
+export function formatoTelefonoGt(telefono: string | null): string {
+  const local = telefonoLocalDigitos(telefono);
+  if (local.length !== 8) return telefono?.trim() ?? "";
+  return `+502 ${local.slice(0, 4)}-${local.slice(4)}`;
 }
 
 export function normalizarFechaInput(value: string): string {

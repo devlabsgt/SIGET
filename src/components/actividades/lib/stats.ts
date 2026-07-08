@@ -6,10 +6,25 @@ export type StatSegment = {
   color: string;
 };
 
-const GENERO_COLORS: Record<string, string> = {
-  masculino: "#2563eb",
-  femenino: "#ec4899",
+export type EdadGeneroBar = {
+  rango: string;
+  masculino: number;
+  femenino: number;
 };
+
+export type LugarMunicipioStat = {
+  name: string;
+  value: number;
+};
+
+export type LugarDepartamentoStat = {
+  name: string;
+  value: number;
+  municipios: LugarMunicipioStat[];
+};
+
+const COLOR_MASCULINO = "#2563eb";
+const COLOR_FEMENINO = "#ec4899";
 
 const DEPTO_COLORS = [
   "#0ea5e9",
@@ -37,7 +52,11 @@ function contarPorCampo(
       value,
       color:
         campo === "genero"
-          ? (GENERO_COLORS[name.toLowerCase()] ?? DEPTO_COLORS[i % DEPTO_COLORS.length])
+          ? (name.toLowerCase() === "masculino"
+              ? COLOR_MASCULINO
+              : name.toLowerCase() === "femenino"
+                ? COLOR_FEMENINO
+                : DEPTO_COLORS[i % DEPTO_COLORS.length])
           : DEPTO_COLORS[i % DEPTO_COLORS.length],
     }))
     .sort((a, b) => b.value - a.value);
@@ -49,7 +68,7 @@ export function statsPorTrifinio(
   const si = registros.filter((r) => r.es_trifinio).length;
   const no = registros.length - si;
   return [
-    { name: "Parte de Trifinio", value: si, color: "#0ea5e9" },
+    { name: "Plan Trifinio", value: si, color: "#0ea5e9" },
     { name: "Externo", value: no, color: "#a855f7" },
   ].filter((s) => s.value > 0);
 }
@@ -66,13 +85,37 @@ export function statsPorGenero(
 export function statsPorDepartamento(
   registros: RegistroAsistenciaRecord[],
 ): StatSegment[] {
-  return contarPorCampo(registros, "departamento").slice(0, 10);
+  return contarPorCampo(registros, "departamento");
 }
 
 export function statsPorMunicipio(
   registros: RegistroAsistenciaRecord[],
 ): StatSegment[] {
-  return contarPorCampo(registros, "municipio").slice(0, 10);
+  return contarPorCampo(registros, "municipio");
+}
+
+export function statsLugaresJerarquia(
+  registros: RegistroAsistenciaRecord[],
+): LugarDepartamentoStat[] {
+  const deptoMap = new Map<string, Map<string, number>>();
+
+  for (const reg of registros) {
+    const depto = reg.departamento;
+    const muni = reg.municipio;
+    if (!deptoMap.has(depto)) deptoMap.set(depto, new Map());
+    const muniMap = deptoMap.get(depto)!;
+    muniMap.set(muni, (muniMap.get(muni) ?? 0) + 1);
+  }
+
+  return Array.from(deptoMap.entries())
+    .map(([name, muniMap]) => {
+      const municipios = Array.from(muniMap.entries())
+        .map(([muniName, value]) => ({ name: muniName, value }))
+        .sort((a, b) => b.value - a.value);
+      const value = municipios.reduce((sum, m) => sum + m.value, 0);
+      return { name, value, municipios };
+    })
+    .sort((a, b) => b.value - a.value);
 }
 
 export function calcularEdad(fechaNacimiento: string): number {
@@ -82,6 +125,28 @@ export function calcularEdad(fechaNacimiento: string): number {
   const m = hoy.getMonth() - nac.getMonth();
   if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
   return edad;
+}
+
+export function statsEdadPorGenero(
+  registros: RegistroAsistenciaRecord[],
+): EdadGeneroBar[] {
+  const rangos = [
+    { label: "Jóvenes", min: 18, max: 29 },
+    { label: "Adultos", min: 30, max: 59 },
+    { label: "Tercera edad", min: 60, max: 200 },
+  ];
+
+  return rangos.map((rango) => {
+    let masculino = 0;
+    let femenino = 0;
+    for (const reg of registros) {
+      const edad = calcularEdad(reg.fecha_nacimiento);
+      if (edad < rango.min || edad > rango.max) continue;
+      if (reg.genero === "masculino") masculino++;
+      else femenino++;
+    }
+    return { rango: rango.label, masculino, femenino };
+  });
 }
 
 export function statsPorRangoEdad(
