@@ -8,6 +8,7 @@ import Swal from "sweetalert2";
 import {
   BookOpen,
   Building2,
+  CalendarCheck,
   ChevronDown,
   FileText,
   Globe,
@@ -55,6 +56,7 @@ const MODULE_ICONS: Record<string, LucideIcon> = {
   perfil: User,
   admin: Settings,
   "memoria-labores": FileText,
+  actividades: CalendarCheck,
 };
 
 type MenuAccordionOption = {

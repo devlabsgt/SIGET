@@ -26,6 +26,14 @@ const sigetCrumbText =
 const sigetCrumbActive =
   "flex items-center gap-1.5 shrink-0 normal-case text-azul-trifinio underline underline-offset-4 pointer-events-none text-xs md:text-lg";
 
+const UUID_SEGMENT =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function formatBreadcrumbLabel(segment: string): string {
+  if (UUID_SEGMENT.test(segment)) return "detalles";
+  return segment.replace(/-/g, " ");
+}
+
 const iconMotion =
   "transition-transform duration-500 ease-out group-hover:scale-125";
 
@@ -150,7 +158,7 @@ export function BreadcrumbNav() {
                         : crumbTextLink,
                     )}
                   >
-                    {segment.replace(/-/g, " ")}
+                    {formatBreadcrumbLabel(segment)}
                   </Link>
                 </motion.div>
               );

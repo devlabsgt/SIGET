@@ -6,6 +6,9 @@ export const MODAL_ACTION_ERRORS: Record<string, string> = {
   UNAUTHORIZED: "Debes iniciar sesión.",
   FORBIDDEN: "No tienes permisos para esta acción.",
   INVALID_INPUT: "Revisa los datos del formulario.",
+  DUPLICATE: "Este DPI ya está registrado en esta actividad.",
+  NOT_FOUND: "La actividad no está disponible.",
+  DB_ERROR: "No se pudo guardar. Intenta de nuevo.",
   SAVE_FAILED: "No se pudo guardar. Intenta de nuevo.",
   DELETE_FAILED: "No se pudo eliminar.",
   HAS_CHILDREN:

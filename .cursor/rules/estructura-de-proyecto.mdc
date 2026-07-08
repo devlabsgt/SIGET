@@ -7,7 +7,7 @@ alwaysApply: true
 
 ## Stack
 
-- Next.js (App Router), TypeScript estricto, Supabase (Auth, RLS, Storage), Tailwind CSS, TanStack Query, Zod.
+- Next.js (App Router), TypeScript estricto, Supabase (Auth, RLS, Storage), Tailwind CSS, TanStack Query, Zod, todo se instala con pnpm.
 
 ## Estructura de componentes
 
@@ -109,6 +109,7 @@ Implementación única en `components/ui/general-modal.tsx`. Los formularios reu
 - Códigos de server action: `modalActionMessage` + `MODAL_ACTION_ERRORS` desde `modal-toast.ts`.
 - Confirmaciones destructivas en modales: `ModalConfirmDelete` dentro del modal, no SweetAlert.
 - Estilo: variables `--toastify-*` en `globals.css` (fondo sólido por tipo, sin sombra).
+
 ### Prohibido
 
 - `Dialog` de shadcn u otros modales ad hoc para formularios del sistema.

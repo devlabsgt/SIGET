@@ -31,6 +31,15 @@ export const DASHBOARD_MODULES: DashboardModule[] = [
     allowedRoles: ["super", "admin", "comunicacion"],
   },
   {
+    id: "actividades",
+    title: "Registro de",
+    subtitle: "Asistencia",
+    desc: "Actividades con código QR y estadísticas de asistencia.",
+    animatedIcon: "unfvchvi",
+    href: "/siget/actividades",
+    allowedRoles: ["super", "admin", "comunicacion"],
+  },
+  {
     id: "perfil",
     title: "Gestión de",
     subtitle: "Mi Perfil",
