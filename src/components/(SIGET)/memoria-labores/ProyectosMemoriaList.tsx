@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -13,9 +13,11 @@ import {
   Filter,
 } from "lucide-react";
 import { toast } from "react-toastify";
+import { cn } from "@/lib/utils";
 import { useUserContext } from "@/components/(base)/providers/UserProvider";
 import {
   deleteProyectoMemoria,
+  getAutofillInformeUsuario,
   getProyectosMemoria,
 } from "./lib/actions";
 import { confirmQuitarMemoria } from "./lib/swal";
@@ -36,6 +38,8 @@ type View =
   | { mode: "list" }
   | { mode: "create" }
   | { mode: "edit"; memoria: ProyectosMemoria };
+
+type TabMemoria = "propios" | "otras";
 
 const TODOS = "__todos__";
 
@@ -99,12 +103,17 @@ function InformeMemoriaAccordion({
 
 export default function ProyectosMemoriaList() {
   const router = useRouter();
-  const { effectiveRole } = useUserContext();
+  const { effectiveRole, user } = useUserContext();
+  const roleNormalized = effectiveRole.toLowerCase();
   const canViewAll =
-    effectiveRole === "super" || effectiveRole.toLowerCase().includes("admin");
+    roleNormalized === "super" || roleNormalized.includes("admin");
+  const canVerOtrasOficinas =
+    canViewAll || roleNormalized === "comunicacion";
   const canDelete = canViewAll;
 
   const [view, setView] = useState<View>({ mode: "list" });
+  const [tabActiva, setTabActiva] = useState<TabMemoria>("propios");
+  const [miOficina, setMiOficina] = useState("");
   const [memorias, setMemorias] = useState<ProyectosMemoria[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,27 +144,58 @@ export default function ProyectosMemoriaList() {
     load();
   }, []);
 
+  useEffect(() => {
+    getAutofillInformeUsuario()
+      .then((data) => {
+        if (data?.oficina?.trim()) {
+          setMiOficina(data.oficina.trim());
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const esInformePropio = useCallback(
+    (memoria: ProyectosMemoria) => {
+      const oficinaMemoria = memoria.oficina?.trim() ?? "";
+      if (miOficina && oficinaMemoria) {
+        return oficinaMemoria === miOficina;
+      }
+      if (user?.id && memoria.created_by) {
+        return memoria.created_by === user.id;
+      }
+      return true;
+    },
+    [miOficina, user?.id],
+  );
+
+  const memoriasPorTab = useMemo(() => {
+    if (!canVerOtrasOficinas || tabActiva === "propios") {
+      return memorias.filter(esInformePropio);
+    }
+    return memorias.filter((m) => !esInformePropio(m));
+  }, [memorias, tabActiva, canVerOtrasOficinas, esInformePropio]);
+
   const informantes = useMemo(() => {
     const valores = new Set<string>();
-    for (const m of memorias) {
+    for (const m of memoriasPorTab) {
       const nombre = m.nombre?.trim();
       if (nombre) valores.add(nombre);
     }
     return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
-  }, [memorias]);
+  }, [memoriasPorTab]);
 
   const oficinas = useMemo(() => {
     const valores = new Set<string>();
-    for (const m of memorias) {
+    for (const m of memoriasPorTab) {
       const oficina = m.oficina?.trim();
       if (oficina) valores.add(oficina);
     }
     return Array.from(valores).sort((a, b) => a.localeCompare(b, "es"));
-  }, [memorias]);
+  }, [memoriasPorTab]);
 
   const memoriasFiltradas = useMemo(() => {
     return sortMemoriasPorMesDir(
-      memorias.filter((m) => {
+      memoriasPorTab.filter((m) => {
         const coincideInformante =
           filtroInformante === TODOS ||
           m.nombre?.trim() === filtroInformante;
@@ -167,12 +207,17 @@ export default function ProyectosMemoriaList() {
       ordenMesDesc,
     );
   }, [
-    memorias,
+    memoriasPorTab,
     filtroInformante,
     filtroOficina,
     filtroPeriodo,
     ordenMesDesc,
   ]);
+
+  useEffect(() => {
+    setFiltroInformante(TODOS);
+    setFiltroOficina(TODOS);
+  }, [tabActiva]);
 
   const toggleOpen = (id: string) => {
     setOpenIds((prev) => {
@@ -287,6 +332,35 @@ export default function ProyectosMemoriaList() {
         </div>
       ) : (
         <div className="flex flex-col gap-4 w-full sm:gap-6">
+          {canVerOtrasOficinas && (
+            <div className="flex flex-wrap gap-2 px-3 sm:px-0">
+              <button
+                type="button"
+                onClick={() => setTabActiva("propios")}
+                className={cn(
+                  "inline-flex h-10 cursor-pointer items-center justify-center rounded-xl px-5 text-xs font-bold uppercase tracking-wider transition-colors",
+                  tabActiva === "propios"
+                    ? "bg-azul-trifinio text-white hover:opacity-90"
+                    : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600",
+                )}
+              >
+                Propios
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabActiva("otras")}
+                className={cn(
+                  "inline-flex h-10 cursor-pointer items-center justify-center rounded-xl px-5 text-xs font-bold uppercase tracking-wider transition-colors",
+                  tabActiva === "otras"
+                    ? "bg-azul-trifinio text-white hover:opacity-90"
+                    : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-600",
+                )}
+              >
+                Otras oficinas
+              </button>
+            </div>
+          )}
+
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -376,7 +450,9 @@ export default function ProyectosMemoriaList() {
               className="mx-3 rounded-2xl border border-dashed border-border px-6 py-16 text-center sm:mx-0 dark:border-zinc-800"
             >
               <p className="text-sm font-semibold text-foreground">
-                No hay informes con los filtros seleccionados
+                {tabActiva === "otras"
+                  ? "No hay informes de otras oficinas con los filtros seleccionados"
+                  : "No hay informes con los filtros seleccionados"}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Pruebe con otro informante, oficina o período.

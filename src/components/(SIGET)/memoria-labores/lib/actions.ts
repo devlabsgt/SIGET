@@ -47,6 +47,15 @@ function isPrivilegedMemoriaRole(role: string): boolean {
   return normalized === "super" || normalized.includes("admin");
 }
 
+function canVerMemoriasOtrasOficinas(role: string): boolean {
+  const normalized = role.toLowerCase();
+  return (
+    normalized === "super" ||
+    normalized.includes("admin") ||
+    normalized === "comunicacion"
+  );
+}
+
 async function requireAuth() {
   const supabase = await createClient();
   const {
@@ -263,7 +272,7 @@ export async function getProyectosMemoria(): Promise<ProyectosMemoria[]> {
 
   let query = supabase.from(TABLE).select(SELECT_COLUMNS);
 
-  if (!isPrivilegedMemoriaRole(role)) {
+  if (!canVerMemoriasOtrasOficinas(role)) {
     query = query.eq("created_by", user.id);
   }
 

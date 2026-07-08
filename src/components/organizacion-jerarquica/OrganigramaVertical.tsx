@@ -81,7 +81,13 @@ const ORG_LAYOUT_AMPLIO = {
   sepNonSiblings: ORG_SEP_NON_SIBLINGS,
 } as const;
 
-type OrgLayoutConfig = typeof ORG_LAYOUT_COMPACT;
+type OrgLayoutConfig = {
+  gapX: number;
+  gapY: number;
+  forkBoost: number;
+  sepSiblings: number;
+  sepNonSiblings: number;
+};
 const ORG_NODE_X = ORG_CARD_W + ORG_GAP_X;
 const ORG_NODE_Y = ORG_CARD_H + ORG_GAP_Y;
 const ORG_FO_W = ORG_CARD_W;
