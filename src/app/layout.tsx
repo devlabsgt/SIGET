@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "SIGET - Plan Trifinio",
-  description: "Sistema Integral de Gestión - Plan Trifinio",
+  description: "Sistema Integral de Gestión Estratégica - Plan Trifinio",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -57,9 +57,9 @@ export default async function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        style={{ 
-          paddingTop: 'var(--banner-height, 0px)',
-          transition: 'padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+        style={{
+          paddingTop: "var(--banner-height, 0px)",
+          transition: "padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
         }}
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background flex flex-col`}
       >
@@ -73,9 +73,7 @@ export default async function RootLayout({
             <UserProvider user={user}>
               <OfflineBanner />
               <Header />
-              <main className="flex-1 w-full flex flex-col">
-                {children}
-              </main>
+              <main className="flex-1 w-full flex flex-col">{children}</main>
               <ConditionalFooter />
               <ObsToastContainer />
             </UserProvider>

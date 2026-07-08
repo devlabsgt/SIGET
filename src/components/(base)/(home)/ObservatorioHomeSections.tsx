@@ -8,8 +8,24 @@ import {
   AnimatePresence,
   useInView,
 } from "framer-motion";
-import { useRef, useState, useEffect, useCallback, useMemo, type RefObject, type ReactNode } from "react";
-import { Plus, Users, BarChart3, Building2, ExternalLink, Facebook, Youtube } from "lucide-react";
+import {
+  useRef,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type RefObject,
+  type ReactNode,
+} from "react";
+import {
+  Plus,
+  Users,
+  BarChart3,
+  Building2,
+  ExternalLink,
+  Facebook,
+  Youtube,
+} from "lucide-react";
 import AnimatedIcon from "@/components/ui/AnimatedIcon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InteractiveHoverButton } from "@/components/ui/interactive-hover-button";
@@ -146,7 +162,9 @@ function AccederObservatorioButton({
   fullWidth?: boolean;
 }) {
   return (
-    <div className={cn("flex justify-center", fullWidth && "w-full", className)}>
+    <div
+      className={cn("flex justify-center", fullWidth && "w-full", className)}
+    >
       <InteractiveHoverButton
         href={href}
         hoverClassName="text-azul-trifinio"
@@ -258,7 +276,9 @@ function BannerHeroSequence({
           alt="Plan Trifinio"
           className={cn(
             "shrink-0 object-contain drop-shadow-2xl",
-            compact ? "size-28 sm:size-32" : "size-32 md:size-[180px] lg:size-[200px]",
+            compact
+              ? "size-28 sm:size-32"
+              : "size-32 md:size-[180px] lg:size-[200px]",
           )}
         />
         <div className="flex min-w-0 w-full flex-col items-center text-center md:w-auto">
@@ -300,7 +320,11 @@ function BannerHeroSequence({
                 initial={{ scaleX: 0 }}
                 whileInView={{ scaleX: 1 }}
                 viewport={{ once: false, amount: 0.3 }}
-                transition={{ duration: 0.55, delay: lineDelay, ease: "easeOut" }}
+                transition={{
+                  duration: 0.55,
+                  delay: lineDelay,
+                  ease: "easeOut",
+                }}
                 className="h-full w-full origin-left bg-white"
               />
             </div>
@@ -634,8 +658,7 @@ function DonutTooltipContent({
   if (!active || !payload?.length) return null;
 
   const item = payload[0];
-  const label =
-    item.payload?.nombre ?? item.payload?.name ?? item.name ?? "";
+  const label = item.payload?.nombre ?? item.payload?.name ?? item.name ?? "";
   const value = fmt(Number(item.value ?? 0));
 
   return (
@@ -1013,7 +1036,10 @@ function MonitoreoStatInline({
       )}
     >
       <div className="flex items-center gap-1.5 min-w-0 lg:contents">
-        <Icon className={cn("size-3.5 shrink-0 lg:size-4", accent)} strokeWidth={2} />
+        <Icon
+          className={cn("size-3.5 shrink-0 lg:size-4", accent)}
+          strokeWidth={2}
+        />
         <span
           className={cn(
             "text-[10px] font-black uppercase tracking-widest leading-tight",
@@ -1058,7 +1084,10 @@ function MonitoreoDesglosePanel({
 }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-sm">
-      <div ref={statsRef} className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-stretch">
+      <div
+        ref={statsRef}
+        className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-stretch"
+      >
         <div className="grid grid-cols-2 gap-3 lg:flex lg:shrink-0">
           <MonitoreoFilterCell
             label="Año"
@@ -1576,7 +1605,8 @@ function ObservatorioIconOrbit() {
           style={{ rotate: orbitRotate }}
         >
           {ORBIT_ICONS.map((icon, idx) => {
-            const rad = (orbitAngle(icon.slot, ORBIT_SIDE_SPREAD) * Math.PI) / 180;
+            const rad =
+              (orbitAngle(icon.slot, ORBIT_SIDE_SPREAD) * Math.PI) / 180;
             const left = 50 + ORBIT_RADIUS * Math.sin(rad);
             const top = 50 - ORBIT_RADIUS * Math.cos(rad);
             const float = icon.float;
@@ -1798,12 +1828,22 @@ function ModulosObservatorioSection() {
                     initial={{ opacity: 0, y: 16, rotate: -24 }}
                     whileInView={{ opacity: 1, y: 0, rotate: -18 }}
                     viewport={{ once: false, amount: 0.3 }}
-                    transition={{ duration: 0.55, delay: 0.2, type: "spring", stiffness: 200 }}
+                    transition={{
+                      duration: 0.55,
+                      delay: 0.2,
+                      type: "spring",
+                      stiffness: 200,
+                    }}
                     className="absolute bottom-0 left-0 flex size-28 md:size-32 items-center justify-center pointer-events-none"
                   >
                     <motion.div
                       animate={{ y: [0, -4, 0] }}
-                      transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+                      transition={{
+                        duration: 3.8,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.2,
+                      }}
                       className="size-full drop-shadow-none dark:drop-shadow-sm"
                     >
                       <AnimatedIcon
@@ -1819,12 +1859,21 @@ function ModulosObservatorioSection() {
                     initial={{ opacity: 0, y: 20, scale: 0.7 }}
                     whileInView={{ opacity: 1, y: 0, scale: 1 }}
                     viewport={{ once: false, amount: 0.3 }}
-                    transition={{ duration: 0.6, delay: 0.12, type: "spring", stiffness: 180 }}
+                    transition={{
+                      duration: 0.6,
+                      delay: 0.12,
+                      type: "spring",
+                      stiffness: 180,
+                    }}
                     className="absolute left-1/2 top-0 flex size-32 md:size-36 -translate-x-1/2 items-center justify-center pointer-events-none"
                   >
                     <motion.div
                       animate={{ y: [0, -5, 0] }}
-                      transition={{ duration: 3.4, repeat: Infinity, ease: "easeInOut" }}
+                      transition={{
+                        duration: 3.4,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
                       className="size-full drop-shadow-none dark:drop-shadow-md"
                     >
                       <AnimatedIcon
@@ -1840,12 +1889,22 @@ function ModulosObservatorioSection() {
                     initial={{ opacity: 0, y: 16, rotate: 24 }}
                     whileInView={{ opacity: 1, y: 0, rotate: 18 }}
                     viewport={{ once: false, amount: 0.3 }}
-                    transition={{ duration: 0.55, delay: 0.28, type: "spring", stiffness: 200 }}
+                    transition={{
+                      duration: 0.55,
+                      delay: 0.28,
+                      type: "spring",
+                      stiffness: 200,
+                    }}
                     className="absolute bottom-0 right-0 flex size-28 md:size-32 items-center justify-center pointer-events-none"
                   >
                     <motion.div
                       animate={{ y: [0, -4, 0] }}
-                      transition={{ duration: 4.1, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
+                      transition={{
+                        duration: 4.1,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                        delay: 0.5,
+                      }}
                       className="size-full drop-shadow-none dark:drop-shadow-sm"
                     >
                       <AnimatedIcon
@@ -1879,21 +1938,21 @@ function ModulosObservatorioSection() {
           {/* derecha: lista + botón */}
           <div className="flex flex-col gap-8 md:gap-10 md:pt-2">
             <ul className="space-y-5 md:space-y-6">
-            {reportFeatures.map((feature, fi) => (
-              <motion.li
-                key={feature}
-                initial={{ opacity: 0, y: 8 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: false }}
-                transition={{ duration: 0.45, delay: 0.3 + fi * 0.07 }}
-                className="flex items-start gap-3.5"
-              >
-                <span className="mt-2 size-2.5 shrink-0 rounded-full bg-celeste-trifinio" />
-                <span className="text-base md:text-lg font-black uppercase tracking-wide text-foreground leading-snug">
-                  {feature}
-                </span>
-              </motion.li>
-            ))}
+              {reportFeatures.map((feature, fi) => (
+                <motion.li
+                  key={feature}
+                  initial={{ opacity: 0, y: 8 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: false }}
+                  transition={{ duration: 0.45, delay: 0.3 + fi * 0.07 }}
+                  className="flex items-start gap-3.5"
+                >
+                  <span className="mt-2 size-2.5 shrink-0 rounded-full bg-celeste-trifinio" />
+                  <span className="text-base md:text-lg font-black uppercase tracking-wide text-foreground leading-snug">
+                    {feature}
+                  </span>
+                </motion.li>
+              ))}
             </ul>
 
             <AccederObservatorioButton className="md:justify-start" />
@@ -2111,9 +2170,7 @@ const FOOTER_SOCIAL = [
 ] as const;
 
 const FOOTER_COUNTRIES_LINE = (
-  <>
-    El Salvador&ensp;•&ensp;Guatemala&ensp;•&ensp;Honduras
-  </>
+  <>El Salvador&ensp;•&ensp;Guatemala&ensp;•&ensp;Honduras</>
 );
 
 function FooterPlanTrifinioBrand() {
@@ -2195,7 +2252,7 @@ function FooterSectionHeading({
       className={cn(
         "flex items-center gap-2 text-xs font-black uppercase tracking-[0.25em] text-celeste-trifinio whitespace-nowrap",
         align === "end" ? "justify-end" : "justify-start",
-        className
+        className,
       )}
     >
       {children}
@@ -2220,7 +2277,7 @@ function FooterLinkLabel({
       <span
         className={cn(
           "relative inline max-md:pb-0 md:pb-0.5",
-          FOOTER_UNDERLINE_MOBILE
+          FOOTER_UNDERLINE_MOBILE,
         )}
       >
         {children}
@@ -2254,9 +2311,7 @@ function FooterLinkItem({
 }) {
   const className = cn(
     "group max-w-full text-base font-semibold text-white/85 transition-colors hover:text-white md:text-lg",
-    showExternalIcon
-      ? "inline-flex items-center gap-2"
-      : "inline-block"
+    showExternalIcon ? "inline-flex items-center gap-2" : "inline-block",
   );
 
   const labelContent = animatedUnderline ? (
@@ -2302,10 +2357,11 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
           <FooterPlanTrifinioBrand />
           <p className="mt-6 max-w-md text-base leading-relaxed text-white/75 md:text-[15px] md:leading-relaxed lg:text-base">
             Plataforma tecnológica para la recolección, centralización, análisis
-            y visualización de datos sobre movilidad humana en la región Trifinio.
+            y visualización de datos sobre movilidad humana en la región
+            Trifinio.
           </p>
           <p className="mt-4 w-full text-base font-black leading-snug text-white md:max-w-md md:text-sm md:font-normal md:leading-relaxed md:text-white/60">
-            Sistema Integral de Gestión Trifinio (SIGET).
+            Sistema Integral de Gestión Estratégica Trifinio (SIGET).
           </p>
         </div>
 
@@ -2329,10 +2385,7 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
 
             <div className="min-w-0 text-right md:text-left">
               <div className="md:mt-8">
-                <FooterSectionHeading
-                  align="end"
-                  className="md:justify-start"
-                >
+                <FooterSectionHeading align="end" className="md:justify-start">
                   Redes
                 </FooterSectionHeading>
               </div>
@@ -2348,7 +2401,9 @@ function ObservatorioFooterContent({ className }: { className?: string }) {
                       <span className="inline-flex size-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-celeste-trifinio transition-colors group-hover:border-celeste-trifinio/50 group-hover:bg-white/10">
                         <Icon className="size-4" />
                       </span>
-                      <FooterLinkLabel mode="responsive">{label}</FooterLinkLabel>
+                      <FooterLinkLabel mode="responsive">
+                        {label}
+                      </FooterLinkLabel>
                     </a>
                   </li>
                 ))}

@@ -69,7 +69,7 @@ export default function Header() {
                       transition={{ duration: 0.6, ease: "easeOut" }}
                       className="text-2xl md:text-4xl font-extrabold tracking-tighter leading-none text-azul-trifinio dark:text-white transition-transform duration-300 group-hover:scale-105 origin-left"
                     >
-                      SIGEA
+                      SIGET
                     </motion.h1>
                     <motion.div
                       initial={{ opacity: 0, clipPath: "inset(0 100% 0 0)" }}
@@ -83,7 +83,7 @@ export default function Header() {
                     >
                       SISTEMA INTEGRAL DE
                       <br />
-                      GESTIÓN ADMINISTRATIVA
+                      GESTIÓN ESTRATÉGICA TRIFINIO
                     </motion.div>
                   </>
                 ) : (

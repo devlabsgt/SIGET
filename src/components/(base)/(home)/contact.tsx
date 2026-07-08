@@ -42,8 +42,9 @@ export function ContactSection() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <div className="space-y-4 lg:space-y-6 text-center lg:text-left">
               <p className="text-muted-foreground text-sm lg:text-base font-medium leading-relaxed">
-                Contáctenos para recibir asesoría sobre el Sistema Integral de Gestión Trifinio
-                y optimizar sus procesos operativos.
+                Contáctenos para recibir asesoría sobre el Sistema Integral de
+                Gestión Estratégica Trifinio y optimizar sus procesos
+                operativos.
               </p>
               <div className="flex items-center justify-center lg:justify-start gap-4 p-3 rounded-xl bg-muted/50 border border-zinc-200 dark:border-zinc-800">
                 <MapPin className="text-primary size-4 shrink-0" />

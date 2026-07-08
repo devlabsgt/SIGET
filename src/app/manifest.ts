@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "SIGET - Sistema Integral de Gestión Trifinio",
     short_name: "SIGET",
     description:
-      "Sistema Integral de Gestión Trifinio para la optimización de operaciones y mejora de la eficiencia.",
+      "Sistema Integral de Gestión Estratégica Trifinio para la optimización de operaciones y mejora de la eficiencia.",
     start_url: "/",
     display: "standalone",
     orientation: "portrait",
