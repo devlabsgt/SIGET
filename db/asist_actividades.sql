@@ -29,8 +29,6 @@ create table if not exists public.asist_registros (
   direccion_administrativa text,
   fecha_nacimiento date not null,
   genero text not null check (genero in ('masculino', 'femenino')),
-  departamento text not null,
-  municipio text not null,
   email text,
   telefono text,
   institucion text,
@@ -49,9 +47,6 @@ create index if not exists asist_actividades_created_at_idx
 
 create index if not exists asist_actividades_activo_idx
   on public.asist_actividades (activo);
-
-create index if not exists asist_registros_departamento_idx
-  on public.asist_registros (departamento);
 
 create index if not exists asist_registros_genero_idx
   on public.asist_registros (genero);

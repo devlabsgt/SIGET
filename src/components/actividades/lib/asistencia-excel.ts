@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { saveAs } from "file-saver";
 import type { RegistroAsistenciaRecord } from "./zod";
-import { formatoTelefonoGt } from "./zod";
+import { formatoTelefonoVisible } from "./zod";
 
 function safeFilename(name: string): string {
   return (
@@ -50,8 +50,6 @@ export function buildAsistenciaExcelRows(
       "Institución",
       "Puesto",
       "Género",
-      "Departamento",
-      "Municipio",
       "Fecha de nacimiento",
     ],
   ];
@@ -62,12 +60,10 @@ export function buildAsistenciaExcelRows(
       r.dpi,
       r.nombre,
       celdaOpcional(r.email),
-      r.telefono ? formatoTelefonoGt(r.telefono) : "",
+      r.telefono ? formatoTelefonoVisible(r.telefono) : "",
       celdaOpcional(r.institucion),
       celdaOpcional(r.puesto),
       r.genero === "masculino" ? "Masculino" : "Femenino",
-      r.departamento,
-      r.municipio,
       r.fecha_nacimiento,
     ]);
   }

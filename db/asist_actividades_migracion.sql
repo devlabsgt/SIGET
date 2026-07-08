@@ -72,3 +72,12 @@ create policy asist_registros_autenticado
 
 create policy asist_registros_autenticado_delete
   on public.asist_registros for delete to authenticated using (true);
+
+-- 6) Ubicación solo en actividad (no en registros)
+drop index if exists public.asist_registros_departamento_idx;
+
+alter table public.asist_registros
+  drop column if exists departamento;
+
+alter table public.asist_registros
+  drop column if exists municipio;

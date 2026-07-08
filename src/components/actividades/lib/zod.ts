@@ -114,21 +114,6 @@ export const registroEditSchema = participanteCamposSchema
 
 export type RegistroEditValues = z.infer<typeof registroEditSchema>;
 
-export const participanteSchema = participanteCamposSchema.extend({
-  departamento: z.string().trim().min(1, "Seleccione un departamento"),
-  municipio: z.string().trim().min(1, "Seleccione un municipio"),
-});
-
-export type ParticipanteValues = z.infer<typeof participanteSchema>;
-
-export const registroAsistenciaSchema = participanteSchema
-  .extend({
-    actividad_id: z.string().uuid("Actividad inválida"),
-  })
-  .superRefine(registroCamposRefine);
-
-export type RegistroAsistenciaValues = z.infer<typeof registroAsistenciaSchema>;
-
 export type ActividadRecord = {
   id: string;
   nombre: string;
@@ -148,8 +133,6 @@ export type ParticipanteRecord = {
   nombre: string;
   fecha_nacimiento: string;
   genero: Genero;
-  departamento: string;
-  municipio: string;
   email: string | null;
   telefono: string | null;
   es_trifinio: boolean;
@@ -169,8 +152,6 @@ export type RegistroAsistenciaRecord = {
   direccion_administrativa: string | null;
   fecha_nacimiento: string;
   genero: Genero;
-  departamento: string;
-  municipio: string;
   email: string | null;
   telefono: string | null;
   es_trifinio: boolean;
@@ -201,10 +182,14 @@ export function telefonoWhatsAppUrl(telefono: string | null): string | null {
   return `https://wa.me/502${local}`;
 }
 
-export function formatoTelefonoGt(telefono: string | null): string {
+export function formatoTelefonoVisible(telefono: string | null): string {
   const local = telefonoLocalDigitos(telefono);
   if (local.length !== 8) return telefono?.trim() ?? "";
-  return `+502 ${local.slice(0, 4)}-${local.slice(4)}`;
+  return `${local.slice(0, 4)}-${local.slice(4)}`;
+}
+
+export function formatoTelefonoGt(telefono: string | null): string {
+  return formatoTelefonoVisible(telefono);
 }
 
 export function normalizarFechaInput(value: string): string {

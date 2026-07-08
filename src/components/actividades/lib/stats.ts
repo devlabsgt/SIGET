@@ -12,17 +12,6 @@ export type EdadGeneroBar = {
   femenino: number;
 };
 
-export type LugarMunicipioStat = {
-  name: string;
-  value: number;
-};
-
-export type LugarDepartamentoStat = {
-  name: string;
-  value: number;
-  municipios: LugarMunicipioStat[];
-};
-
 const COLOR_MASCULINO = "#2563eb";
 const COLOR_FEMENINO = "#ec4899";
 
@@ -80,42 +69,6 @@ export function statsPorGenero(
     ...s,
     name: s.name === "masculino" ? "Masculino" : "Femenino",
   }));
-}
-
-export function statsPorDepartamento(
-  registros: RegistroAsistenciaRecord[],
-): StatSegment[] {
-  return contarPorCampo(registros, "departamento");
-}
-
-export function statsPorMunicipio(
-  registros: RegistroAsistenciaRecord[],
-): StatSegment[] {
-  return contarPorCampo(registros, "municipio");
-}
-
-export function statsLugaresJerarquia(
-  registros: RegistroAsistenciaRecord[],
-): LugarDepartamentoStat[] {
-  const deptoMap = new Map<string, Map<string, number>>();
-
-  for (const reg of registros) {
-    const depto = reg.departamento;
-    const muni = reg.municipio;
-    if (!deptoMap.has(depto)) deptoMap.set(depto, new Map());
-    const muniMap = deptoMap.get(depto)!;
-    muniMap.set(muni, (muniMap.get(muni) ?? 0) + 1);
-  }
-
-  return Array.from(deptoMap.entries())
-    .map(([name, muniMap]) => {
-      const municipios = Array.from(muniMap.entries())
-        .map(([muniName, value]) => ({ name: muniName, value }))
-        .sort((a, b) => b.value - a.value);
-      const value = municipios.reduce((sum, m) => sum + m.value, 0);
-      return { name, value, municipios };
-    })
-    .sort((a, b) => b.value - a.value);
 }
 
 export function calcularEdad(fechaNacimiento: string): number {

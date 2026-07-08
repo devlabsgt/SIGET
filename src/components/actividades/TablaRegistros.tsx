@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Pencil, Search, Trash2, FileSpreadsheet } from "lucide-react";
 import { toast } from "react-toastify";
 import type { RegistroAsistenciaRecord } from "./lib/zod";
-import { formatoTelefonoGt, telefonoWhatsAppUrl } from "./lib/zod";
+import { formatoTelefonoVisible, telefonoWhatsAppUrl } from "./lib/zod";
 import { useEliminarRegistro } from "./lib/hooks";
 import { confirmQuitarActividad } from "./lib/swal";
 import { downloadAsistenciaExcel } from "./lib/asistencia-excel";
@@ -39,7 +39,7 @@ function CeldaTelefono({ telefono }: { telefono: string | null }) {
       rel="noopener noreferrer"
       className="whitespace-nowrap font-semibold text-emerald-600 hover:underline dark:text-emerald-400"
     >
-      {formatoTelefonoGt(telefono)}
+      {formatoTelefonoVisible(telefono)}
     </a>
   );
 }
@@ -71,9 +71,7 @@ export function TablaRegistros({
         (r.email ?? "").toLowerCase().includes(q) ||
         (r.telefono ?? "").includes(q.replace(/\D/g, "")) ||
         (r.institucion ?? "").toLowerCase().includes(q) ||
-        (r.puesto ?? "").toLowerCase().includes(q) ||
-        r.departamento.toLowerCase().includes(q) ||
-        r.municipio.toLowerCase().includes(q),
+        (r.puesto ?? "").toLowerCase().includes(q),
     );
   }, [registros, search]);
 
@@ -142,7 +140,7 @@ export function TablaRegistros({
         </p>
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-border dark:border-zinc-700">
-          <table className="w-full min-w-[1100px] text-left text-sm">
+          <table className="w-full min-w-[960px] text-left text-sm">
             <thead>
               <tr className="border-b border-border bg-zinc-50 text-[10px] font-bold uppercase tracking-widest text-muted-foreground dark:border-zinc-700 dark:bg-zinc-800">
                 <th className="px-4 py-3">Fecha y hora</th>
@@ -153,8 +151,6 @@ export function TablaRegistros({
                 <th className="px-4 py-3">Institución</th>
                 <th className="px-4 py-3">Puesto</th>
                 <th className="px-4 py-3">Género</th>
-                <th className="px-4 py-3">Departamento</th>
-                <th className="px-4 py-3">Municipio</th>
                 <th className="px-4 py-3 w-24" />
               </tr>
             </thead>
@@ -184,8 +180,6 @@ export function TablaRegistros({
                     <td className="px-4 py-3">{celdaOpcional(r.institucion)}</td>
                     <td className="px-4 py-3">{celdaOpcional(r.puesto)}</td>
                     <td className="px-4 py-3 capitalize">{r.genero}</td>
-                    <td className="px-4 py-3">{r.departamento}</td>
-                    <td className="px-4 py-3">{r.municipio}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button

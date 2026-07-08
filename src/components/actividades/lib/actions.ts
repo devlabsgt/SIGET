@@ -4,14 +4,12 @@ import { createClient } from "@/utils/supabase/server";
 import { createPublicClient } from "@/utils/supabase/public";
 import {
   actividadFormSchema,
-  registroAsistenciaSchema,
   registroPublicoSchema,
   registroEditSchema,
   type ActividadFormValues,
   type ActividadRecord,
   type ParticipanteRecord,
   type RegistroAsistenciaRecord,
-  type RegistroAsistenciaValues,
   type RegistroPublicoValues,
   type RegistroEditValues,
   resolverInstitucion,
@@ -86,8 +84,6 @@ function normalizarParticipante(row: Record<string, unknown>): ParticipanteRecor
     nombre: String(row.nombre ?? ""),
     fecha_nacimiento: String(row.fecha_nacimiento ?? "").split("T")[0],
     genero: row.genero as ParticipanteRecord["genero"],
-    departamento: String(row.departamento ?? ""),
-    municipio: String(row.municipio ?? ""),
     email: (row.email as string | null) ?? null,
     telefono: (row.telefono as string | null) ?? null,
     es_trifinio: row.es_trifinio === true,
@@ -118,8 +114,6 @@ function normalizarRegistro(row: Record<string, unknown>): RegistroAsistenciaRec
       (row.direccion_administrativa as string | null) ?? null,
     fecha_nacimiento: String(row.fecha_nacimiento ?? "").split("T")[0],
     genero: (row.genero ?? "masculino") as RegistroAsistenciaRecord["genero"],
-    departamento: String(row.departamento ?? ""),
-    municipio: String(row.municipio ?? ""),
     email: (row.email as string | null) ?? null,
     telefono: (row.telefono as string | null) ?? null,
     es_trifinio: row.es_trifinio === true,
@@ -333,9 +327,9 @@ export async function registrarAsistencia(
 
   if (!actividad) return { success: false, error: "NOT_FOUND" };
 
-  const departamento = String(actividad.departamento ?? "");
-  const municipio = String(actividad.municipio ?? "");
-  if (!departamento || !municipio) {
+  const departamentoActividad = String(actividad.departamento ?? "");
+  const municipioActividad = String(actividad.municipio ?? "");
+  if (!departamentoActividad || !municipioActividad) {
     return {
       success: false,
       error: "NOT_FOUND",
@@ -368,8 +362,6 @@ export async function registrarAsistencia(
     nombre: data.nombre,
     fecha_nacimiento: data.fecha_nacimiento.split("T")[0],
     genero: data.genero,
-    departamento,
-    municipio,
     email: data.email?.trim() || null,
     telefono: data.telefono?.trim() || null,
     es_trifinio: esTrifinioDesdeTipo(data.tipo_institucion),
